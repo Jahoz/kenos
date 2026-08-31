@@ -101,15 +101,19 @@ charte (règle du registre : ne jamais importer un design d'ailleurs).
 - DoD atteint : smoke réel A émet → B entend (cloud_smoke_test 2/2),
   purge en pgTAP (60/60).
 
-### V3.3 — Sling-Shot « phénix » (après arbitrage T1)
-- RevealSheet : après le burn, geste drag — bas = cendres (rite),
-  haut = rebond (re-scellement + relance, `parent_id`, momentum+1).
-- Migration 0006 : colonnes `parent_id`, `momentum` sur `echoes`
-  (métadonnées publiques via RPC carte), RPC `rebound_echo`
-  (valide fenêtre 60 s post-lecture, cadence).
-- Queue de comète visuelle sur `momentum > 0` (CustomPainter).
-- **DoD** : invariant single-read intact (tests pgTAP étendus),
-  rebond = un écho scellé de plus pour un autre humain, comète visible.
+### V3.3 — Sling-Shot « phénix » ✅ (livrée 2026-08-31)
+- Design phénix implémenté : l'écho lu meurt atomiquement ; le geste
+  décide — bas = cendres (le burn n'attend pas), haut = re-scellé par
+  l'appareil du lecteur pour UN nouveau récepteur, momentum + 1.
+- Migration 20260831130000 : `kenos_lineages` (momentum + thème du
+  parent capturé à la consommation — la ligne parente est détruite),
+  `rebound_echo` (fenêtre 10 min, momentum serveur infalsifiable, un
+  rebond une fois), `fetch_map_sector` porte le momentum, purge v3.
+- Comète : queue sur les étoiles `momentum > 0` (CustomPainter, cachée
+  en reduce-motion), hint de geste sur le panneau de lecture.
+- DoD atteint : single-read intact (pgTAP 60/60 dont la chaîne complète
+  u1→u4→u3 et les refus), smoke réel A lance → B lit+relance → C lit
+  un momentum 1 (3/3).
 
 ### V3.4 — L'Aube complète
 - Sas d'ouverture avant la carte : phrases poétiques depuis les
