@@ -48,9 +48,11 @@ lib/
 ## Commands
 
 ```bash
-flutter run                # Mode démo local (aucun backend requis)
-flutter analyze            # 0 issue
-flutter test               # 42 tests (chiffrement, culling, atomicité, parallaxe, UI)
+make dev                   # Mode démo local (aucun backend requis)
+make analyze               # 0 issue
+make test                  # 51 tests (chiffrement, culling, contrôleurs, UI)
+make db-reset && make db-test  # Migrations + 48 invariants pgTAP
+make e2e                   # Boucle réelle sur PostgREST local
 python3 tool/gen_audio.py  # Régénère les assets audio (std-lib only)
 python3 tool/gen_icons.py  # Régénère les icônes Web/Android/iOS (std-lib only)
 ```

@@ -1,5 +1,7 @@
 # 🌌 KENOS
 
+![ci](https://github.com/Jahoz/kenos/actions/workflows/ci.yml/badge.svg)
+
 > *Du grec **kénose** : se vider de soi-même.*
 
 KENOS est l'anti-réseau social : un sanctuaire numérique de décharge cognitive.
@@ -89,12 +91,23 @@ catalog iOS, pur stdlib).
 ## Qualité
 
 ```bash
-flutter analyze   # 0 issue
-flutter test      # 42 tests : chiffrement, culling, atomicité, parallaxe, parcours UI
+make analyze     # flutter analyze — 0 issue
+make test        # 51 tests Dart : chiffrement, culling, contrôleurs, parcours UI
+make db-test     # 48 invariants SQL (pgTAP) : RPC + tentatives d'effraction RLS
+make e2e         # boucle complète sur le PostgREST local réel (18 vérifications)
 ```
 
 Le test `app_flow_test.dart` rejoue le parcours réel : seuil → carte →
 Mindful Hold 3 s → révélation → burn 10 s → dissolution → retrait de l'étoile.
+CI (GitHub Actions) : analyze + tests, build web (compile le shader GLSL),
+et job SQL qui applique les migrations sur une stack locale vierge avant
+de lancer pgTAP — c'est lui qui aurait attrapé le bug de `search_path`
+avant tout branchement réel.
+
+Documentation interne : [`docs/SECURITY.md`](docs/SECURITY.md) (modèle de
+menace, frontières de confiance de l'Ether Seal),
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (graphe de providers, ADR)
+et [`CONTRIBUTING.md`](CONTRIBUTING.md) (règles, commandes, carte des tests).
 
 ---
 
