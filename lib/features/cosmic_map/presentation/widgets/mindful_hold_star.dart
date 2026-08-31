@@ -1,14 +1,16 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/audio/audio_controller.dart';
 import '../../../../core/audio/audio_providers.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_durations.dart';
+import '../../../../core/haptics/kenos_haptics.dart';
+import '../../../../core/utils/motion_preferences.dart';
 import '../../../../core/utils/parallax_math.dart';
 import '../../../echo/data/echo_repository.dart';
 import '../../../echo/domain/echo.dart';
@@ -49,8 +51,15 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   @override
   void initState() {
     super.initState();
+    final reduced = platformDisablesAnimations();
     if (_echo.isMine) {
-      _controller.repeat();
+      // The sealed shield rotates slowly — decorative, frozen when the
+      // user asked to reduce animations.
+      if (reduced) {
+        _controller.value = 0.25;
+      } else {
+        _controller.repeat();
+      }
     } else {
       _controller.addListener(_onHoldTick);
       _controller.addStatusListener(_onStatus);
@@ -59,8 +68,25 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
 
   @override
   void dispose() {
+    _beatTimer?.cancel();
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Slow heartbeat while the hold charges — the friction has a pulse.
+  Timer? _beatTimer;
+
+  void _startBeats() {
+    _beatTimer?.cancel();
+    if (platformDisablesAnimations()) return;
+    _beatTimer = Timer.periodic(const Duration(milliseconds: 600), (_) {
+      KenosHaptics.pulse(KenosPulse.holdBeat);
+    });
+  }
+
+  void _stopBeats() {
+    _beatTimer?.cancel();
+    _beatTimer = null;
   }
 
   void _onHoldTick() {
@@ -79,7 +105,11 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   Future<void> _consume() async {
     if (_busy) return;
     _busy = true;
-    HapticFeedback.mediumImpact();
+    _stopBeats();
+    KenosHaptics.pulse(
+      KenosPulse.holdComplete,
+      reduceMotion: platformDisablesAnimations(),
+    );
     try {
       final echo = await ref
           .read(mapControllerProvider.notifier)
@@ -90,6 +120,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
         _intercepted();
       } else {
         ref.read(audioControllerProvider).playBell(KenosBell.reveal);
+        KenosHaptics.pulse(KenosPulse.reveal);
         await showRevealSheet(context, echo: echo);
         if (!mounted) return;
         ref.read(mapControllerProvider.notifier).forget(_echo.id);
@@ -111,7 +142,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   }
 
   void _intercepted() {
-    HapticFeedback.selectionClick();
+    KenosHaptics.pulse(KenosPulse.intercepted);
     _toast('CET ÉCHO S\'EST DISSOUS AILLEURS.');
   }
 
@@ -126,7 +157,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     if (_busy) return;
     if (_echo.isMine) {
       // Sealed echo: consult the bottle-in-the-sea signal (never the text).
-      HapticFeedback.lightImpact();
+      KenosHaptics.pulse(KenosPulse.holdStart);
       ref.read(audioControllerProvider).playBell(KenosBell.seal);
       final reception = ref
           .read(mapControllerProvider.notifier)
@@ -135,7 +166,8 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
       return;
     }
     _downPosition = event.position;
-    HapticFeedback.lightImpact();
+    KenosHaptics.pulse(KenosPulse.holdStart);
+    _startBeats();
     _controller.forward();
   }
 
@@ -150,6 +182,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
 
   void _onPointerUp() {
     _downPosition = null;
+    _stopBeats();
     if (_echo.isMine) return;
     // Released before 100%: the ring rolls back, the drone returns to rest.
     if (_controller.status == AnimationStatus.forward) {
@@ -205,9 +238,14 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     }
     var opacity = ParallaxMath.opacityFor(z);
     if (hasUnreadSignal) {
-      // A signal waits: the sealed star breathes.
-      final pulse = 0.5 + 0.5 * math.sin(_controller.value * 6.283 * 2);
-      opacity = opacity + (1 - opacity) * 0.55 * pulse;
+      // A signal waits: the sealed star breathes — a steady glow,
+      // not a pulse, when animations are reduced.
+      if (context.wantsReducedMotion) {
+        opacity = opacity + (1 - opacity) * 0.4;
+      } else {
+        final pulse = 0.5 + 0.5 * math.sin(_controller.value * 6.283 * 2);
+        opacity = opacity + (1 - opacity) * 0.55 * pulse;
+      }
     }
     visual = Opacity(opacity: opacity, child: visual);
 

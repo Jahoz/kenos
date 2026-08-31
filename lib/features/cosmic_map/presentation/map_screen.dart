@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/audio/audio_providers.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
+import '../../../core/haptics/kenos_haptics.dart';
+import '../../../core/utils/motion_preferences.dart';
 import '../../../core/utils/parallax_math.dart';
 import '../../echo/data/echo_providers.dart';
 import '../../echo/domain/echo.dart';
@@ -27,11 +29,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
   late final AnimationController _twinkle = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 60),
-  )..repeat();
+  );
+
+  /// Last known signal count — to feel new ones land.
+  int _lastSignals = 0;
 
   @override
   void initState() {
     super.initState();
+    // « Reduce animations »: the star field stays still — scenery only.
+    if (!platformDisablesAnimations()) {
+      _twinkle.repeat();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(audioControllerProvider).ensureStarted();
     });
@@ -46,11 +55,25 @@ class _MapScreenState extends ConsumerState<MapScreen>
   @override
   Widget build(BuildContext context) {
     final echoes = ref.watch(mapControllerProvider);
+    final reduced = context.wantsReducedMotion;
+    // Ambient parallax calms down (×0.15) but stays alive: the ether is
+    // not a screenshot.
+    final motionScale = reduced ? 0.15 : 1.0;
     final tilt = ref.watch(tiltProvider).valueOrNull ?? Tilt.zero;
     final boot = ref.watch(bootstrapProvider);
     final count = echoes.valueOrNull?.length ?? 0;
     final signals =
         ref.read(mapControllerProvider.notifier).unseenReceptionCount;
+    if (signals > _lastSignals) {
+      _lastSignals = signals;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          KenosHaptics.pulse(KenosPulse.signal, reduceMotion: reduced);
+        }
+      });
+    } else {
+      _lastSignals = signals;
+    }
 
     return Scaffold(
       backgroundColor: AppColors.voidBlack,
@@ -62,7 +85,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
           children: [
             // Spatial void + diffuse nebulae.
             CustomPaint(
-              painter: NebulaPainter(tiltX: tilt.x * 0.5, tiltY: tilt.y * 0.5),
+              painter: NebulaPainter(
+                tiltX: tilt.x * 0.5 * motionScale,
+                tiltY: tilt.y * 0.5 * motionScale,
+              ),
             ),
             // Dead star field (scenery, slow twinkle).
             AnimatedBuilder(
@@ -70,8 +96,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
               builder: (context, _) => CustomPaint(
                 painter: BackgroundStarFieldPainter(
                   time: _twinkle.value * 60,
-                  tiltX: tilt.x,
-                  tiltY: tilt.y,
+                  tiltX: tilt.x * motionScale,
+                  tiltY: tilt.y * motionScale,
                 ),
               ),
             ),
@@ -79,7 +105,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
             echoes.when(
               data: (list) => list.isEmpty
                   ? const _CalmEther()
-                  : _StarLayer(echoes: list, tilt: tilt),
+                  : _StarLayer(
+                      echoes: list,
+                      tilt: Tilt(tilt.x * motionScale, tilt.y * motionScale),
+                    ),
               loading: () => const _Centered(
                 'CALIBRATION DE L\'ÉTHER…',
                 color: AppColors.teal,

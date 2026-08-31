@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/audio/audio_controller.dart';
@@ -7,6 +6,7 @@ import '../../../core/audio/audio_providers.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_fonts.dart';
+import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/widgets/scramble_text.dart';
 import '../../cosmic_map/application/map_controller.dart';
 import '../../echo/data/echo_repository.dart';
@@ -51,6 +51,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
 
     // Security theater: clear text freezes, scrambles, vanishes.
     // The bell rings DURING the sealing, without delaying it.
+    KenosHaptics.pulse(KenosPulse.seal);
     audio.playBell(KenosBell.seal);
     await Future<void>.delayed(AppDurations.scramble);
 
@@ -59,8 +60,8 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
           .read(mapControllerProvider.notifier)
           .sendEcho(text: text, theme: _theme);
       audio.playBell(KenosBell.send);
+      KenosHaptics.pulse(KenosPulse.launch);
       if (!mounted) return;
-      HapticFeedback.lightImpact();
       await Future<void>.delayed(const Duration(milliseconds: 500));
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -204,7 +205,12 @@ class _ThemePicker extends StatelessWidget {
       children: [
         for (final theme in EchoColorTheme.selectable) ...[
           GestureDetector(
-            onTap: enabled ? () => onChanged(theme) : null,
+            onTap: enabled
+                ? () {
+                    KenosHaptics.pulse(KenosPulse.themePick);
+                    onChanged(theme);
+                  }
+                : null,
             child: Container(
               width: 22,
               height: 22,

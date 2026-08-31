@@ -67,6 +67,11 @@ flutter:
   assets:
     - assets/audio/
 
+  # Fragment shaders (compiled at build time; a CPU painter fallback
+  # covers platforms where the program cannot load).
+  shaders:
+    - shaders/ether_dissolve.frag
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

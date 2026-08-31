@@ -8,6 +8,9 @@ import '../../../../core/audio/audio_providers.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_durations.dart';
 import '../../../../core/constants/app_fonts.dart';
+import '../../../../core/haptics/kenos_haptics.dart';
+import '../../../../core/utils/motion_preferences.dart';
+import '../../../../core/widgets/ether_dissolve.dart';
 import '../../../../core/widgets/scramble_text.dart';
 import '../../../echo/domain/echo.dart';
 import '../../application/map_controller.dart';
@@ -86,8 +89,12 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
   void _startDissolve() {
     if (!_bellPlayed) {
       _bellPlayed = true;
-      // Low bell: the sound of mourning.
+      // Low bell + mourning strike: the sound and feel of the burn.
       ref.read(audioControllerProvider).playBell(KenosBell.burn);
+      KenosHaptics.pulse(
+        KenosPulse.burn,
+        reduceMotion: platformDisablesAnimations(),
+      );
     }
     // Particle dissolution, then the trace offer — nothing else remains.
     _dissolve.forward(from: 0).whenComplete(() {
@@ -108,6 +115,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
           .read(mapControllerProvider.notifier)
           .leaveTrace(widget.echo.id, text);
       ref.read(audioControllerProvider).playBell(KenosBell.send);
+      KenosHaptics.pulse(KenosPulse.launch);
       if (!mounted) return;
       setState(() => _phase = _Phase.sent);
       await Future<void>.delayed(const Duration(milliseconds: 1600));
@@ -123,6 +131,12 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
 
   @override
   Widget build(BuildContext context) {
+    // « Reduce animations »: the dissolution becomes an instant swap;
+    // the particle field never spawns.
+    _dissolve.duration = context.wantsReducedMotion
+        ? Duration.zero
+        : AppDurations.dissolve;
+
     final Widget content;
     switch (_phase) {
       case _Phase.reading:
@@ -147,12 +161,25 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
                 child: child,
               )
             : child!;
-        return Opacity(
-          opacity: 1 - v,
-          child: Transform.scale(
-            scale: 1 - v * 0.08,
-            child: blurred,
-          ),
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Opacity(
+              opacity: 1 - v,
+              child: Transform.scale(
+                scale: 1 - v * 0.08,
+                child: blurred,
+              ),
+            ),
+            // The echo becomes dust: real particles scatter into the void
+            // (skipped entirely when animations are reduced).
+            if (v > 0.01 && !context.wantsReducedMotion)
+              EtherDissolve(
+                progress: v,
+                color: widget.echo.theme.halo,
+                seed: (widget.echo.id.hashCode % 997) / 997,
+              ),
+          ],
         );
       },
       child: Scaffold(

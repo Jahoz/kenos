@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_durations.dart';
 import '../constants/app_fonts.dart';
+import '../utils/motion_preferences.dart';
 
 const _glyphs = '█▓▒░#%&@*<>~^/\\|=+';
 
@@ -45,7 +46,13 @@ class _ScrambleTextState extends State<ScrambleText>
   @override
   void initState() {
     super.initState();
-    _controller.forward();
+    if (platformDisablesAnimations()) {
+      // « Reduce animations »: jump straight to the final state —
+      // resolved text (reveal) or full noise (sealing).
+      _controller.value = 1;
+    } else {
+      _controller.forward();
+    }
   }
 
   @override

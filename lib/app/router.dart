@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/constants/app_durations.dart';
+import '../core/utils/motion_preferences.dart';
 import '../features/cosmic_map/presentation/map_screen.dart';
 import '../features/create_echo/presentation/mirror_screen.dart';
 import '../features/echo/data/echo_providers.dart';
@@ -23,28 +24,30 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/',
-        pageBuilder: (context, state) => _fade(child: const SizedBox.shrink()),
+        pageBuilder: (context, state) => _fade(context, child: const SizedBox.shrink()),
       ),
       GoRoute(
         path: '/onboarding',
-        pageBuilder: (context, state) => _fade(child: const OnboardingScreen()),
+        pageBuilder: (context, state) => _fade(context, child: const OnboardingScreen()),
       ),
       GoRoute(
         path: '/space',
-        pageBuilder: (context, state) => _fade(child: const MapScreen()),
+        pageBuilder: (context, state) => _fade(context, child: const MapScreen()),
       ),
       GoRoute(
         path: '/mirror',
-        pageBuilder: (context, state) => _fade(child: const MirrorScreen()),
+        pageBuilder: (context, state) => _fade(context, child: const MirrorScreen()),
       ),
     ],
   );
 });
 
-CustomTransitionPage<void> _fade({required Widget child}) {
+CustomTransitionPage<void> _fade(BuildContext context, {required Widget child}) {
+  final reduced = context.wantsReducedMotion;
   return CustomTransitionPage<void>(
     child: child,
-    transitionDuration: AppDurations.routeFade,
+    // « Reduce animations »: screens appear at once, no fade theater.
+    transitionDuration: reduced ? Duration.zero : AppDurations.routeFade,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       return FadeTransition(
         opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),

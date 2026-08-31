@@ -8,6 +8,7 @@ import '../../../../core/audio/audio_providers.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_durations.dart';
 import '../../../../core/constants/app_fonts.dart';
+import '../../../../core/haptics/kenos_haptics.dart';
 import '../../../../core/widgets/scramble_text.dart';
 import '../../../echo/domain/echo.dart';
 import '../../../echo/domain/reception.dart';
@@ -77,6 +78,7 @@ class _ReceptionPanelState extends ConsumerState<ReceptionPanel>
     _closing = true;
     if (burn && widget.reception != null) {
       // The signal burns — one look, then the void.
+      KenosHaptics.pulse(KenosPulse.burn);
       await ref
           .read(mapControllerProvider.notifier)
           .burnReception(widget.echo.id);
