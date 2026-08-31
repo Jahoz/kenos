@@ -110,87 +110,83 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 },
               ),
             ),
-            // Top HUD — machine typography.
+            // Top HUD — machine typography. On narrow portraits the
+            // controls wrap to their own row under the telemetry:
+            // nothing ever overlaps, nothing ever overflows.
             SafeArea(
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'KENOS // ${boot.supabaseConfigured ? 'LIAISON ÉTABIE' : 'MODE DÉMO LOCAL'}',
-                        style: TextStyle(
-                          fontFamily: AppFonts.mono,
-                          fontSize: 9,
-                          letterSpacing: 3,
-                          color: AppColors.fade(AppColors.cyan, 0.55),
-                        ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 16, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'KENOS // ${boot.supabaseConfigured ? 'LIAISON ÉTABIE' : 'MODE DÉMO LOCAL'}',
+                      style: TextStyle(
+                        fontFamily: AppFonts.mono,
+                        fontSize: 9,
+                        letterSpacing: 3,
+                        color: AppColors.fade(AppColors.cyan, 0.55),
                       ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '$count ÉCHOS EN ORBITE',
+                      style: TextStyle(
+                        fontFamily: AppFonts.mono,
+                        fontSize: 9,
+                        letterSpacing: 3,
+                        color: AppColors.fade(AppColors.pureLight, 0.4),
+                      ),
+                    ),
+                    if (signals > 0) ...[
                       const SizedBox(height: 6),
                       Text(
-                        '$count ÉCHOS EN ORBITE',
+                        signals == 1
+                            ? '1 SIGNAL REÇU — TOUCHE TON ÉTOILE'
+                            : '$signals SIGNAUX REÇUS — TOUCHE TES ÉTOILES',
                         style: TextStyle(
                           fontFamily: AppFonts.mono,
                           fontSize: 9,
                           letterSpacing: 3,
-                          color: AppColors.fade(AppColors.pureLight, 0.4),
+                          color: AppColors.teal,
                         ),
                       ),
-                      if (signals > 0) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          signals == 1
-                              ? '1 SIGNAL REÇU — TOUCHE TON ÉTOILE'
-                              : '$signals SIGNAUX REÇUS — TOUCHE TES ÉTOILES',
-                          style: TextStyle(
-                            fontFamily: AppFonts.mono,
-                            fontSize: 9,
-                            letterSpacing: 3,
-                            color: AppColors.teal,
-                          ),
+                    ],
+                    const SizedBox(height: 2),
+                    Wrap(
+                      spacing: 2,
+                      runSpacing: 0,
+                      children: [
+                        const _SoundToggle(),
+                        TextButton(
+                          onPressed: () => context.push('/frequencies'),
+                          child: const Text('FRÉQUENCES'),
+                        ),
+                        TextButton(
+                          onPressed: () => context.push('/impact'),
+                          child: const Text('TON IMPACT'),
+                        ),
+                        TextButton(
+                          onPressed: () => ref.invalidate(mapControllerProvider),
+                          child: const Text('RECALIBRER'),
                         ),
                       ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Top-right controls.
-            SafeArea(
-              child: Align(
-                alignment: Alignment.topRight,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 6, 16, 0),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const _SoundToggle(),
-                      TextButton(
-                        onPressed: () => context.push('/frequencies'),
-                        child: const Text('FRÉQUENCES'),
-                      ),
-                      TextButton(
-                        onPressed: () => context.push('/impact'),
-                        child: const Text('TON IMPACT'),
-                      ),
-                      TextButton(
-                        onPressed: () => ref.invalidate(mapControllerProvider),
-                        child: const Text('RECALIBRER'),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
             // The origin node: one's warm ember anchor, stardust
-            // riding around it. Quiet impact, one tap away.
+            // riding around it. Quiet impact, one tap away. On narrow
+            // portraits it sits above the mirror gate — never under it.
             Align(
               alignment: Alignment.bottomLeft,
               child: Padding(
-                padding: const EdgeInsets.only(left: 26, bottom: 44),
+                padding: EdgeInsets.only(
+                  left: 22,
+                  bottom: MediaQuery.sizeOf(context).width < 640 ? 118 : 44,
+                ),
                 child: const OriginNode(),
               ),
             ),
