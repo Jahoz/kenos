@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../echo/data/echo_providers.dart';
@@ -49,7 +50,19 @@ class MapController extends AsyncNotifier<List<Echo>> {
     final updated = <Echo>[];
     for (final echo in current) {
       if (echo.id == id) {
-        consumed = echo.copyWith(text: content.text, media: content.media);
+        consumed = Echo(
+          id: echo.id,
+          coordX: echo.coordX,
+          coordY: echo.coordY,
+          coordZ: echo.coordZ,
+          theme: echo.theme,
+          createdAt: echo.createdAt,
+          text: content.text,
+          media: content.media,
+          mediaKind: echo.mediaKind,
+          isMine: echo.isMine,
+          momentum: content.momentum,
+        );
         updated.add(consumed);
       } else {
         updated.add(echo);
@@ -59,6 +72,34 @@ class MapController extends AsyncNotifier<List<Echo>> {
     unawaited(store.recordEchoRead());
     ref.invalidate(userStatsProvider);
     return consumed;
+  }
+
+  /// The Sling-Shot (phoenix): re-seal the just-read echo and give it
+  /// velocity. The rebound lands as one's own sealed star, comet tail
+  /// and all. Returns false when the ether refuses (window closed,
+  /// cadence) — the UI stays honest, never loud.
+  Future<bool> rebound({required Echo source, required String text}) async {
+    final repo = ref.read(echoRepositoryProvider);
+    final store = ref.read(localEchoStoreProvider);
+    try {
+      final phoenix = await repo.reboundEcho(
+        sourceId: source.id,
+        parentMomentum: source.momentum,
+        text: text,
+        // The comet relaunches from where it was intercepted.
+        coordX: source.coordX,
+        coordY: source.coordY,
+        coordZ: max(0.3, source.coordZ),
+      );
+      final sealed = phoenix.copyWith(theme: source.theme);
+      await store.addSealed(sealed);
+      final current = state.valueOrNull ?? const <Echo>[];
+      state = AsyncData([sealed, ...current]);
+      return true;
+    } catch (e) {
+      debugPrint('[kenos.map] rebound refused: $e');
+      return false;
+    }
   }
 
   /// Reader side of the loop: leave the one-line trace.

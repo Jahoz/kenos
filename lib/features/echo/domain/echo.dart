@@ -18,6 +18,7 @@ class Echo {
     this.media,
     this.mediaKind,
     this.isMine = false,
+    this.momentum = 0,
   });
 
   final String id;
@@ -46,21 +47,27 @@ class Echo {
   /// The local user's echo: sealed, untouchable, drifting.
   final bool isMine;
 
+  /// Rebound count of the lineage (public metadata, never content):
+  /// how many humans carried this thought before it reached you.
+  /// momentum > 0 draws a comet tail on the map.
+  final int momentum;
+
   /// Rendered depth: one's own echoes slowly drift toward the background.
   double resolveZ(DateTime now) =>
       isMine ? ParallaxMath.driftZ(sentAt: createdAt, now: now) : coordZ;
 
-  Echo copyWith({String? text, EchoMedia? media}) => Echo(
+  Echo copyWith({String? text, EchoMedia? media, EchoColorTheme? theme}) => Echo(
     id: id,
     coordX: coordX,
     coordY: coordY,
     coordZ: coordZ,
-    theme: theme,
+    theme: theme ?? this.theme,
     createdAt: createdAt,
     text: text ?? this.text,
     media: media ?? this.media,
     mediaKind: mediaKind,
     isMine: isMine,
+    momentum: momentum,
   );
 
   factory Echo.fromJson(Map<String, dynamic> json, {bool isMine = false}) =>

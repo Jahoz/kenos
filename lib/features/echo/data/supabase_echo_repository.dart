@@ -60,9 +60,10 @@ class SupabaseEchoRepository implements EchoRepository {
       final bundle = (result as Map).cast<String, dynamic>();
       final ciphertext = bundle['ciphertext'] as String;
       final key = bundle['key'] as String?;
+      final momentum = (bundle['momentum'] as num?)?.toInt() ?? 0;
       if (key == null || key.isEmpty) {
         // Legacy echo (pre-encryption migration): plaintext passthrough.
-        return ConsumedEcho(text: ciphertext);
+        return ConsumedEcho(text: ciphertext, momentum: momentum);
       }
       // A seal that fails to open (tampered or corrupted in transit)
       // is a dead echo: null, i.e. dissolved — never a transport error.
@@ -79,7 +80,7 @@ class SupabaseEchoRepository implements EchoRepository {
           bytes: await EchoCipher.openBytes(key, base64Decode(mediaB64)),
         );
       }
-      return ConsumedEcho(text: text, media: media);
+      return ConsumedEcho(text: text, media: media, momentum: momentum);
     } catch (e) {
       throw KenosException.from(e);
     }
@@ -141,6 +142,46 @@ class SupabaseEchoRepository implements EchoRepository {
             DateTime.now(),
         isMine: true,
         mediaKind: media?.kind,
+      );
+    } catch (e) {
+      throw KenosException.from(e);
+    }
+  }
+
+  @override
+  Future<Echo> reboundEcho({
+    required String sourceId,
+    required int parentMomentum,
+    required String text,
+    required double coordX,
+    required double coordY,
+    required double coordZ,
+  }) async {
+    try {
+      // The phoenix is sealed FRESH by the reader's device: a new
+      // ephemeral key, for one new receiver — never a re-used seal.
+      final sealed = await EchoCipher.seal(text);
+      final rows = await _client.rpc('rebound_echo', params: {
+        'p_source_id': sourceId,
+        'p_parent_momentum': parentMomentum,
+        'p_x': ParallaxMath.clamp(coordX, 0, 1),
+        'p_y': ParallaxMath.clamp(coordY, 0, 1),
+        'p_z': ParallaxMath.clamp(coordZ, 0.05, 1),
+        'p_ciphertext': sealed.payloadB64,
+        'p_key': sealed.keyB64,
+      });
+      final row = (rows as List).first as Map<String, dynamic>;
+      return Echo(
+        id: row['id'] as String,
+        coordX: coordX,
+        coordY: coordY,
+        coordZ: coordZ,
+        theme: EchoColorTheme.teal, // replaced by the inherited theme on refresh
+        createdAt:
+            DateTime.tryParse(row['created_at'] as String? ?? '') ??
+            DateTime.now(),
+        isMine: true,
+        momentum: (row['momentum'] as num).toInt(),
       );
     } catch (e) {
       throw KenosException.from(e);

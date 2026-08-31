@@ -40,7 +40,7 @@ Future<void> showRevealSheet(BuildContext context, {required Echo echo}) {
   );
 }
 
-enum _Phase { reading, trace, sent }
+enum _Phase { reading, trace, sent, rebounded, refused }
 
 class RevealPanel extends ConsumerStatefulWidget {
   const RevealPanel({super.key, required this.echo});
@@ -68,6 +68,8 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
   _Phase _phase = _Phase.reading;
   bool _bellPlayed = false;
   bool _sending = false;
+  bool _slinging = false;
+  double _slingDy = 0;
   bool _reporting = false;
 
   static const _maxTrace = 140;
@@ -105,6 +107,54 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     } catch (_) {
       if (mounted) showHud(context, 'LE FRAGMENT SONORE S\'EST DISSOUT.');
     }
+  }
+
+  /// The Sling-Shot. The read echo is already dead — the reader now
+  /// decides its fate with one gesture:
+  ///   down = ashes (the rite; it simply ends sooner),
+  ///   up   = the phoenix (re-sealed for one new receiver, momentum + 1).
+  void _onSlingEnd(DragEndDetails details) {
+    final dy = details.velocity.pixelsPerSecond.dy;
+    final total = _slingDy;
+    _slingDy = 0;
+    if (_slinging || _phase != _Phase.reading) return;
+    if (total < -90 || dy < -650) {
+      _rebound();
+    } else if (total > 90 || dy > 650) {
+      _ashes();
+    }
+  }
+
+  Future<void> _rebound() async {
+    if (_slinging) return;
+    _slinging = true;
+    unawaited(ref.read(audioControllerProvider).playBell(KenosBell.send));
+    KenosHaptics.pulse(KenosPulse.launch,
+        reduceMotion: platformDisablesAnimations());
+    try {
+      final ok = await ref
+          .read(mapControllerProvider.notifier)
+          .rebound(source: widget.echo, text: widget.echo.text ?? '');
+      if (!mounted) return;
+      setState(() => _phase = ok ? _Phase.rebounded : _Phase.refused);
+      if (ok) {
+        await Future<void>.delayed(const Duration(milliseconds: 1700));
+      } else {
+        await Future<void>.delayed(const Duration(milliseconds: 1400));
+      }
+    } finally {
+      _slinging = false;
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+    }
+  }
+
+  void _ashes() {
+    if (_slinging || _phase != _Phase.reading) return;
+    KenosHaptics.pulse(KenosPulse.burn,
+        reduceMotion: platformDisablesAnimations());
+    // The rite of ashes: the burn simply does not wait.
+    _burn.stop();
+    _startDissolve();
   }
 
   void _startDissolve() {
@@ -245,9 +295,16 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         content = _buildTrace();
       case _Phase.sent:
         content = _buildSent();
+      case _Phase.rebounded:
+        content = _buildSlingFeedback(true);
+      case _Phase.refused:
+        content = _buildSlingFeedback(false);
     }
 
-    return AnimatedBuilder(
+    // The Sling-Shot lives on the reading panel itself: one vertical
+    // gesture decides the echo's fate once its text has touched you.
+    final reading = _phase == _Phase.reading;
+    final panel = AnimatedBuilder(
       animation: _dissolve,
       builder: (context, child) {
         final v = _dissolve.value;
@@ -266,9 +323,12 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
           children: [
             Opacity(
               opacity: 1 - v,
-              child: Transform.scale(
-                scale: 1 - v * 0.08,
-                child: blurred,
+              child: Transform.translate(
+                offset: Offset(0, _slingDy * 0.35),
+                child: Transform.scale(
+                  scale: 1 - v * 0.08,
+                  child: blurred,
+                ),
               ),
             ),
             // The echo becomes dust: real particles scatter into the void
@@ -293,6 +353,15 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
           ),
         ),
       ),
+    );
+
+    if (!reading) return panel;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onVerticalDragUpdate: (d) => setState(() => _slingDy = d.delta.dy * 0.9),
+      onVerticalDragEnd: _onSlingEnd,
+      onVerticalDragCancel: () => setState(() => _slingDy = 0),
+      child: panel,
     );
   }
 
@@ -404,6 +473,43 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
           ),
         ),
         const SizedBox(height: 12),
+        Text(
+          widget.echo.momentum > 0
+              ? 'COMÈTE PORTÉE PAR ${widget.echo.momentum} INCONNUS — GLISSE VERS LE HAUT POUR LA RELANCER'
+              : 'GLISSE VERS LE HAUT POUR LA RELANCER — VERS LE BAS POUR LES CENDRES',
+          textAlign: TextAlign.center,
+          style: hudLabel(
+            fontSize: 8,
+            letterSpacing: 2,
+            color: AppColors.fade(AppColors.pureLight, 0.35),
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
+    );
+  }
+
+  Widget _buildSlingFeedback(bool rebounded) {
+    return _panel(
+      children: [
+        const SizedBox(height: 30),
+        ScrambleText(
+          text: rebounded
+              ? 'relancée vers l\'éther pour un autre inconnu'
+              : 'l\'éther a refusé le rebond — repose un instant',
+          resolve: true,
+          duration: const Duration(milliseconds: 900),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: AppFonts.serifItalic,
+            fontSize: 19,
+            color: AppColors.fade(
+              rebounded ? AppColors.teal : AppColors.pureLight,
+              0.92,
+            ),
+          ),
+        ),
+        const SizedBox(height: 30),
       ],
     );
   }

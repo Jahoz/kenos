@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(47);
+select plan(57);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -14,6 +14,41 @@ language sql security definer set search_path = public as $$
   select id from public.echoes where encrypted_text = t limit 1
 $$;
 -- Deterministic: the reception of the echo THIS user read.
+-- Sling-shot helpers: capture the echo id BEFORE consumption (once
+-- read, the echo is destroyed and text lookups go blind). The id is
+-- stashed in a definer-owned scratch table for the rebound calls.
+create table if not exists tests.consumed_ids (
+  tag text primary key,
+  echo_id uuid not null
+);
+truncate tests.consumed_ids;
+create or replace function tests.consume_by_text(p_text text) returns jsonb
+language plpgsql security definer set search_path = public, tests as $$
+declare eid uuid;
+begin
+  select id into eid from public.echoes where encrypted_text = p_text limit 1;
+  insert into tests.consumed_ids (tag, echo_id) values (p_text, eid);
+  return public.consume_echo(eid);
+end;
+$$;
+create or replace function tests.rebound_by_text(
+  p_text text, parent integer, ct text, k text
+) returns table (rid uuid, rcreated timestamptz, rmomentum integer)
+language plpgsql security definer set search_path = public, tests as $$
+declare src uuid;
+begin
+  select echo_id into src from tests.consumed_ids where tag = p_text;
+  return query
+  select r.id, r.created_at, r.momentum
+  from public.rebound_echo(
+    src, parent, 0.5::float8, 0.5::float8, 0.9::float8, ct, k
+  ) r;
+end;
+$$;
+create or replace function tests.count_by_text(t text) returns bigint
+language sql security definer set search_path = public as $$
+  select count(*) from public.echoes where encrypted_text = t
+$$;
 create or replace function tests.reception_for_reader(p_reader uuid) returns uuid
 language sql security definer set search_path = public as $$
   select r.echo_id
@@ -21,6 +56,9 @@ language sql security definer set search_path = public as $$
   join public.kenos_reads k on k.echo_id = r.echo_id and k.reader_id = p_reader
   limit 1
 $$;
+-- Default privileges on fresh schemas are restrictive in Supabase:
+-- grant EXECUTE explicitly, AFTER every helper exists.
+grant execute on all functions in schema tests to authenticated;
 
 insert into auth.users (id, email, aud, role) values
   ('00000000-0000-4000-8000-0000000000a1', 'u1@test.kenos', 'authenticated', 'authenticated'),
@@ -118,7 +156,7 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000
 -- anti-spam breath applies to the winner too.
 select is(
   (select public.consume_echo(tests.echo_by_text('premier secret'))),
-  jsonb_build_object('ciphertext', 'premier secret', 'key', null),
+  jsonb_build_object('ciphertext', 'premier secret', 'key', null, 'momentum', 0),
   'the winner gets the legacy bundle (plaintext, no key)'
 );
 
@@ -170,7 +208,7 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000
 -- in the same single call as the payload.
 select is(
   (select public.consume_echo(tests.echo_by_text('AAECAwQFBgcICQ=='))),
-  jsonb_build_object('ciphertext', 'AAECAwQFBgcICQ==', 'key', 'a2Vub3Mta2V5LXRlc3Q='),
+  jsonb_build_object('ciphertext', 'AAECAwQFBgcICQ==', 'key', 'a2Vub3Mta2V5LXRlc3Q=', 'momentum', 0),
   'the interceptor receives the escrowed key (exchange at interception)'
 );
 
@@ -444,6 +482,103 @@ select is(
   (select count(*) from public.kenos_frequencies),
   0::bigint,
   'kenos_purge sweeps waves older than one minute'
+);
+
+-- ── Sling-Shot: the phoenix chain (V3.3) ───────────────────────────────
+reset role;
+-- Backdate u1's launches: the 20 s breath must not interfere.
+update public.echoes set created_at = now() - interval '40 seconds'
+where author_id = '00000000-0000-4000-8000-0000000000a1';
+-- The whole file runs in well under a second: backdate u4's reads or
+-- the 5 s interception breath refuses the sling-shot intercept.
+update public.kenos_reads set read_at = now() - interval '10 seconds'
+where reader_id = '00000000-0000-4000-8000-0000000000a4';
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+-- 43 — u1 launches the comet's origin (legacy plaintext, tooling path).
+select lives_ok(
+  $$select public.launch_echo('comet origin', '', 0.5, 0.5, 0.9, 'INDIGO')$$,
+  'u1 launches the comet origin'
+);
+-- The consume/rebound go through security-definer helpers keyed by
+-- text: once read, the echo is destroyed and psql variables would go
+-- stale — the helpers keep the whole chain readable and dollar-quoted.
+-- 44 — u4 intercepts: the bundle carries the origin momentum.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a4","role":"authenticated"}', true);
+select is(
+  (tests.consume_by_text('comet origin') ->> 'momentum')::int,
+  0,
+  'the bundle carries the origin momentum'
+);
+
+-- 45 — u3 never read it: no lineage, no rebound.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a3","role":"authenticated"}', true);
+select throws_ok(
+  $$select * from tests.rebound_by_text('comet origin', 0, 'phoenix-one', 'cGhvdGVuaXgtY2xlcg==')$$,
+  'P0001', 'KENOS_REBOUND_DENIED',
+  'a stranger who never read the echo cannot rebound it'
+);
+
+-- 46 — u4, the reader, re-seals it: momentum 1, freshly sealed.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a4","role":"authenticated"}', true);
+select is(
+  (select rmomentum from tests.rebound_by_text('comet origin', 0, 'phoenix-one', 'cGhvdGVuaXgtY2xlcg==')),
+  1,
+  'the rebound is born with momentum 1'
+);
+-- 47 — the lineage burned with the decision: one rebound, once.
+select throws_ok(
+  $$select * from tests.rebound_by_text('comet origin', 0, 'phoenix-again', 'cGhvdGVuaXgtY2xlcg==')$$,
+  'P0001', 'KENOS_REBOUND_DENIED',
+  'the lineage burns with the decision — one rebound, once'
+);
+
+-- 48 — u3 intercepts the phoenix: momentum 1 travels with it.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a3","role":"authenticated"}', true);
+select is(
+  (tests.consume_by_text('phoenix-one') ->> 'momentum')::int,
+  1,
+  'the phoenix is readable once, carrying momentum 1'
+);
+-- 49 — the client cannot inflate the comet: the server holds the truth.
+select throws_ok(
+  $$select * from tests.rebound_by_text('phoenix-one', 5, 'phoenix-two', 'cGhvdGVuaXgtdHJvaXM=')$$,
+  'P0001', 'KENOS_REBOUND_DENIED',
+  'an inflated parent momentum is refused'
+);
+-- 50 — honest rebound: momentum 2.
+select is(
+  (select rmomentum from tests.rebound_by_text('phoenix-one', 1, 'phoenix-two', 'cGhvdGVuaXgtdHJvaXM=')),
+  2,
+  'the chain continues: momentum 2'
+);
+
+-- 51 — the map carries the comet: u1 (author of neither) sees momentum 2.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+select is(
+  (select momentum from public.fetch_map_sector(0, 0, 1, 1)
+    where id = tests.echo_by_text('phoenix-two')),
+  2,
+  'the map metadata carries the comet tail'
+);
+
+-- 52 — stale lineages are swept, and with them the rebound window.
+reset role;
+insert into public.kenos_lineages (echo_id, momentum, read_by, consumed_at)
+values (gen_random_uuid(), 0, '00000000-0000-4000-8000-0000000000a4',
+        now() - interval '2 hours');
+select public.kenos_purge();
+select is(
+  (select count(*) from public.kenos_lineages
+    where consumed_at < now() - interval '10 minutes'),
+  0::bigint,
+  'kenos_purge sweeps lineages past the decision window'
 );
 
 select * from finish();

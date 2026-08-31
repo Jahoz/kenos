@@ -43,6 +43,19 @@ abstract class EchoRepository {
   /// Returns false if a trace was already left (one shot, no edit).
   Future<bool> leaveTrace(String echoId, String text);
 
+  /// The Sling-Shot (phoenix): re-seal the just-read text and give it
+  /// velocity. The reader's device encrypts it fresh — for ONE new
+  /// receiver — and the server stamps the lineage momentum + 1.
+  /// Only the reader, within the 10-minute decision window.
+  Future<Echo> reboundEcho({
+    required String sourceId,
+    required int parentMomentum,
+    required String text,
+    required double coordX,
+    required double coordY,
+    required double coordZ,
+  });
+
   /// Reader side: records one contentless moderation report for an echo.
   Future<bool> reportEcho(String echoId, EchoReportReason reason);
 

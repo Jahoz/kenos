@@ -43,9 +43,12 @@ class EchoMedia {
 }
 
 /// Result of an atomic interception. Neither value appears on the map.
+/// [momentum] is the lineage's rebound count: the reader may re-seal
+/// the text as a phoenix carrying momentum + 1.
 class ConsumedEcho {
-  const ConsumedEcho({required this.text, this.media});
+  const ConsumedEcho({required this.text, this.media, this.momentum = 0});
 
   final String text;
   final EchoMedia? media;
+  final int momentum;
 }

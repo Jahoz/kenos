@@ -88,3 +88,44 @@ class ShieldRingPainter extends CustomPainter {
   @override
   bool shouldRepaint(ShieldRingPainter old) => old.rotation != rotation;
 }
+
+/// The comet tail: momentum made visible. A rebounded echo carries the
+/// count of humans who held it — each a fading mote trailing the star.
+/// Public metadata only (a count, never a content).
+class CometTailPainter extends CustomPainter {
+  CometTailPainter({
+    required this.momentum,
+    required this.color,
+    this.now,
+  });
+
+  final int momentum;
+  final Color color;
+  final DateTime? now;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final tailLength = (momentum).clamp(1, 6);
+    final baseRadius = size.shortestSide / 2;
+
+    final paint = Paint()..style = PaintingStyle.fill;
+    for (var i = 0; i < tailLength; i++) {
+      final t = (i + 1) / (tailLength + 1);
+      // The tail drifts up-left, like a comet crossing the void.
+      final angle = -2.45; // ~ -140°
+      final distance = baseRadius * (0.9 + t * 1.8);
+      final mote = Offset(
+        center.dx + math.cos(angle) * distance,
+        center.dy + math.sin(angle) * distance,
+      );
+      final radius = 1.6 * (1 - t) + 0.6;
+      paint.color = AppColors.fade(color, 0.5 * (1 - t) + 0.08);
+      canvas.drawCircle(mote, radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(CometTailPainter old) =>
+      old.momentum != momentum || old.color != color;
+}

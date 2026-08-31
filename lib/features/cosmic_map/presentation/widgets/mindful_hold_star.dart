@@ -201,32 +201,48 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     Widget visual = SizedBox(
       width: diameter,
       height: diameter,
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) => CustomPaint(
-          painter: _echo.isMine
-              ? ShieldRingPainter(
-                  rotation: _controller.value * 6.283,
-                  color: AppColors.teal,
-                )
-              : HoldRingPainter(
-                  progress: _controller.value,
-                  color: _echo.theme.halo,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // The comet tail: momentum made visible (a count of humans,
+          // never a content). Decorative — hidden under reduce-motion.
+          if (_echo.momentum > 0 && !context.wantsReducedMotion)
+            Positioned.fill(
+              child: CustomPaint(
+                painter: CometTailPainter(
+                  momentum: _echo.momentum,
+                  color: color,
                 ),
-          child: Center(
-            child: Container(
-              width: coreRadius * 2,
-              height: coreRadius * 2,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [Colors.white, color, AppColors.fade(color, 0)],
-                  stops: const [0, 0.45, 1],
+              ),
+            ),
+          AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) => CustomPaint(
+              painter: _echo.isMine
+                  ? ShieldRingPainter(
+                      rotation: _controller.value * 6.283,
+                      color: AppColors.teal,
+                    )
+                  : HoldRingPainter(
+                      progress: _controller.value,
+                      color: _echo.theme.halo,
+                    ),
+              child: Center(
+                child: Container(
+                  width: coreRadius * 2,
+                  height: coreRadius * 2,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [Colors.white, color, AppColors.fade(color, 0)],
+                      stops: const [0, 0.45, 1],
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
 

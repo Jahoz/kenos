@@ -36,6 +36,11 @@ class LocalEchoRepository implements EchoRepository {
 
   final Map<String, _DemoEcho> _echoes = {};
   final Set<String> _consumed = {};
+
+  /// The reader's 10-minute decision window (same semantics as
+  /// kenos_lineages): momentum + the parent's theme + the text the
+  /// reader may re-seal.
+  final Map<String, _DemoLineage> _lineages = {};
   final Set<String> _reported = {};
 
   final List<Reception> _receptions = [];
@@ -213,10 +218,16 @@ class LocalEchoRepository implements EchoRepository {
     if (_consumed.contains(id)) return null;
     _consumed.add(id);
     // The key is exchanged at interception: decryption happens here,
-    // only for the single winner.
-    return ConsumedEcho(
-      text: await EchoCipher.open(demo.sealed.keyB64, demo.sealed.payloadB64),
+    // only for the single winner. The lineage opens the reader's
+    // 10-minute phoenix window (momentum + inherited theme).
+    final text =
+        await EchoCipher.open(demo.sealed.keyB64, demo.sealed.payloadB64);
+    _lineages[id] = _DemoLineage(
+      momentum: demo.echo.momentum,
+      theme: demo.echo.theme,
+      text: text,
     );
+    return ConsumedEcho(text: text, momentum: demo.echo.momentum);
   }
 
   @override
@@ -241,6 +252,42 @@ class LocalEchoRepository implements EchoRepository {
       mediaKind: media?.kind,
     );
     _scheduleReception(id);
+    return echo;
+  }
+
+  @override
+  Future<Echo> reboundEcho({
+    required String sourceId,
+    required int parentMomentum,
+    required String text,
+    required double coordX,
+    required double coordY,
+    required double coordZ,
+  }) async {
+    await Future<void>.delayed(latency);
+    final lineage = _lineages[sourceId];
+    if (lineage == null ||
+        lineage.momentum != parentMomentum ||
+        lineage.consumedAt.isBefore(
+          DateTime.now().subtract(const Duration(minutes: 10)))) {
+      throw const KenosException(KenosErrorCode.invalid);
+    }
+    final sealed = await EchoCipher.seal(text);
+    final id = _uuid();
+    final echo = Echo(
+      id: id,
+      coordX: ParallaxMath.clamp(coordX, 0, 1),
+      coordY: ParallaxMath.clamp(coordY, 0, 1),
+      coordZ: ParallaxMath.clamp(coordZ, 0.05, 1),
+      // The phoenix inherits its parent's color: the comet keeps its hue.
+      theme: lineage.theme,
+      createdAt: DateTime.now(),
+      isMine: true,
+      momentum: lineage.momentum + 1,
+    );
+    _echoes[id] = _DemoEcho(echo: echo, sealed: sealed);
+    // One rebound, once: the lineage burns with the decision.
+    _lineages.remove(sourceId);
     return echo;
   }
 
@@ -291,6 +338,16 @@ class LocalEchoRepository implements EchoRepository {
         '${hex(4)}${hex(5)}-${hex(6)}${hex(7)}-'
         '${hex(8)}${hex(9)}-${hex(10)}${hex(11)}${hex(12)}${hex(13)}${hex(14)}${hex(15)}';
   }
+}
+
+class _DemoLineage {
+  _DemoLineage({required this.momentum, required this.theme, required this.text})
+      : consumedAt = DateTime.now();
+
+  final int momentum;
+  final EchoColorTheme theme;
+  final String text;
+  final DateTime consumedAt;
 }
 
 class _DemoEcho {

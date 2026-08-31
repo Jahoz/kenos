@@ -76,6 +76,30 @@ class FakeEchoRepository implements EchoRepository {
   @override
   Future<bool> leaveTrace(String echoId, String text) async => true;
 
+  final rebounded = <String>[];
+
+  @override
+  Future<Echo> reboundEcho({
+    required String sourceId,
+    required int parentMomentum,
+    required String text,
+    required double coordX,
+    required double coordY,
+    required double coordZ,
+  }) async {
+    rebounded.add(sourceId);
+    return Echo(
+      id: 'phoenix-of-$sourceId',
+      coordX: coordX,
+      coordY: coordY,
+      coordZ: coordZ,
+      theme: EchoColorTheme.teal,
+      createdAt: DateTime.now(),
+      isMine: true,
+      momentum: parentMomentum + 1,
+    );
+  }
+
   @override
   Future<bool> reportEcho(String echoId, EchoReportReason reason) async => true;
 
@@ -242,6 +266,22 @@ void main() {
           .leaveTrace('ether-1', 'Merci.');
       expect(left, isTrue);
       expect(store.stats.totalTracesLeft, 1);
+    });
+
+    test('rebound : le phénix devient une étoile scellée à momentum + 1',
+        () async {
+      await container.read(mapControllerProvider.future);
+      final source = _remote('ether-1');
+      final ok = await container
+          .read(mapControllerProvider.notifier)
+          .rebound(source: source, text: 'pensée relancée');
+      expect(ok, isTrue);
+      final echoes = container.read(mapControllerProvider).valueOrNull!;
+      final phoenix =
+          echoes.firstWhere((e) => e.id == 'phoenix-of-ether-1');
+      expect(phoenix.isMine, isTrue);
+      expect(phoenix.momentum, source.momentum + 1);
+      expect(store.sealed.map((e) => e.id), contains(phoenix.id));
     });
 
     test('forget retire l\'étoile', () async {

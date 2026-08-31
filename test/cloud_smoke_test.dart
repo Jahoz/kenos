@@ -78,7 +78,10 @@ void main() {
           ),
         ),
       );
-    });
+    },
+    skip: configured
+        ? false
+        : 'SUPABASE_URL / SUPABASE_ANON_KEY absents (make dev-cloud fournit .env.cloud)');
 
     test('Symphonie réelle : l\'onde de A traverse l\'éther jusqu\'à B',
         () async {
@@ -134,4 +137,69 @@ void main() {
         ? false
         : 'SUPABASE_URL / SUPABASE_ANON_KEY absents (make dev-cloud fournit .env.cloud)',
   );
+
+  test('Phénix réel : A lance, B lit et relance, C lit un momentum 1',
+      () async {
+    final a = SupabaseClient(_url, _key);
+    final b = SupabaseClient(_url, _key);
+    final c = SupabaseClient(_url, _key);
+    addTearDown(a.dispose);
+    addTearDown(b.dispose);
+    addTearDown(c.dispose);
+    await a.auth.signInAnonymously();
+    await b.auth.signInAnonymously();
+    await c.auth.signInAnonymously();
+
+    final repoA = SupabaseEchoRepository(a);
+    final repoB = SupabaseEchoRepository(b);
+    final repoC = SupabaseEchoRepository(c);
+
+    // A launches at a run-unique spot.
+    final u = 0.05 + (DateTime.now().millisecondsSinceEpoch % 800) / 1000;
+    final launched = await repoA.sendEcho(
+      text: 'pensée portée puis relancée',
+      coordX: u,
+      coordY: 0.08,
+      coordZ: 0.9,
+      theme: EchoColorTheme.indigo,
+    );
+
+    // B intercepts: momentum 0.
+    final consumedB = await repoB.consumeEcho(launched.id);
+    expect(consumedB?.text, 'pensée portée puis relancée');
+    expect(consumedB?.momentum, 0);
+
+    // B re-seals it: the phoenix is B's own sealed star, momentum 1.
+    final phoenix = await repoB.reboundEcho(
+      sourceId: launched.id,
+      parentMomentum: consumedB!.momentum,
+      text: consumedB.text,
+      coordX: u,
+      coordY: 0.08,
+      coordZ: 0.9,
+    );
+    expect(phoenix.momentum, 1);
+    expect(phoenix.isMine, isTrue);
+
+    // One rebound, once: the lineage burned.
+    await expectLater(
+      repoB.reboundEcho(
+        sourceId: launched.id,
+        parentMomentum: 0,
+        text: consumedB.text,
+        coordX: u,
+        coordY: 0.08,
+        coordZ: 0.9,
+      ),
+      throwsA(isA<KenosException>()),
+    );
+
+    // C intercepts the phoenix: momentum 1 travels with it.
+    final consumedC = await repoC.consumeEcho(phoenix.id);
+    expect(consumedC?.text, 'pensée portée puis relancée');
+    expect(consumedC?.momentum, 1, reason: 'la comète a voyagé une fois');
+  },
+      skip: configured
+          ? false
+          : 'SUPABASE_URL / SUPABASE_ANON_KEY absents (make dev-cloud fournit .env.cloud)');
 }
