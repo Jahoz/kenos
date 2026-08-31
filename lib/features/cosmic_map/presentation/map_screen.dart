@@ -48,6 +48,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Timer? _glide;
   Size _viewport = Size.zero;
 
+  /// Gesture bookkeeping: where it began, how far it carried. A
+  /// release under the tap threshold is an intention, not a travel.
+  Offset _lastPointerDown = Offset.zero;
+  Offset _dragTotal = Offset.zero;
+
   @override
   void initState() {
     super.initState();
@@ -74,6 +79,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// The sky follows the finger: pan the void, travel the ether.
   void _onPanUpdate(DragUpdateDetails details) {
     _glide?.cancel();
+    _dragTotal += details.delta;
     setState(() {
       _camera.panByScreen(details.delta, _viewport);
     });
@@ -82,6 +88,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// Release: the void keeps a soft inertia (skipped under
   /// reduce-motion — the eye simply stops).
   void _onPanEnd(DragEndDetails details) {
+    // A gesture that barely moved is an intention: tapping a planet
+    // glides the eye toward its gravity. (A separate tap recognizer
+    // would steal the pan arena — one detector, one grammar.)
+    if (_dragTotal.distance < 8) {
+      _dragTotal = Offset.zero;
+      _onVoidTap();
+      return;
+    }
+    _dragTotal = Offset.zero;
     if (context.wantsReducedMotion) {
       _refreshAfterTravel();
       return;
@@ -125,12 +140,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  /// Tap: a planet glides the eye toward its gravity — « voyager
-  /// vers ». Tapping the void itself travels nowhere (the drag is the
-  /// road, the tap is the intention).
-  void _onTapUp(TapUpDetails details) {
+  /// A tap on the void: a planet glides the eye toward its gravity —
+  /// « voyager vers ». Tapping empty space travels nowhere (the drag
+  /// is the road, the tap is the intention).
+  void _onVoidTap() {
     final hit = planetHitTest(
-      screenPoint: details.localPosition,
+      screenPoint: _lastPointerDown,
       camera: _camera,
       viewport: _viewport,
       now: DateTime.now(),
@@ -200,9 +215,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   // its own friction (a >28px drift cancels the hold
                   // and hands the gesture to the void). Tapping a
                   // planet glides the eye toward its gravity.
+                  onPanDown: (d) => _lastPointerDown = d.globalPosition,
                   onPanUpdate: _onPanUpdate,
                   onPanEnd: _onPanEnd,
-                  onTapUp: _onTapUp,
                   behavior: HitTestBehavior.translucent,
                   child: Stack(
                     fit: StackFit.expand,
