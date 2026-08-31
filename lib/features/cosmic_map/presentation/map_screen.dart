@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +21,10 @@ import 'widgets/mindful_hold_star.dart';
 
 /// The stellar map: KENOS public space.
 /// No lists, no scrolling — a three-dimensional Stack where the void dominates.
+///
+/// Performance contract: only the leaf layers ([_AmbientBackground],
+/// [_ParallaxStarLayer]) watch the tilt stream — the HUD and the screen
+/// itself never rebuild at sensor rate.
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
@@ -25,42 +32,23 @@ class MapScreen extends ConsumerStatefulWidget {
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends ConsumerState<MapScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _twinkle = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 60),
-  );
-
+class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void initState() {
     super.initState();
-    // « Reduce animations »: the star field stays still — scenery only.
-    if (!platformDisablesAnimations()) {
-      _twinkle.repeat();
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(audioControllerProvider).ensureStarted();
     });
   }
 
   @override
-  void dispose() {
-    _twinkle.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final echoes = ref.watch(mapControllerProvider);
     final reduced = context.wantsReducedMotion;
-    // Ambient parallax calms down (×0.15) but stays alive: the ether is
-    // not a screenshot.
-    final motionScale = reduced ? 0.15 : 1.0;
-    final tilt = ref.watch(tiltProvider).valueOrNull ?? Tilt.zero;
     final boot = ref.watch(bootstrapProvider);
     final count = echoes.valueOrNull?.length ?? 0;
-    final signals = ref.watch(receptionControllerProvider).valueOrNull?.length ?? 0;
+    final signals =
+        ref.watch(receptionControllerProvider).valueOrNull?.length ?? 0;
 
     // A new signal lands: the device feels it (single informative
     // pulse, kept even under reduce-motion).
@@ -79,36 +67,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
       backgroundColor: AppColors.voidBlack,
       // First gesture anywhere = audio unlock (iOS autoplay policy).
       body: Listener(
-        onPointerDown: (_) => ref.read(audioControllerProvider).ensureStarted(),
+        onPointerDown: (_) => unawaited(
+          ref.read(audioControllerProvider).ensureStarted(),
+        ),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Spatial void + diffuse nebulae.
-            CustomPaint(
-              painter: NebulaPainter(
-                tiltX: tilt.x * 0.5 * motionScale,
-                tiltY: tilt.y * 0.5 * motionScale,
-              ),
-            ),
-            // Dead star field (scenery, slow twinkle).
-            AnimatedBuilder(
-              animation: _twinkle,
-              builder: (context, _) => CustomPaint(
-                painter: BackgroundStarFieldPainter(
-                  time: _twinkle.value * 60,
-                  tiltX: tilt.x * motionScale,
-                  tiltY: tilt.y * motionScale,
-                ),
-              ),
-            ),
+            // Spatial void + diffuse nebulae + dead star field (scenery).
+            const _AmbientBackground(),
             // The matter: the echoes.
             echoes.when(
-              data: (list) => list.isEmpty
-                  ? const _CalmEther()
-                  : _StarLayer(
-                      echoes: list,
-                      tilt: Tilt(tilt.x * motionScale, tilt.y * motionScale),
-                    ),
+              data: (list) =>
+                  list.isEmpty ? const _CalmEther() : _ParallaxStarLayer(echoes: list),
               loading: () => const _Centered(
                 'CALIBRATION DE L\'ÉTHER…',
                 color: AppColors.teal,
@@ -205,50 +175,164 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 }
 
-/// Positions echoes in space: normalized coordinates + parallax
-/// proportional to depth. Close objects paint last.
-class _StarLayer extends StatelessWidget {
-  const _StarLayer({required this.echoes, required this.tilt});
+/// Scenery layer: nebulae + dead star field.
+///
+/// The twinkle ticks at ~8 fps through a plain timer — scenery must
+/// breathe without repainting at display rate (a sanctuary app owes
+/// the battery some silence). Frozen entirely under reduce-motion.
+class _AmbientBackground extends ConsumerStatefulWidget {
+  const _AmbientBackground();
 
-  final List<Echo> echoes;
-  final Tilt tilt;
+  @override
+  ConsumerState<_AmbientBackground> createState() => _AmbientBackgroundState();
+}
+
+class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
+  static const _tick = Duration(milliseconds: 125);
+
+  double _time = 0;
+  Timer? _twinkle;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!platformDisablesAnimations()) {
+      _twinkle = Timer.periodic(_tick, (_) {
+        if (mounted) setState(() => _time += _tick.inMilliseconds / 1000);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _twinkle?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Ambient parallax calms down (×0.15) but stays alive: the ether is
+    // not a screenshot.
+    final motionScale = context.wantsReducedMotion ? 0.15 : 1.0;
+    final tilt = ref.watch(tiltProvider).valueOrNull ?? Tilt.zero;
+
+    return RepaintBoundary(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CustomPaint(
+            painter: NebulaPainter(
+              tiltX: tilt.x * 0.5 * motionScale,
+              tiltY: tilt.y * 0.5 * motionScale,
+            ),
+          ),
+          CustomPaint(
+            painter: BackgroundStarFieldPainter(
+              time: _time,
+              tiltX: tilt.x * motionScale,
+              tiltY: tilt.y * motionScale,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Positions echoes in space: normalized coordinates, parallax
+/// proportional to depth, close buckets painted last.
+///
+/// Stars are grouped in depth buckets; the whole bucket translates with
+/// the tilt (one Transform per bucket) instead of rewriting every star's
+/// position at sensor rate. Distant buckets share one blur layer instead
+/// of one saveLayer per star.
+class _ParallaxStarLayer extends ConsumerStatefulWidget {
+  const _ParallaxStarLayer({required this.echoes});
+
+  final List<Echo> echoes;
+
+  @override
+  ConsumerState<_ParallaxStarLayer> createState() =>
+      _ParallaxStarLayerState();
+}
+
+class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
+  /// Far → near. The last edge breathes past 1.0 so z = 1 lands inside.
+  static const _bucketEdges = [0.05, 0.30, 0.55, 0.80, 1.001];
+
+  @override
+  Widget build(BuildContext context) {
+    // Ambient parallax calms down (×0.15) under reduce-motion.
+    final motionScale = context.wantsReducedMotion ? 0.15 : 1.0;
+    final tilt = ref.watch(tiltProvider).valueOrNull ?? Tilt.zero;
     final now = DateTime.now();
-    final sorted = echoes.toList()
+
+    final sorted = widget.echoes.toList()
       ..sort((a, b) => a.resolveZ(now).compareTo(b.resolveZ(now)));
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
         final h = constraints.maxHeight;
-        final children = <Widget>[];
+        final layers = <Widget>[];
 
-        for (final echo in sorted) {
-          final z = echo.resolveZ(now);
-          final diameter = ParallaxMath.starDiameter(z);
-          final hit = diameter + 26; // comfortable touch target
+        for (var b = 0; b < _bucketEdges.length - 1; b++) {
+          final children = <Widget>[];
+          for (final echo in sorted) {
+            final z = echo.resolveZ(now);
+            if (z < _bucketEdges[b] || z >= _bucketEdges[b + 1]) continue;
+            final diameter = ParallaxMath.starDiameter(z);
+            final hit = diameter + 26; // comfortable touch target
+            final baseX =
+                ParallaxMath.clamp(echo.coordX * w, hit / 2, w - hit / 2);
+            final baseY =
+                ParallaxMath.clamp(echo.coordY * h, hit / 2, h - hit / 2);
+            children.add(
+              Positioned(
+                left: baseX - hit / 2,
+                top: baseY - hit / 2,
+                width: hit,
+                height: hit,
+                child: MindfulHoldStar(echo: echo, z: z),
+              ),
+            );
+          }
+          if (children.isEmpty) continue;
 
-          final baseX =
-              ParallaxMath.clamp(echo.coordX * w, hit / 2, w - hit / 2) +
-              ParallaxMath.offsetPixels(tilt: tilt.x, z: z, amplitude: 46);
-          final baseY =
-              ParallaxMath.clamp(echo.coordY * h, hit / 2, h - hit / 2) +
-              ParallaxMath.offsetPixels(tilt: tilt.y, z: z, amplitude: 32);
-
-          children.add(
-            Positioned(
-              left: baseX - hit / 2,
-              top: baseY - hit / 2,
-              width: hit,
-              height: hit,
-              child: MindfulHoldStar(echo: echo, z: z),
+          final bucketZ =
+              (_bucketEdges[b] + _bucketEdges[b + 1].clamp(0.0, 1.0)) / 2;
+          Widget layer = Stack(children: children);
+          final sigma = ParallaxMath.blurSigma(bucketZ);
+          if (sigma > 0.05) {
+            layer = ImageFiltered(
+              imageFilter: ImageFilter.blur(
+                sigmaX: sigma,
+                sigmaY: sigma,
+                tileMode: TileMode.decal,
+              ),
+              child: layer,
+            );
+          }
+          layers.add(
+            Transform.translate(
+              offset: Offset(
+                ParallaxMath.offsetPixels(
+                  tilt: tilt.x * motionScale,
+                  z: bucketZ,
+                  amplitude: 46,
+                ),
+                ParallaxMath.offsetPixels(
+                  tilt: tilt.y * motionScale,
+                  z: bucketZ,
+                  amplitude: 32,
+                ),
+              ),
+              child: layer,
             ),
           );
         }
 
-        return Stack(children: children);
+        return Stack(fit: StackFit.expand, children: layers);
       },
     );
   }

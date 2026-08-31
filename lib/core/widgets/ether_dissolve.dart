@@ -56,31 +56,43 @@ class _EtherDissolveState extends State<EtherDissolve> {
     }();
   }
 
+  /// One shader instance per widget lifetime — fragmentShader()
+  /// allocates a GPU resource; calling it per build would leak them.
+  ui.FragmentShader? _shader;
+
   @override
   void initState() {
     super.initState();
     _ensureProgram().then((_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() => _shader = _program?.fragmentShader());
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _shader?.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final v = widget.progress;
     if (v <= 0.0 || v >= 1.0) return const SizedBox.shrink();
-    final program = _program;
+    final shader = _shader;
     return IgnorePointer(
       child: CustomPaint(
         size: Size.infinite,
-        painter: program == null
+        painter: shader == null
             ? _CpuDissolvePainter(widget)
-            : _ShaderDissolvePainter(program.fragmentShader(), widget),
+            : _ShaderDissolvePainter(shader, widget),
       ),
     );
   }
 }
 
-/// GPU path.
+/// GPU path — receives the long-lived shader instance from the state.
 class _ShaderDissolvePainter extends CustomPainter {
   _ShaderDissolvePainter(this.shader, this.widget);
 

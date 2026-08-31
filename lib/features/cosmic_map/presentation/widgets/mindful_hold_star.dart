@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -232,11 +230,9 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
       ),
     );
 
-    // Depth: distant echoes are dimmer, smaller, blurred.
-    final sigma = ParallaxMath.blurSigma(z);
-    if (sigma > 0.05) {
-      visual = ImageFiltered(imageFilter: _blurFilter(sigma), child: visual);
-    }
+    // Depth: distant echoes are dimmer (the depth blur itself is
+    // applied per bucket by the star layer — one saveLayer for the
+    // whole depth range, not one per star).
     var opacity = ParallaxMath.opacityFor(z);
     if (hasUnreadSignal) {
       // A signal waits: the sealed star breathes — a steady glow,
@@ -270,6 +266,3 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     return receptions.any((r) => r.echoId == _echo.id && !r.seen);
   }
 }
-
-ImageFilter _blurFilter(double sigma) =>
-    ImageFilter.blur(sigmaX: sigma, sigmaY: sigma, tileMode: TileMode.decal);
