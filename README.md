@@ -52,10 +52,15 @@ unique atomique incluse). Idéal pour découvrir l'expérience.
 ## Brancher le vrai éther (Supabase)
 
 1. Créer un projet sur [supabase.com](https://supabase.com).
-2. Dans le **SQL Editor**, exécuter le contenu de
-   [`supabase/migrations/0001_kenos_init.sql`](supabase/migrations/0001_kenos_init.sql)
-   puis [`supabase/migrations/0002_echo_receptions.sql`](supabase/migrations/0002_echo_receptions.sql).
-3. Lancer l'app avec les identifiants (Project Settings → API) :
+2. Dans le **SQL Editor**, exécuter le contenu des migrations
+   [`supabase/migrations/0001_kenos_init.sql`](supabase/migrations/0001_kenos_init.sql),
+   [`0002_echo_receptions.sql`](supabase/migrations/0002_echo_receptions.sql),
+   [`0003_ether_seal.sql`](supabase/migrations/0003_ether_seal.sql) puis
+   [`0004_sector_culling.sql`](supabase/migrations/0004_sector_culling.sql).
+3. (Optionnel, purge des échos dérivants) activer l'extension `pg_cron`
+   puis décommenter le bloc cron livré **prêt à l'emploi** en fin de
+   migration 0004 (`kenos-purge`, quotidien à 03:17 UTC).
+4. Lancer l'app avec les identifiants (Project Settings → API) :
 
 ```bash
 flutter run \
@@ -85,7 +90,7 @@ catalog iOS, pur stdlib).
 
 ```bash
 flutter analyze   # 0 issue
-flutter test      # 22 tests : atomicité de lecture, parallaxe, parcours UI complet
+flutter test      # 42 tests : chiffrement, culling, atomicité, parallaxe, parcours UI
 ```
 
 Le test `app_flow_test.dart` rejoue le parcours réel : seuil → carte →
@@ -100,20 +105,23 @@ lib/
 ┣ core/
 ┃ ┣ constants/         # Void Black, Teal, Rose… typographies, durées
 ┃ ┣ theme/             # DarkTheme strict (pas de boutons Material criards)
-┃ ┣ utils/             # ParallaxMath, LowPassFilter (capteurs)
+┃ ┣ utils/             # ParallaxMath, LowPassFilter, préférences de mouvement
 ┃ ┣ audio/             # AudioController : drone 70 Hz + cloches pentatoniques
-┃ ┗ widgets/           # ScrambleText (théâtre de sécurité)
+┃ ┣ haptics/           # KenosPulse : vocabulaire haptique, fire-and-forget
+┃ ┗ widgets/           # ScrambleText (théâtre de sécurité), EtherDissolve (shader)
 ┣ app/                 # KenosApp, routeur go_router (tout en fondu)
 ┣ features/
 ┃ ┣ onboarding/        # Le seuil : trois règles, une porte
 ┃ ┣ echo/
-┃ ┃ ┣ domain/          # Echo, EchoColorTheme
-┃ ┃ ┗ data/            # EchoRepository (contrat), Supabase, démo local, store scellé
+┃ ┃ ┣ domain/          # Echo, EchoColorTheme, EchoCipher (AES-256-GCM)
+┃ ┃ ┗ data/            # EchoRepository (contrat), Supabase, démo local,
+┃ ┃                    # store scellé, SectorGrid (culling 8×8)
 ┃ ┣ cosmic_map/
 ┃ ┃ ┣ application/     # MapController (AsyncNotifier), MotionService (parallaxe)
 ┃ ┃ ┗ presentation/    # MapScreen, MindfulHoldStar, painters, RevealSheet
 ┃ ┗ create_echo/       # Le Miroir : formulation, scellement, lancement
 ┗ main.dart            # Bootstrap : secure storage → Supabase optionnel → runApp
+shaders/               # ether_dissolve.frag — dispersion en particules réelles
 ```
 
 ### Le cœur du réacteur : `consume_echo`
@@ -166,11 +174,43 @@ si l'on relâche.
    fautive tolérante.
 7. **ROSE interdit à la création** : la couleur de destruction est réservée
    à la destruction, jusque dans la validation SQL.
+8. **Ether Seal (chiffrement réel au repos)** : le texte est chiffré sur
+   l'appareil de l'auteur (AES-256-GCM, clé éphémère de 256 bits dérivée
+   par écho) avant de partir dans l'éther. La clé voyage scellée
+   (`key_seal`, KEK logée dans Supabase Vault quand disponible) et
+   n'est échangée qu'à l'interception, dans la transaction atomique qui
+   détruit l'écho. Un dump de la base ne contient que du chiffré ; le
+   prix assumé de l'E2E : le serveur borne la taille scellée (≤ 4000),
+   la ligne de 280 caractères reste garantie par le client.
+9. **Culling par secteur** : `fetch_map_sector` (grille 8×8, 24 échos
+   max par secteur, 400 au total, plus récents d'abord) — un quartier
+   dense n'affame jamais un quartier calme. Le mode démo applique les
+   mêmes constantes (`SectorGrid`).
+10. **Purge de l'éther** : `kenos_purge()` détruit les échos dérivant
+    depuis plus de 30 jours, le journal d'audit au-delà d'un jour et les
+    réceptions non lues au même horizon — câblage `pg_cron` livré prêt,
+    commenté, dans la migration.
+11. **Haptique et accessibilité** : vocabulaire haptique dédié
+    (battement du hold, deuil du burn, signal de réception…) qui respecte
+    « réduire les animations » : le mouvement décoratif se fige, la
+    parallaxe s'amortit, les transitions deviennent instantanées — la
+    fenêtre de lecture de 10 s reste (c'est le produit).
+12. **Dissolution en particules réelles** : shader custom
+    (`shaders/ether_dissolve.frag`) — chaque cellule de l'écho devient
+    une poussière avec son délai de départ, sa vitesse et sa lueur ; un
+    peintre CPU prend le relais si le programme shader est indisponible.
 
 ## Feuille de route (V2+)
 
-- E2E encryption réel (clé éphémère dérivée par écho, échangée à l'interception).
-- Purge `pg_cron` des échos dérivants > 30 jours (bloc prêt, commenté, dans la migration).
-- Culling par secteur de la carte (RPC viewport) au-delà de quelques milliers d'échos.
-- Haptique enrichie et respect de « réduire les animations » (accessibilité).
-- Widget custom shaders (dispersion en particules réelles à la dissolution).
+- ~~E2E encryption réel~~ ✅ v1.1 — Ether Seal (clé éphémère par écho,
+  escrow Vault, échange atomique à l'interception).
+- ~~Purge `pg_cron` des échos dérivants > 30 jours~~ ✅ v1.1 —
+  `kenos_purge()` + bloc cron prêt, commenté, dans la migration 0004.
+- ~~Culling par secteur (RPC viewport)~~ ✅ v1.1 — `fetch_map_sector`,
+  grille 8×8, parité démo exacte.
+- ~~Haptique enrichie + « réduire les animations »~~ ✅ v1.1 —
+  vocabulaire `KenosPulse`, respect du drapeau plateforme partout.
+- ~~Widget custom shaders~~ ✅ v1.1 — dissolution en particules réelles
+  (GPU + repli CPU).
+- Panorama / panning de la carte (le viewport RPC est déjà prêt).
+- Scellement côté serveur des traces de réception (même Ether Seal).

@@ -24,6 +24,7 @@ peut être lu qu'une seule fois, par une seule personne** — puis il s'autodét
 | Backend | Supabase (auth anonyme + RPC PostgreSQL atomiques) |
 | Capteurs | `sensors_plus` (accéléromètre → parallaxe, passe-bas α=0.08) |
 | Audio | `just_audio` (drone 70 Hz bouclé + cloches pentatoniques, pitch couplé au hold) |
+| Crypto | `cryptography` (AES-256-GCM, clé éphémère 256 bits par écho) |
 | Stockage local | `flutter_secure_storage` (échos scellés SANS texte, timeout d'E/S) |
 
 ## Architecture
@@ -49,7 +50,7 @@ lib/
 ```bash
 flutter run                # Mode démo local (aucun backend requis)
 flutter analyze            # 0 issue
-flutter test               # 22 tests (atomicité, parallaxe, parcours UI complet)
+flutter test               # 42 tests (chiffrement, culling, atomicité, parallaxe, UI)
 python3 tool/gen_audio.py  # Régénère les assets audio (std-lib only)
 python3 tool/gen_icons.py  # Régénère les icônes Web/Android/iOS (std-lib only)
 ```
@@ -79,16 +80,26 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
 
 ## Security Model (non-negotiable)
 
-- Le client ne touche JAMAIS la table `echoes` : carte → vue `echoes_map`
-  (aucune colonne de texte), lecture → RPC `consume_echo` (atomique
-  `FOR UPDATE SKIP LOCKED`), envoi → RPC `launch_echo` (validation + anti-spam).
-- Ne jamais exposer `encrypted_text` côté client avant consommation.
+- Le client ne touche JAMAIS la table `echoes` : carte → RPC
+  `fetch_map_sector` (métadonnées, culling 8×8), lecture → RPC
+  `consume_echo` (atomique `FOR UPDATE SKIP LOCKED`), envoi → RPC
+  `launch_echo` (validation + anti-spam).
+- **Ether Seal** : le texte est chiffré sur l'appareil (AES-256-GCM,
+  clé éphémère par écho) ; la clé est escrowée scellée sous une KEK
+  (Vault) et échangée une seule fois, à l'interception, dans la
+  transaction atomique. `encrypted_text` et `key_seal` ne fuittent
+  jamais côté client. Prix assumé : la validation de longueur du
+  plaintext est côté client (le serveur borne le scellé à 4000).
+- Ne jamais exposer `encrypted_text` ni `key_seal` côté client avant
+  consommation.
 - L'écho envoyé est stocké localement SANS son texte : même l'auteur ne relit plus.
 - **Traces de réception** (bouteille à la mer) : `kenos_receptions` est sans
   contenu par défaut ; la trace du lecteur est one-shot (≤ 140 caractères,
   fenêtre de 10 min après lecture, jamais éditable) ; l'auteur la voit une
   seule fois (voir = brûler). Aucun identité, aucun fil, jamais de réponse.
 - ROSE (`#F43F5E`/`#FB7185`) est réservé à la destruction, jamais sélectionnable.
+- **Purge** : `kenos_purge()` (échos > 30 j, audit > 1 j, réceptions non
+  lues > 30 j) — câblage `pg_cron` fourni commenté dans la migration 0004.
 
 ## Design Boundary
 
