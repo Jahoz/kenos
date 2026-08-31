@@ -53,6 +53,12 @@ as $$
 declare
     secret text;
 begin
+    -- Serialize lazy provisioning: two racing first calls must not mint
+    -- two different KEKs (echoes sealed under one, unsealed under the
+    -- other would read as corrupt). Transaction-scoped: released at
+    -- the end of the calling RPC.
+    perform pg_advisory_xact_lock(hashtext('kenos:ether:kek'));
+
     if to_regclass('vault.decrypted_secrets') is not null then
         select v.decrypted_secret into secret
         from vault.decrypted_secrets v
