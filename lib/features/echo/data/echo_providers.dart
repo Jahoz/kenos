@@ -6,6 +6,7 @@ import 'echo_repository.dart';
 import 'local_echo_repository.dart';
 import 'local_echo_store.dart';
 import 'supabase_echo_repository.dart';
+import 'user_stats_store.dart';
 
 /// App boot state, computed in `main()` before runApp.
 class Bootstrap {
@@ -56,4 +57,10 @@ final sessionReadyProvider = FutureProvider<void>((ref) async {
     debugPrint('[kenos.auth] anonymous sign-in failed: $e');
     rethrow;
   }
+});
+
+/// User statistics provider (anonymized, local only).
+final userStatsProvider = FutureProvider<UserStats>((ref) async {
+  final store = ref.watch(localEchoStoreProvider);
+  return store.readStats();
 });

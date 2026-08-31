@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(35);
+select plan(38);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -223,6 +223,31 @@ select is(
   (select public.leave_trace(tests.reception_for_reader('00000000-0000-4000-8000-0000000000a6'), 'Lu. Merci.')),
   true,
   'u6 traces the second echo'
+);
+
+-- ── Reports: reader-only, one contentless moderation record ───────────
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a3","role":"authenticated"}', true);
+-- 25
+select is(
+  (select public.report_echo(tests.reception_for_reader('00000000-0000-4000-8000-0000000000a3'), 'SPAM')),
+  true,
+  'the reader can report an echo without accessing its content'
+);
+-- 26
+select is(
+  (select public.report_echo(tests.reception_for_reader('00000000-0000-4000-8000-0000000000a3'), 'SPAM')),
+  false,
+  'a report is one shot per reader and echo'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a5","role":"authenticated"}', true);
+-- 27
+select throws_ok(
+  $$select public.report_echo(tests.reception_for_reader('00000000-0000-4000-8000-0000000000a3'), 'SPAM')$$,
+  'P0001', 'KENOS_RATE_LIMIT',
+  'a stranger cannot report an echo they did not read'
 );
 
 -- ── Author isolation: view once, burn, nobody else ─────────────────────

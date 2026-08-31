@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../domain/echo.dart';
 import '../domain/reception.dart';
+import 'user_stats_store.dart';
 
 /// Secure local storage: onboarding flag, anonymous local UUID,
 /// and the user's sealed echoes (metadata WITHOUT text).
@@ -23,6 +24,7 @@ class LocalEchoStore {
   static const _kUid = 'kenos.uid';
   static const _kSealed = 'kenos.sealed_echoes';
   static const _kReceptions = 'kenos.receptions';
+  static const _kStats = 'kenos.user_stats';
   static const _maxSealed = 50;
 
   /// Safety net: a wedged keychain I/O must never freeze the
@@ -107,6 +109,51 @@ class LocalEchoStore {
       _kReceptions,
       jsonEncode(receptions.map((r) => r.toJson()).toList()),
     );
+  }
+
+  /// Read user stats (echo count, reception count, etc).
+  Future<UserStats> readStats() async {
+    final raw = await _read(_kStats);
+    if (raw == null || raw.isEmpty) return UserStats.empty();
+    try {
+      return UserStats.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (e) {
+      debugPrint('[kenos.store] stats corrupted: $e');
+      return UserStats.empty();
+    }
+  }
+
+  /// Update stats after sending an echo.
+  Future<void> recordEchoSent() async {
+    final stats = await readStats();
+    final updated = stats.copyWith(
+      totalEchosSent: stats.totalEchosSent + 1,
+      lastEchoSentAt: DateTime.now(),
+    );
+    await _write(_kStats, jsonEncode(updated.toJson()));
+  }
+
+  /// Update stats after receiving a reception.
+  Future<void> recordReceptionReceived() async {
+    final stats = await readStats();
+    final updated =
+        stats.copyWith(totalReceptionsReceived: stats.totalReceptionsReceived + 1);
+    await _write(_kStats, jsonEncode(updated.toJson()));
+  }
+
+  /// Update stats after leaving a trace.
+  Future<void> recordTraceLeft() async {
+    final stats = await readStats();
+    final updated =
+        stats.copyWith(totalTracesLeft: stats.totalTracesLeft + 1);
+    await _write(_kStats, jsonEncode(updated.toJson()));
+  }
+
+  /// Update stats after reading an echo.
+  Future<void> recordEchoRead() async {
+    final stats = await readStats();
+    final updated = stats.copyWith(readCount: stats.readCount + 1);
+    await _write(_kStats, jsonEncode(updated.toJson()));
   }
 
   String _uuidV4() {

@@ -50,6 +50,14 @@ class ReceptionController extends AsyncNotifier<List<Reception>> {
     final current = state.valueOrNull;
     if (current == null || !_sameReceptions(current, fresh)) {
       state = AsyncData(fresh);
+      if (current != null) {
+        final knownIds = current.map((reception) => reception.echoId).toSet();
+        final arrivals = fresh.where((reception) => !knownIds.contains(reception.echoId));
+        for (final _ in arrivals) {
+          await ref.read(localEchoStoreProvider).recordReceptionReceived();
+        }
+        ref.invalidate(userStatsProvider);
+      }
     }
   }
 

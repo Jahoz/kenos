@@ -7,12 +7,14 @@ import '../../../core/constants/app_colors.dart';
 /// ROSE is reserved for destruction (burn after reading):
 /// never selectable at creation time.
 enum EchoColorTheme {
-  teal('TEAL'),
-  indigo('INDIGO'),
-  lumen('LUMEN');
+  teal('TEAL', 'APAISER', 'Ce qui cherche un peu d\'air.'),
+  indigo('INDIGO', 'CONFIER', 'Ce qui pèse et demande à être déposé.'),
+  lumen('LUMEN', 'ÉCLAIRER', 'Ce qui veut simplement exister un instant.');
 
-  const EchoColorTheme(this.wire);
+  const EchoColorTheme(this.wire, this.emotionLabel, this.emotionHint);
   final String wire;
+  final String emotionLabel;
+  final String emotionHint;
 
   static EchoColorTheme fromWire(
     String? wire, {

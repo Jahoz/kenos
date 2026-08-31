@@ -1,7 +1,7 @@
 -- KENOS security tests — access control as an authenticated client.
 -- These tests actively try to cheat; every attempt must fail.
 begin;
-select plan(13);
+select plan(14);
 
 -- Seed: one echo owned by a test author, created outside client reach.
 insert into auth.users (id, email, aud, role)
@@ -77,6 +77,11 @@ select throws_ok(
   'select * from public.kenos_receptions',
   42501, 'permission denied for table kenos_receptions',
   'kenos_receptions invisible to clients'
+);
+select throws_ok(
+  'select * from public.kenos_echo_reports',
+  42501, 'permission denied for table kenos_echo_reports',
+  'kenos_echo_reports invisible to clients'
 );
 
 -- The map RPC: metadata yes, text impossible (and the retired view is gone).
