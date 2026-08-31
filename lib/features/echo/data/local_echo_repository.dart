@@ -5,6 +5,7 @@ import '../../../core/utils/parallax_math.dart';
 import '../domain/echo.dart';
 import '../domain/echo_cipher.dart';
 import '../domain/echo_color_theme.dart';
+import '../domain/echo_media.dart';
 import '../domain/reception.dart';
 import 'echo_repository.dart';
 import 'local_echo_store.dart';
@@ -35,6 +36,7 @@ class LocalEchoRepository implements EchoRepository {
 
   final Map<String, _DemoEcho> _echoes = {};
   final Set<String> _consumed = {};
+  final Set<String> _reported = {};
 
   final List<Reception> _receptions = [];
   final _changes = StreamController<void>.broadcast();
@@ -198,7 +200,7 @@ class LocalEchoRepository implements EchoRepository {
   }
 
   @override
-  Future<String?> consumeEcho(String id) async {
+  Future<ConsumedEcho?> consumeEcho(String id) async {
     await _ready();
     final demo = _echoes[id];
     if (demo == null || _consumed.contains(id)) {
@@ -212,7 +214,9 @@ class LocalEchoRepository implements EchoRepository {
     _consumed.add(id);
     // The key is exchanged at interception: decryption happens here,
     // only for the single winner.
-    return EchoCipher.open(demo.sealed.keyB64, demo.sealed.payloadB64);
+    return ConsumedEcho(
+      text: await EchoCipher.open(demo.sealed.keyB64, demo.sealed.payloadB64),
+    );
   }
 
   @override
@@ -222,6 +226,7 @@ class LocalEchoRepository implements EchoRepository {
     required double coordY,
     required double coordZ,
     required EchoColorTheme theme,
+    EchoMediaDraft? media,
   }) async {
     await Future<void>.delayed(latency);
     final id = _uuid();
@@ -233,6 +238,7 @@ class LocalEchoRepository implements EchoRepository {
       theme: theme,
       createdAt: DateTime.now(),
       isMine: true,
+      mediaKind: media?.kind,
     );
     _scheduleReception(id);
     return echo;
@@ -247,6 +253,16 @@ class LocalEchoRepository implements EchoRepository {
     }
     // In demo mode, traces left on the seeded ether vanish into the void.
     return true;
+  }
+
+  @override
+  Future<bool> reportEcho(String echoId, EchoReportReason reason) async {
+    await _ready();
+    await Future<void>.delayed(latency);
+    if (!_consumed.contains(echoId)) {
+      throw const KenosException(KenosErrorCode.rateLimit);
+    }
+    return _reported.add(echoId);
   }
 
   @override

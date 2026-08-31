@@ -54,6 +54,22 @@ class EchoCipher {
     );
   }
 
+  /// Seals binary media with an existing echo key, using a distinct nonce.
+  static Future<Uint8List> sealBytesWithKey(
+    Uint8List clear,
+    String keyB64,
+  ) async {
+    final nonce = Uint8List.fromList(
+      List<int>.generate(_nonceLength, (_) => _rng.nextInt(256)),
+    );
+    final box = await _aes.encrypt(
+      clear,
+      secretKey: SecretKey(base64Decode(keyB64)),
+      nonce: nonce,
+    );
+    return Uint8List.fromList([...nonce, ...box.cipherText, ...box.mac.bytes]);
+  }
+
   /// Opens a sealed payload. Throws on tampering or corruption
   /// (GCM authenticated decryption) — callers decide how to mourn.
   static Future<String> open(
@@ -88,5 +104,21 @@ class EchoCipher {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Opens a binary fragment returned only by the media consumption function.
+  static Future<Uint8List> openBytes(String keyB64, Uint8List blob) async {
+    if (blob.length < _nonceLength + _macLength) {
+      throw const FormatException('sealed media too short');
+    }
+    final clear = await _aes.decrypt(
+      SecretBox(
+        blob.sublist(_nonceLength, blob.length - _macLength),
+        nonce: blob.sublist(0, _nonceLength),
+        mac: Mac(blob.sublist(blob.length - _macLength)),
+      ),
+      secretKey: SecretKey(base64Decode(keyB64)),
+    );
+    return Uint8List.fromList(clear);
   }
 }

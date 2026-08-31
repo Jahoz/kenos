@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:just_audio/just_audio.dart';
 
 import '../../../../core/audio/audio_controller.dart';
 import '../../../../core/audio/audio_providers.dart';
@@ -12,8 +13,11 @@ import '../../../../core/constants/app_fonts.dart';
 import '../../../../core/haptics/kenos_haptics.dart';
 import '../../../../core/utils/motion_preferences.dart';
 import '../../../../core/widgets/ether_dissolve.dart';
+import '../../../../core/widgets/hud.dart';
 import '../../../../core/widgets/scramble_text.dart';
+import '../../../echo/data/echo_repository.dart';
 import '../../../echo/domain/echo.dart';
+import '../../../echo/domain/echo_media.dart';
 import '../../application/map_controller.dart';
 
 /// Reveal modal: glassmorphism, visual decryption, a 10-second reading
@@ -59,10 +63,12 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
   );
 
   final TextEditingController _traceInput = TextEditingController();
+  final AudioPlayer _mediaPlayer = AudioPlayer();
 
   _Phase _phase = _Phase.reading;
   bool _bellPlayed = false;
   bool _sending = false;
+  bool _reporting = false;
 
   static const _maxTrace = 140;
 
@@ -84,7 +90,21 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     _burn.dispose();
     _dissolve.dispose();
     _traceInput.dispose();
+    _mediaPlayer.dispose();
     super.dispose();
+  }
+
+  Future<void> _playMedia() async {
+    final media = widget.echo.media;
+    if (media == null || media.kind != EchoMediaKind.audio) return;
+    try {
+      await _mediaPlayer.setAudioSource(
+        AudioSource.uri(Uri.dataFromBytes(media.bytes, mimeType: media.kind.mimeType)),
+      );
+      unawaited(_mediaPlayer.play());
+    } catch (_) {
+      if (mounted) showHud(context, 'LE FRAGMENT SONORE S\'EST DISSOUT.');
+    }
   }
 
   void _startDissolve() {
@@ -128,6 +148,85 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
 
   void _leave() {
     Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  Future<void> _reportEcho() async {
+    if (_reporting) return;
+    final reason = await showDialog<EchoReportReason>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: AppColors.voidBlack,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: AppColors.fade(AppColors.pureLight, 0.18)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'SIGNALER L\'ÉCHO',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 10,
+                    letterSpacing: 2,
+                    color: AppColors.pureLight,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Choisis ce qui demande notre attention.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.serifItalic,
+                    fontSize: 14,
+                    color: AppColors.fade(AppColors.pureLight, 0.55),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                for (final reason in EchoReportReason.values)
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(reason),
+                    child: Text(reason.label),
+                  ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('ANNULER'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!mounted || reason == null) return;
+
+    setState(() => _reporting = true);
+    try {
+      final recorded = await ref
+          .read(mapControllerProvider.notifier)
+          .reportEcho(widget.echo.id, reason);
+      if (!mounted) return;
+      showHud(
+        context,
+        recorded
+            ? 'SIGNALEMENT TRANSMIS.'
+            : 'CET ÉCHO A DÉJÀ ÉTÉ SIGNALÉ.',
+      );
+    } catch (error) {
+      if (!mounted) return;
+      final message = error is KenosException
+          ? error.hudMessage
+          : 'L\'ÉTHER EST INJOIGNABLE.';
+      showHud(context, message);
+    } finally {
+      if (mounted) setState(() => _reporting = false);
+    }
   }
 
   @override
@@ -232,6 +331,28 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
           textAlign: TextAlign.center,
           style: secretStyle(),
         ),
+        if (widget.echo.media?.kind == EchoMediaKind.image) ...[
+          const SizedBox(height: 20),
+          ClipRect(
+            child: Image.memory(
+              widget.echo.media!.bytes,
+              height: 180,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            ),
+          ),
+        ],
+        if (widget.echo.media?.kind == EchoMediaKind.audio) ...[
+          const SizedBox(height: 16),
+          Center(
+            child: IconButton(
+              tooltip: 'Écouter le fragment',
+              onPressed: _playMedia,
+              icon: const Icon(Icons.play_arrow),
+              color: AppColors.teal,
+            ),
+          ),
+        ],
         const SizedBox(height: 40),
         Text(
           'DESTRUCTION IMMINENTE',
@@ -270,6 +391,19 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
           ),
         ),
         const SizedBox(height: 24),
+        TextButton(
+          onPressed: _reporting ? null : _reportEcho,
+          child: Text(
+            _reporting ? 'TRANSMISSION…' : 'SIGNALER',
+            style: TextStyle(
+              fontFamily: AppFonts.mono,
+              fontSize: 8,
+              letterSpacing: 2,
+              color: AppColors.fade(AppColors.pureLight, 0.45),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
       ],
     );
   }

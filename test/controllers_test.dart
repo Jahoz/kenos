@@ -7,8 +7,10 @@ import 'package:kenos/features/cosmic_map/application/reception_controller.dart'
 import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/data/echo_repository.dart';
 import 'package:kenos/features/echo/data/local_echo_store.dart';
+import 'package:kenos/features/echo/data/user_stats_store.dart';
 import 'package:kenos/features/echo/domain/echo.dart';
 import 'package:kenos/features/echo/domain/echo_color_theme.dart';
+import 'package:kenos/features/echo/domain/echo_media.dart';
 import 'package:kenos/features/echo/domain/reception.dart';
 
 /// In-memory ether with the production CONTRACT semantics:
@@ -43,12 +45,12 @@ class FakeEchoRepository implements EchoRepository {
           .toList();
 
   @override
-  Future<String?> consumeEcho(String id) async {
+  Future<ConsumedEcho?> consumeEcho(String id) async {
     if (_consumed.contains(id)) return null;
     final exists = _ether.any((e) => e.id == id && !e.isMine);
     if (!exists) return null;
     _consumed.add(id);
-    return 'TEXTE DE $id';
+    return ConsumedEcho(text: 'TEXTE DE $id');
   }
 
   @override
@@ -58,6 +60,7 @@ class FakeEchoRepository implements EchoRepository {
     required double coordY,
     required double coordZ,
     required EchoColorTheme theme,
+    EchoMediaDraft? media,
   }) async =>
       Echo(
         id: 'new-${_ether.length + 1}',
@@ -66,11 +69,15 @@ class FakeEchoRepository implements EchoRepository {
         coordZ: coordZ,
         theme: theme,
         createdAt: DateTime.now(),
+        mediaKind: media?.kind,
         isMine: true,
       );
 
   @override
   Future<bool> leaveTrace(String echoId, String text) async => true;
+
+  @override
+  Future<bool> reportEcho(String echoId, EchoReportReason reason) async => true;
 
   @override
   Future<List<Reception>> fetchReceptions() async => [..._receptions];
@@ -93,6 +100,7 @@ class FakeEchoRepository implements EchoRepository {
 /// In-memory sealed store — same surface, no keychain.
 class FakeLocalEchoStore implements LocalEchoStore {
   final List<Echo> sealed = [];
+  UserStats stats = UserStats.empty();
 
   @override
   Future<bool> hasOnboarded() async => true;
@@ -114,6 +122,31 @@ class FakeLocalEchoStore implements LocalEchoStore {
 
   @override
   Future<void> writeReceptions(List<Reception> receptions) async {}
+
+  @override
+  Future<UserStats> readStats() async => stats;
+
+  @override
+  Future<void> recordEchoSent() async {
+    stats = stats.copyWith(totalEchosSent: stats.totalEchosSent + 1);
+  }
+
+  @override
+  Future<void> recordReceptionReceived() async {
+    stats = stats.copyWith(
+      totalReceptionsReceived: stats.totalReceptionsReceived + 1,
+    );
+  }
+
+  @override
+  Future<void> recordTraceLeft() async {
+    stats = stats.copyWith(totalTracesLeft: stats.totalTracesLeft + 1);
+  }
+
+  @override
+  Future<void> recordEchoRead() async {
+    stats = stats.copyWith(readCount: stats.readCount + 1);
+  }
 
   @override
   void dispose() {}
@@ -196,6 +229,19 @@ void main() {
       expect(store.sealed, isNotEmpty);
       expect(store.sealed.first.text, isNull,
           reason: 'même son auteur ne relit plus');
+      expect(store.stats.totalEchosSent, 1);
+    });
+
+    test('lecture et trace comptent seulement après succès', () async {
+      await container.read(mapControllerProvider.future);
+      await container.read(mapControllerProvider.notifier).consume('ether-1');
+      expect(store.stats.readCount, 1);
+
+      final left = await container
+          .read(mapControllerProvider.notifier)
+          .leaveTrace('ether-1', 'Merci.');
+      expect(left, isTrue);
+      expect(store.stats.totalTracesLeft, 1);
     });
 
     test('forget retire l\'étoile', () async {
@@ -231,6 +277,7 @@ void main() {
             ?.driftSeconds,
         3600,
       );
+      expect(store.stats.totalReceptionsReceived, 1);
     });
 
     test('burn : voir = brûler, le signal ne revient pas', () async {

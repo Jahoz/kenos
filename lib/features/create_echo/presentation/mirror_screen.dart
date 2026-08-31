@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:record/record.dart';
 
 import '../../../core/audio/audio_controller.dart';
 import '../../../core/audio/audio_providers.dart';
@@ -13,6 +15,7 @@ import '../../../core/widgets/scramble_text.dart';
 import '../../cosmic_map/application/map_controller.dart';
 import '../../echo/data/echo_repository.dart';
 import '../../echo/domain/echo_color_theme.dart';
+import '../../echo/domain/echo_media.dart';
 
 /// The Mirror: shaping the void, visual sealing, launch into the ether.
 class MirrorScreen extends ConsumerStatefulWidget {
@@ -30,18 +33,97 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
 
   EchoColorTheme _theme = EchoColorTheme.teal;
   bool _sealing = false;
+  final ImagePicker _picker = ImagePicker();
+  final AudioRecorder _recorder = AudioRecorder();
+  EchoMediaDraft? _media;
+  bool _recording = false;
+  Timer? _recordingLimit;
+
+  static const _audioLimit = Duration(seconds: 20);
 
   @override
   void dispose() {
     _input.dispose();
     _focus.dispose();
+    _recordingLimit?.cancel();
+    _recorder.dispose();
     super.dispose();
   }
 
   bool get _canSend =>
       !_sealing &&
-      _input.text.trim().isNotEmpty &&
+      (_input.text.trim().isNotEmpty || _media != null) &&
       _input.text.length <= _maxLength;
+
+  Future<void> _pickImage() async {
+    final image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 78,
+      maxWidth: 1600,
+    );
+    if (image == null) return;
+    final draft = EchoMediaDraft(
+      kind: EchoMediaKind.image,
+      bytes: await image.readAsBytes(),
+      name: image.name,
+    );
+    if (!mounted) return;
+    if (!draft.isWithinLimit) {
+      showHud(context, 'CE FRAGMENT VISUEL EST TROP LOURD.');
+      return;
+    }
+    setState(() => _media = draft);
+  }
+
+  Future<void> _toggleRecording() async {
+    if (_recording) {
+      final path = await _stopRecording();
+      if (path == null || !mounted) return;
+      final draft = EchoMediaDraft(
+        kind: EchoMediaKind.audio,
+        bytes: await XFile(path).readAsBytes(),
+        name: path.split('/').last,
+      );
+      if (!mounted) return;
+      if (!draft.isWithinLimit) {
+        showHud(context, 'CE FRAGMENT SONORE EST TROP LOURD.');
+        return;
+      }
+      setState(() {
+        _recording = false;
+        _media = draft;
+      });
+      return;
+    }
+    final hasPermission = await _recorder.hasPermission();
+    if (!mounted) return;
+    if (!hasPermission) {
+      showHud(context, 'LE MICROPHONE RESTE FERMÉ.');
+      return;
+    }
+    await _recorder.start(
+      const RecordConfig(
+        encoder: AudioEncoder.aacLc,
+        bitRate: 128000,
+        sampleRate: 22050,
+        numChannels: 1,
+      ),
+      path: 'kenos-${DateTime.now().microsecondsSinceEpoch}.m4a',
+    );
+    if (mounted) {
+      setState(() => _recording = true);
+      _recordingLimit = Timer(_audioLimit, () async {
+        if (!mounted || !_recording) return;
+        await _toggleRecording();
+      });
+    }
+  }
+
+  Future<String?> _stopRecording() async {
+    _recordingLimit?.cancel();
+    _recordingLimit = null;
+    return _recorder.stop();
+  }
 
   Future<void> _sealAndLaunch() async {
     if (!_canSend) return;
@@ -60,7 +142,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     try {
       await ref
           .read(mapControllerProvider.notifier)
-          .sendEcho(text: text, theme: _theme);
+          .sendEcho(text: text, theme: _theme, media: _media);
       unawaited(audio.playBell(KenosBell.send));
       KenosHaptics.pulse(KenosPulse.launch);
       if (!mounted) return;
@@ -69,9 +151,14 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _sealing = false);
-      final message = e is KenosException
-          ? e.hudMessage
-          : 'L\'ÉTHER A REFUSÉ L\'ÉCHO.';
+      String message;
+      if (e is KenosException) {
+        message = e.code == KenosErrorCode.rateLimit
+            ? 'REVIENS DANS 20 SECONDES.\nFRICTION COMME VERTU.'
+            : e.hudMessage;
+      } else {
+        message = 'L\'ÉTHER A REFUSÉ L\'ÉCHO.';
+      }
       showHud(context, message);
     }
   }
@@ -157,10 +244,57 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                         ),
                 ),
                 const SizedBox(height: 18),
+                if (!_sealing)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        tooltip: 'Choisir une image',
+                        onPressed: _recording ? null : _pickImage,
+                        icon: const Icon(Icons.photo_outlined),
+                      ),
+                      IconButton(
+                        tooltip: _recording
+                            ? 'Terminer l\'enregistrement'
+                            : 'Enregistrer un son',
+                        onPressed: _toggleRecording,
+                        icon: Icon(_recording ? Icons.stop : Icons.mic_none),
+                        color: _recording ? AppColors.rose : AppColors.teal,
+                      ),
+                      if (_media != null)
+                        IconButton(
+                          tooltip: 'Retirer le fragment',
+                          onPressed: () => setState(() => _media = null),
+                          icon: const Icon(Icons.close),
+                        ),
+                    ],
+                  ),
+                if (_media != null)
+                  Text(
+                    '${_media!.kind == EchoMediaKind.image ? 'IMAGE' : 'SON'} · ${_media!.sizeLabel}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: AppFonts.mono,
+                      fontSize: 8,
+                      letterSpacing: 2,
+                      color: AppColors.fade(AppColors.pureLight, 0.48),
+                    ),
+                  ),
+                const SizedBox(height: 8),
                 _ThemePicker(
                   selected: _theme,
                   enabled: !_sealing,
                   onChanged: (t) => setState(() => _theme = t),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _theme.emotionHint,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.serifItalic,
+                    fontSize: 13,
+                    color: AppColors.fade(AppColors.pureLight, 0.5),
+                  ),
                 ),
                 const SizedBox(height: 20),
                 OutlinedButton(
@@ -204,33 +338,25 @@ class _ThemePicker extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         for (final theme in EchoColorTheme.selectable) ...[
-          GestureDetector(
-            onTap: enabled
-                ? () {
-                    KenosHaptics.pulse(KenosPulse.themePick);
-                    onChanged(theme);
-                  }
-                : null,
-            child: Container(
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
+          Semantics(
+            button: true,
+            label: theme.emotionLabel,
+            child: TextButton(
+              onPressed: enabled
+                  ? () {
+                      KenosHaptics.pulse(KenosPulse.themePick);
+                      onChanged(theme);
+                    }
+                  : null,
+              child: Text(
+                theme.emotionLabel,
+                style: TextStyle(
+                  fontFamily: AppFonts.mono,
+                  fontSize: 8,
+                  letterSpacing: 1.5,
                   color: selected == theme
-                      ? AppColors.pureLight
-                      : AppColors.hairlineStrong,
-                  width: 1,
-                ),
-              ),
-              child: Center(
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: theme.core,
-                  ),
+                      ? theme.core
+                      : AppColors.fade(AppColors.pureLight, 0.38),
                 ),
               ),
             ),

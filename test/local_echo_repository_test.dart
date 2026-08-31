@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kenos/features/echo/data/echo_repository.dart';
 import 'package:kenos/features/echo/data/local_echo_repository.dart';
 import 'package:kenos/features/echo/domain/echo_color_theme.dart';
 
@@ -42,6 +43,21 @@ void main() {
       final target = (await repo.fetchStarMap()).first;
       expect(await repo.consumeEcho(target.id), isNotNull);
       expect(await repo.consumeEcho(target.id), isNull);
+    });
+
+    test('signalement : une lecture autorise un seul motif', () async {
+      final repo = newRepo();
+      final target = (await repo.fetchStarMap()).first;
+      await repo.consumeEcho(target.id);
+
+      expect(
+        await repo.reportEcho(target.id, EchoReportReason.inappropriate),
+        isTrue,
+      );
+      expect(
+        await repo.reportEcho(target.id, EchoReportReason.spam),
+        isFalse,
+      );
     });
 
     test('un id inconnu retourne null (jamais d\'exception)', () async {

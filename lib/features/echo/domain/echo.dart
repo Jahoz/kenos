@@ -1,5 +1,6 @@
 import '../../../core/utils/parallax_math.dart';
 import 'echo_color_theme.dart';
+import 'echo_media.dart';
 
 /// An echo: a sealed thought, suspended in the ether.
 ///
@@ -14,6 +15,8 @@ class Echo {
     required this.theme,
     required this.createdAt,
     this.text,
+    this.media,
+    this.mediaKind,
     this.isMine = false,
   });
 
@@ -34,6 +37,12 @@ class Echo {
   /// Clear text — only after a successful interception.
   final String? text;
 
+  /// Clear media is present only after a winning atomic consumption.
+  final EchoMedia? media;
+
+  /// Map-safe metadata: there is a sealed fragment, never its path or bytes.
+  final EchoMediaKind? mediaKind;
+
   /// The local user's echo: sealed, untouchable, drifting.
   final bool isMine;
 
@@ -41,7 +50,7 @@ class Echo {
   double resolveZ(DateTime now) =>
       isMine ? ParallaxMath.driftZ(sentAt: createdAt, now: now) : coordZ;
 
-  Echo copyWith({String? text}) => Echo(
+  Echo copyWith({String? text, EchoMedia? media}) => Echo(
     id: id,
     coordX: coordX,
     coordY: coordY,
@@ -49,6 +58,8 @@ class Echo {
     theme: theme,
     createdAt: createdAt,
     text: text ?? this.text,
+    media: media ?? this.media,
+    mediaKind: mediaKind,
     isMine: isMine,
   );
 
@@ -62,6 +73,11 @@ class Echo {
         createdAt:
             DateTime.tryParse(json['created_at'] as String? ?? '') ??
             DateTime.now(),
+        mediaKind: switch (json['media_kind'] as String?) {
+          'IMAGE' => EchoMediaKind.image,
+          'AUDIO' => EchoMediaKind.audio,
+          _ => null,
+        },
         isMine: isMine,
       );
 
@@ -74,5 +90,6 @@ class Echo {
     'coord_z': coordZ,
     'color_theme': theme.wire,
     'created_at': createdAt.toIso8601String(),
+    if (mediaKind != null) 'media_kind': mediaKind!.wire,
   };
 }

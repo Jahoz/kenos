@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/utils/parallax_math.dart';
 import '../domain/echo.dart';
 import '../domain/echo_cipher.dart';
 import '../domain/echo_color_theme.dart';
+import '../domain/echo_media.dart';
 import '../domain/reception.dart';
 import 'echo_repository.dart';
 import 'sector_grid.dart';
@@ -46,23 +49,37 @@ class SupabaseEchoRepository implements EchoRepository {
   }
 
   @override
-  Future<String?> consumeEcho(String id) async {
+  Future<ConsumedEcho?> consumeEcho(String id) async {
     try {
-      final result = await _client.rpc(
-        'consume_echo',
-        params: {'target_echo_id': id},
+      final response = await _client.functions.invoke(
+        'consume-media',
+        body: {'echoId': id},
       );
+      final result = response.data;
       if (result == null) return null; // lost the race: dissolved elsewhere.
       final bundle = (result as Map).cast<String, dynamic>();
       final ciphertext = bundle['ciphertext'] as String;
       final key = bundle['key'] as String?;
       if (key == null || key.isEmpty) {
         // Legacy echo (pre-encryption migration): plaintext passthrough.
-        return ciphertext;
+        return ConsumedEcho(text: ciphertext);
       }
       // A seal that fails to open (tampered or corrupted in transit)
       // is a dead echo: null, i.e. dissolved — never a transport error.
-      return await EchoCipher.openOrNull(key, ciphertext);
+      final text = await EchoCipher.openOrNull(key, ciphertext);
+      if (text == null) return null;
+      final mediaB64 = bundle['media'] as String?;
+      final mediaKind = bundle['media_kind'] as String?;
+      EchoMedia? media;
+      if (mediaB64 != null && mediaKind != null) {
+        media = EchoMedia(
+          kind: mediaKind == 'IMAGE'
+              ? EchoMediaKind.image
+              : EchoMediaKind.audio,
+          bytes: await EchoCipher.openBytes(key, base64Decode(mediaB64)),
+        );
+      }
+      return ConsumedEcho(text: text, media: media);
     } catch (e) {
       throw KenosException.from(e);
     }
@@ -75,11 +92,30 @@ class SupabaseEchoRepository implements EchoRepository {
     required double coordY,
     required double coordZ,
     required EchoColorTheme theme,
+    EchoMediaDraft? media,
   }) async {
     try {
       // Ether Seal: the text is encrypted on-device, under a fresh
       // ephemeral key, before it ever leaves for the ether.
       final sealed = await EchoCipher.seal(text);
+      String? mediaPath;
+      if (media != null) {
+        if (!media.isWithinLimit) {
+          throw const KenosException(KenosErrorCode.invalid);
+        }
+        final userId = _client.auth.currentUser?.id;
+        if (userId == null) throw const KenosException(KenosErrorCode.unauthenticated);
+        final sealedMedia = await EchoCipher.sealBytesWithKey(
+          media.bytes,
+          sealed.keyB64,
+        );
+        mediaPath = '$userId/${DateTime.now().microsecondsSinceEpoch}-${media.kind.wire}.bin';
+        await _client.storage.from('echo-media').uploadBinary(
+          mediaPath,
+          sealedMedia,
+          fileOptions: const FileOptions(upsert: false),
+        );
+      }
       final rows = await _client.rpc(
         'launch_echo',
         params: {
@@ -89,6 +125,8 @@ class SupabaseEchoRepository implements EchoRepository {
           'p_y': ParallaxMath.clamp(coordY, 0, 1),
           'p_z': ParallaxMath.clamp(coordZ, 0.05, 1),
           'p_theme': theme.wire,
+          'p_media_kind': media?.kind.wire,
+          'p_media_path': mediaPath,
         },
       );
       final row = (rows as List).first as Map<String, dynamic>;
@@ -102,6 +140,7 @@ class SupabaseEchoRepository implements EchoRepository {
             DateTime.tryParse(row['created_at'] as String? ?? '') ??
             DateTime.now(),
         isMine: true,
+        mediaKind: media?.kind,
       );
     } catch (e) {
       throw KenosException.from(e);
@@ -114,6 +153,19 @@ class SupabaseEchoRepository implements EchoRepository {
       return await _client.rpc(
             'leave_trace',
             params: {'p_echo_id': echoId, 'p_text': text},
+          ) as bool? ??
+          false;
+    } catch (e) {
+      throw KenosException.from(e);
+    }
+  }
+
+  @override
+  Future<bool> reportEcho(String echoId, EchoReportReason reason) async {
+    try {
+      return await _client.rpc(
+            'report_echo',
+            params: {'p_echo_id': echoId, 'p_reason_code': reason.wire},
           ) as bool? ??
           false;
     } catch (e) {

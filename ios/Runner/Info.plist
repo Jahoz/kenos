@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>KENOS utilise le microphone uniquement pour enregistrer un fragment audio destiné à l'éther.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>KENOS utilise la photothèque uniquement pour choisir un fragment visuel destiné à l'éther.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

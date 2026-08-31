@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/echo/domain/echo.dart';
 import 'package:kenos/features/echo/domain/echo_color_theme.dart';
+import 'package:kenos/features/echo/domain/echo_media.dart';
 
 void main() {
   Echo buildEcho({bool isMine = false, DateTime? createdAt}) => Echo(
@@ -55,6 +58,40 @@ void main() {
         'INDIGO',
         'LUMEN',
       });
+    });
+  });
+
+  group('EchoMediaDraft', () {
+    test('la photo est bornée à 1 MiB avant tout envoi', () {
+      final accepted = EchoMediaDraft(
+        kind: EchoMediaKind.image,
+        name: 'fragment.jpg',
+        bytes: Uint8List(EchoMediaKind.image.maxBytes),
+      );
+      final rejected = EchoMediaDraft(
+        kind: EchoMediaKind.image,
+        name: 'trop-lourd.jpg',
+        bytes: Uint8List(EchoMediaKind.image.maxBytes + 1),
+      );
+
+      expect(accepted.isWithinLimit, isTrue);
+      expect(rejected.isWithinLimit, isFalse);
+    });
+
+    test('l\'audio est borné à 512 KiB avant tout envoi', () {
+      final accepted = EchoMediaDraft(
+        kind: EchoMediaKind.audio,
+        name: 'fragment.m4a',
+        bytes: Uint8List(EchoMediaKind.audio.maxBytes),
+      );
+      final rejected = EchoMediaDraft(
+        kind: EchoMediaKind.audio,
+        name: 'trop-lourd.m4a',
+        bytes: Uint8List(EchoMediaKind.audio.maxBytes + 1),
+      );
+
+      expect(accepted.isWithinLimit, isTrue);
+      expect(rejected.isWithinLimit, isFalse);
     });
   });
 }

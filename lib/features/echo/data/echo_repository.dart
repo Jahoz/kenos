@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/echo.dart';
 import '../domain/echo_color_theme.dart';
+import '../domain/echo_media.dart';
 import '../domain/reception.dart';
 
 /// Ether access contract.
@@ -22,9 +23,9 @@ abstract class EchoRepository {
     double maxY,
   );
 
-  /// Atomic consumption: returns the text to the winner, `null` if the
+  /// Atomic consumption: returns the content to the winner, `null` if the
   /// echo was just intercepted elsewhere.
-  Future<String?> consumeEcho(String id);
+  Future<ConsumedEcho?> consumeEcho(String id);
 
   /// Seals and launches an echo into the ether.
   /// Returns the created echo (without text — sealing philosophy).
@@ -34,11 +35,15 @@ abstract class EchoRepository {
     required double coordY,
     required double coordZ,
     required EchoColorTheme theme,
+    EchoMediaDraft? media,
   });
 
   /// Reader side: leave the one-line trace after consuming an echo.
   /// Returns false if a trace was already left (one shot, no edit).
   Future<bool> leaveTrace(String echoId, String text);
+
+  /// Reader side: records one contentless moderation report for an echo.
+  Future<bool> reportEcho(String echoId, EchoReportReason reason);
 
   /// Author side: unseen receptions (view = burn).
   Future<List<Reception>> fetchReceptions();
@@ -49,6 +54,19 @@ abstract class EchoRepository {
   /// Emits whenever a new reception lands (demo simulation);
   /// silent stream in backend mode (polling/refresh covers it).
   Stream<void> receptionChanges();
+}
+
+/// Fixed report reasons: moderation data stays minimal and classifiable.
+enum EchoReportReason {
+  inappropriate('INAPPROPRIATE', 'CONTENU INAPPROPRIÉ'),
+  spam('SPAM', 'SPAM'),
+  danger('DANGER', 'DANGER IMMÉDIAT'),
+  other('OTHER', 'AUTRE MOTIF');
+
+  const EchoReportReason(this.wire, this.label);
+
+  final String wire;
+  final String label;
 }
 
 /// Functional error codes raised by server-side RPCs — exhaustive on

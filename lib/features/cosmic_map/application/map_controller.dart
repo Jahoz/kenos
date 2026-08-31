@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../echo/data/echo_providers.dart';
+import '../../echo/data/echo_repository.dart';
 import '../../echo/domain/echo.dart';
 import '../../echo/domain/echo_color_theme.dart';
+import '../../echo/domain/echo_media.dart';
 
 /// Stellar map controller: merges the ether (remote metadata, never the
 /// text) and the user's sealed echoes (local store, sealed without
@@ -33,10 +36,11 @@ class MapController extends AsyncNotifier<List<Echo>> {
   /// someone else read it in the meantime (the echo is then removed from the map).
   Future<Echo?> consume(String id) async {
     final repo = ref.read(echoRepositoryProvider);
-    final text = await repo.consumeEcho(id);
+    final store = ref.read(localEchoStoreProvider);
+    final content = await repo.consumeEcho(id);
     final current = state.valueOrNull ?? const <Echo>[];
 
-    if (text == null) {
+    if (content == null) {
       state = AsyncData(current.where((e) => e.id != id).toList());
       return null;
     }
@@ -45,26 +49,39 @@ class MapController extends AsyncNotifier<List<Echo>> {
     final updated = <Echo>[];
     for (final echo in current) {
       if (echo.id == id) {
-        consumed = echo.copyWith(text: text);
+        consumed = echo.copyWith(text: content.text, media: content.media);
         updated.add(consumed);
       } else {
         updated.add(echo);
       }
     }
     state = AsyncData(updated);
+    unawaited(store.recordEchoRead());
+    ref.invalidate(userStatsProvider);
     return consumed;
   }
 
   /// Reader side of the loop: leave the one-line trace.
   Future<bool> leaveTrace(String echoId, String text) async {
     final repo = ref.read(echoRepositoryProvider);
-    return repo.leaveTrace(echoId, text);
+    final left = await repo.leaveTrace(echoId, text);
+    if (left) {
+      unawaited(ref.read(localEchoStoreProvider).recordTraceLeft());
+      ref.invalidate(userStatsProvider);
+    }
+    return left;
+  }
+
+  /// Reader side: report an already consumed echo without its content.
+  Future<bool> reportEcho(String echoId, EchoReportReason reason) {
+    return ref.read(echoRepositoryProvider).reportEcho(echoId, reason);
   }
 
   /// Seals the echo, launches it into the ether and anchors it locally (no text).
   Future<void> sendEcho({
     required String text,
     required EchoColorTheme theme,
+    EchoMediaDraft? media,
   }) async {
     final repo = ref.read(echoRepositoryProvider);
     final store = ref.read(localEchoStoreProvider);
@@ -76,8 +93,11 @@ class MapController extends AsyncNotifier<List<Echo>> {
       coordY: 0.18 + random.nextDouble() * 0.64,
       coordZ: 1.0, // born against the camera, then drifts
       theme: theme,
+      media: media,
     );
     await store.addSealed(echo);
+    unawaited(store.recordEchoSent());
+    ref.invalidate(userStatsProvider);
     final current = state.valueOrNull ?? const <Echo>[];
     state = AsyncData([echo, ...current]);
   }

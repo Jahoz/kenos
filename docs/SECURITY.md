@@ -25,6 +25,7 @@ hand over the echo to be useful at all).
 | Reception is contentless by default | `kenos_receptions` RPC-only; trace one-shot ≤ 140 chars within 10 min; view = burn |
 | ROSE is destruction-only | `launch_echo` rejects the theme server-side |
 | Friction server-enforced | 1 echo / 20 s, 1 read / 5 s, audit journal without content |
+| Media is never publicly addressable | Private `echo-media` bucket; clients have INSERT-only access below their own anonymous-user prefix |
 
 ## Ether Seal (at-rest encryption)
 
@@ -50,6 +51,18 @@ hand over the echo to be useful at all).
   client-enforced.
 - The 5 s read anti-spam applies to the winner too: the tests never
   consume twice in a row.
+- **Media is a bounded sealed attachment**: image ≤ 1 MiB or AAC audio
+  ≤ 512 KiB. Its bytes are AES-256-GCM encrypted with the echo's
+  ephemeral key before the private Storage upload. The client never
+  receives a public or signed Storage URL: authenticated `consume-media`
+  calls `consume_echo`, reads the private object with the service role,
+  returns the ciphertext to the sole winner, then deletes it.
+- **Storage and Postgres do not share a transaction**: PostgreSQL still
+  guarantees the winning single read through `FOR UPDATE SKIP LOCKED`,
+  but an unavailable object after that commit cannot be retried without
+  violating the one-read rule. An upload abandoned before `launch_echo`
+  can also leave an encrypted orphan. Operations must periodically delete
+  `echo-media` objects older than 30 days which have no matching live echo.
 
 ### Operational notes
 

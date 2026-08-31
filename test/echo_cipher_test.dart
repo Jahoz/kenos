@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/echo/domain/echo_cipher.dart';
@@ -67,6 +68,19 @@ void main() {
       const text = 'ligne une\nligne deux 🌌 — accentué';
       final sealed = await EchoCipher.seal(text);
       expect(await EchoCipher.open(sealed.keyB64, sealed.payloadB64), text);
+    });
+
+    test('binary media opens only with the echo ephemeral key', () async {
+      final sealed = await EchoCipher.seal('text carrier');
+      final bytes = Uint8List.fromList([0, 3, 255, 17, 42]);
+      final encrypted = await EchoCipher.sealBytesWithKey(bytes, sealed.keyB64);
+
+      expect(await EchoCipher.openBytes(sealed.keyB64, encrypted), bytes);
+      encrypted[encrypted.length - 1] ^= 1;
+      expect(
+        () => EchoCipher.openBytes(sealed.keyB64, encrypted),
+        throwsA(anything),
+      );
     });
   });
 }
