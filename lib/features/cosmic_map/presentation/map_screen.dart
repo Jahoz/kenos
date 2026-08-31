@@ -149,6 +149,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     children: [
                       const _SoundToggle(),
                       TextButton(
+                        onPressed: () => context.push('/impact'),
+                        child: const Text('TON IMPACT'),
+                      ),
+                      TextButton(
                         onPressed: () => ref.invalidate(mapControllerProvider),
                         child: const Text('RECALIBRER'),
                       ),
@@ -162,9 +166,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               alignment: Alignment.bottomCenter,
               child: SafeArea(
                 minimum: const EdgeInsets.only(bottom: 30),
-                child: OutlinedButton(
+                child: _AnimatedEchoButton(
                   onPressed: () => context.push('/mirror'),
-                  child: const Text('FORMULER UN ÉCHO'),
                 ),
               ),
             ),
@@ -224,6 +227,7 @@ class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
             painter: NebulaPainter(
               tiltX: tilt.x * 0.5 * motionScale,
               tiltY: tilt.y * 0.5 * motionScale,
+              time: _time,
             ),
           ),
           CustomPaint(
@@ -338,14 +342,95 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
   }
 }
 
-class _CalmEther extends StatelessWidget {
+class _CalmEther extends StatefulWidget {
   const _CalmEther();
 
   @override
+  State<_CalmEther> createState() => _CalmEtherState();
+}
+
+class _CalmEtherState extends State<_CalmEther> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 4),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (!platformDisablesAnimations()) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const _Centered(
-      'L\'ÉTHER EST CALME. RESPIRE.',
-      color: AppColors.pureLight,
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Animated breathing glow
+          AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) {
+              final opacity = 0.3 + (_controller.value * 0.3);
+              final scale = 0.95 + (_controller.value * 0.1);
+              return Transform.scale(
+                scale: scale,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.fade(AppColors.cyan, opacity * 0.5),
+                        blurRadius: 40,
+                        spreadRadius: 10,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 40),
+          AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) {
+              final opacity = 0.5 + (_controller.value * 0.2);
+              return Opacity(
+                opacity: opacity,
+                child: Text(
+                  'L\'ÉTHER EST CALME.',
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 10,
+                    letterSpacing: 4,
+                    color: AppColors.fade(AppColors.pureLight, 1.0),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'RESPIRE.',
+            style: TextStyle(
+              fontFamily: AppFonts.mono,
+              fontSize: 9,
+              letterSpacing: 3,
+              color: AppColors.fade(AppColors.teal, 0.6),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -386,6 +471,84 @@ class _Centered extends StatelessWidget {
           fontSize: 10,
           letterSpacing: 4,
           color: AppColors.fade(color, 0.6),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedEchoButton extends StatefulWidget {
+  const _AnimatedEchoButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  State<_AnimatedEchoButton> createState() => _AnimatedEchoButtonState();
+}
+
+class _AnimatedEchoButtonState extends State<_AnimatedEchoButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 2),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (!platformDisablesAnimations()) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            final pulse = 0.95 + (_controller.value * 0.1);
+            final glow = _controller.value * 0.4;
+            return Transform.scale(
+              scale: pulse,
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: AppColors.fade(AppColors.pureLight, 0.5 + (glow * 0.3)),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.fade(AppColors.cyan, glow * 0.3),
+                      blurRadius: 12 + (glow * 8),
+                      spreadRadius: glow * 2,
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: Text(
+                    'FORMULER UN ÉCHO',
+                    style: TextStyle(
+                      fontFamily: AppFonts.mono,
+                      fontSize: 9,
+                      letterSpacing: 2,
+                      color: AppColors.fade(AppColors.pureLight, 0.7 + (glow * 0.3)),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

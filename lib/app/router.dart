@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/constants/app_durations.dart';
 import '../core/utils/motion_preferences.dart';
+import '../features/cosmic_map/presentation/impact_screen.dart';
 import '../features/cosmic_map/presentation/map_screen.dart';
 import '../features/create_echo/presentation/mirror_screen.dart';
 import '../features/echo/data/echo_providers.dart';
@@ -38,6 +39,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/mirror',
         pageBuilder: (context, state) => _fade(context, child: const MirrorScreen()),
       ),
+      GoRoute(
+        path: '/impact',
+        pageBuilder: (context, state) => _fade(context, child: const ImpactScreen()),
+      ),
     ],
   );
 });
@@ -49,9 +54,21 @@ CustomTransitionPage<void> _fade(BuildContext context, {required Widget child}) 
     // « Reduce animations »: screens appear at once, no fade theater.
     transitionDuration: reduced ? Duration.zero : AppDurations.routeFade,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      // Composite transition: fade + subtle upward drift + scale
+      final curveAnim = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final scaleAnim = Tween<double>(begin: 0.97, end: 1.0).animate(curveAnim);
+      final offsetAnim = Tween<Offset>(begin: const Offset(0, 0.02), end: Offset.zero)
+          .animate(curveAnim);
+      
       return FadeTransition(
-        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        child: child,
+        opacity: curveAnim,
+        child: SlideTransition(
+          position: offsetAnim,
+          child: ScaleTransition(
+            scale: scaleAnim,
+            child: child,
+          ),
+        ),
       );
     },
   );

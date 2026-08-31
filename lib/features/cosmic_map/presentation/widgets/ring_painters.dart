@@ -26,12 +26,20 @@ class HoldRingPainter extends CustomPainter {
 
     if (progress <= 0) return;
 
+    // Add glow effect under the charge ring
+    final glowPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..color = AppColors.fade(color, progress * 0.15)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    canvas.drawCircle(center, radius, glowPaint);
+
     // Charged arc, gradient along the fill direction.
     final rect = Rect.fromCircle(center: center, radius: radius);
     final arc = Paint()
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 2
+      ..strokeWidth = 2.5
       ..shader = SweepGradient(
         startAngle: -math.pi / 2,
         endAngle: 3 * math.pi / 2,
