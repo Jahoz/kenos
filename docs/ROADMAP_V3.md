@@ -142,6 +142,61 @@ charte (règle du registre : ne jamais importer un design d'ailleurs).
 - **DoD** : les ondes lointaines s'entendent moins, sans engorger le
   thread principal.
 
+## V3.7 — Le Système (proposé 2026-09-01, en attente d'arbitrage)
+
+Le constat est juste : la carte est un cadre fixe, on n'y *voyage* pas.
+Le manifeste voulait des distances relatives au nœud du joueur —
+portons-les. Le design ci-dessous garde l'âme : **gravité, pas
+filtres** — on ne choisit pas son contenu, on va quelque part et on
+trouve ce qui y dérive.
+
+### Le monde proposé
+
+- **Le soleil est le Vide.** Au centre du monde : rien — KENOS. Les
+  planètes orbitent lentement autour du vide, pas autour d'un astre.
+- **Trois planètes = les trois intentions déjà présentes** dans le
+  Miroir : APAISER (sarcelle), CONFIER (indigo), ÉCLAIRER (lumen).
+  Ce ne sont pas des hashtags : ce sont des états d'être, des gravités.
+  Un écho lancé « pour apaiser » entre en orbite autour de sa planète.
+- **Les échos orbitent** leur planète — mouvement déterministe calculé
+  client depuis `created_at` serveur : tous les clients voient le même
+  ciel sans aucune synchronisation. Zéro migration : `x, y, theme,
+  created_at` suffisent déjà.
+- **Les comètes existent déjà** : un écho rebondi (momentum > 0) devient
+  une orbite elliptique qui *traverse* les trois planètes — la trace
+  des humains qui l'ont portée, en mouvement.
+- **Voyager = glisser le vide.** Pan sur un monde plus grand que
+  l'écran ; le HUD affiche la dérive poétique (« TU AS DÉRIVÉ DE 0.4 UA »).
+  Tenir une étoile reste la friction de lecture — le geste pan sur le
+  vide vide d'étoile n'entre jamais en conflit avec le hold.
+- **`fetch_map_sector` attendait ça depuis V3.2** : le RPC viewport est
+  déjà paramétré par rect — le voyage charge les secteurs voisins à
+  l'approche des bords. La première vague d'incréments est
+  intégralement client.
+- Plus tard (V3.7c) : le rayon d'écoute des FRÉQUENCES suit la caméra —
+  la musique des sphères devient locale au lieu où l'on se trouve.
+
+### Garde-fous d'âme
+
+- Trois planètes clairsemées dans un monde surtout vide — pas un menu.
+- Aucun compteur de collection, aucune récompense de voyage : on va
+  quelque part parce que la gravité y tire, pas pour gagner.
+- Reduce-motion : orbites gelées (le ciel devient une carte), voyage
+  par taps successifs au lieu de l'inertie.
+
+### Incréments
+
+- **V3.7a — Le Voyage** : monde 2× écran, pan + inertie douce, HUD de
+  dérive en UA, chargement des secteurs voisins (RPC viewport existant),
+  conflit de gestes hold/pan arbitré. Zéro backend.
+- **V3.7b — Les Planètes** : trois ancres fixes, orbites déterministes
+  des échos par intention, halos CustomPainter + lente rotation, tap
+  planète = glissement de caméra (« voyager vers »), le soleil vide au
+  centre. Zéro backend.
+- **V3.7c — Comètes & musique des sphères** : orbites elliptiques des
+  momentum, nœud d'origine en ancrage personnel, rayon d'écoute lié à
+  la caméra.
+
 ## 4. Règles inchangées (rappel)
 
 - Single-read atomique, Ether Seal, RPC-only, ROSE destructif,
