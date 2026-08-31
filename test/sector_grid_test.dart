@@ -65,6 +65,18 @@ void main() {
       expect(SectorGrid.sectorIndexOf(0.5), 4);
     });
 
+    // Mirrors rpc.sql 'sector columns floor': the same boundaries must
+    // bin identically in SQL and Dart — demo parity depends on it.
+    test('frontières de demi-cellule identiques au SQL (floor, pas arrondi)', () {
+      // (0.0626 * 8) = 0.5008 → floor 0 (a float→int cast would give 1).
+      expect(SectorGrid.sectorIndexOf(0.0626), 0);
+      // (0.9376 * 8) = 7.5008 → floor 7 (a naive cast would give 8).
+      expect(SectorGrid.sectorIndexOf(0.9376), 7);
+      // Exact cell edges change sector exactly at k / 8.
+      expect(SectorGrid.sectorIndexOf(0.1249999), 0);
+      expect(SectorGrid.sectorIndexOf(0.125), 1);
+    });
+
     test('une liste petite n\'est pas modifiée en ordre', () {
       final echoes = [
         _echo('a', 0.3, 0.3, base),

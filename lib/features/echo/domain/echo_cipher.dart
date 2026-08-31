@@ -54,7 +54,7 @@ class EchoCipher {
     );
   }
 
-  /// Opens a sealed payload. Throws [StateError] on tampering or corruption
+  /// Opens a sealed payload. Throws on tampering or corruption
   /// (GCM authenticated decryption) — callers decide how to mourn.
   static Future<String> open(
     String keyB64,
@@ -73,5 +73,20 @@ class EchoCipher {
       secretKey: SecretKey(base64Decode(keyB64)),
     );
     return utf8.decode(clear);
+  }
+
+  /// Opening variant for the consumption path: a seal that fails to
+  /// open (altered ciphertext, wrong key, corruption) means the echo is
+  /// dead — returning null lets the caller treat it as dissolved and
+  /// remove the star, instead of surfacing a transport error.
+  static Future<String?> openOrNull(
+    String keyB64,
+    String payloadB64,
+  ) async {
+    try {
+      return await open(keyB64, payloadB64);
+    } catch (_) {
+      return null;
+    }
   }
 }

@@ -39,6 +39,30 @@ void main() {
       );
     });
 
+    test('openOrNull: corrupt or wrong-key seals resolve to null', () async {
+      final sealed = await EchoCipher.seal('secret');
+      final other = await EchoCipher.seal('autre');
+      // Valid seal → text.
+      expect(await EchoCipher.openOrNull(sealed.keyB64, sealed.payloadB64),
+          'secret');
+      // Wrong key → null (dead echo, not an error).
+      expect(
+          await EchoCipher.openOrNull(other.keyB64, sealed.payloadB64), isNull);
+      // Tampered payload → null.
+      final bytes = base64Decode(sealed.payloadB64);
+      bytes[bytes.length - 3] ^= 0x01;
+      expect(
+        await EchoCipher.openOrNull(sealed.keyB64, base64Encode(bytes)),
+        isNull,
+      );
+      // Truncated payload → null.
+      expect(
+        await EchoCipher.openOrNull(
+            sealed.keyB64, base64Encode(bytes.sublist(0, 8))),
+        isNull,
+      );
+    });
+
     test('multiline and emoji content survives the seal', () async {
       const text = 'ligne une\nligne deux 🌌 — accentué';
       final sealed = await EchoCipher.seal(text);
