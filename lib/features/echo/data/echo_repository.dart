@@ -90,4 +90,7 @@ class KenosException implements Exception {
     KenosErrorCode.unauthenticated => 'L\'ÉTHER NE TE RECONNAÎT PAS.',
     KenosErrorCode.unreachable => 'L\'ÉTHER EST INJOIGNABLE.',
   };
+
+  @override
+  String toString() => 'KenosException($code)';
 }
