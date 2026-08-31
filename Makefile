@@ -40,6 +40,11 @@ deploy-web: ## Build for the real ether and deploy the PWA to Vercel (prod)
 	@# state travels with the copied .vercel so nothing else uploads.
 	rm -rf build/web/.vercel && cp -R .vercel build/web/.vercel
 	cd build/web && vercel deploy --prod --yes
+	@# Post-deploy gate: the domain MUST serve the app (it once silently
+	@# served an empty redeploy). Fails the target if not.
+	@sleep 5; curl -fsS -o /dev/null https://kenos-lemon.vercel.app/main.dart.js \
+		&& echo "production verified: main.dart.js 200" \
+		|| (echo "PRODUCTION BROKEN - redeploy" && exit 1)
 
 serve-web: build-web ## Serve the built PWA on :4308
 	cd build/web && python3 -m http.server 4308
