@@ -2,7 +2,37 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/core/constants/app_colors.dart';
 import 'package:kenos/features/frequencies/application/wave_controller.dart';
+import 'package:kenos/features/frequencies/data/frequency_repository.dart';
 import 'package:kenos/features/frequencies/domain/kenos_wave.dart';
+
+/// Silent ether: records emissions, hears nothing by default.
+class FakeFrequencyRepository implements FrequencyRepository {
+  final emitted = <({double offsetX, double offsetY, int noteIndex, int hueIndex})>[];
+  List<RemoteWave> nearby = const [];
+
+  @override
+  Future<void> emit({
+    required double offsetX,
+    required double offsetY,
+    required int noteIndex,
+    required int hueIndex,
+  }) async {
+    emitted.add((
+      offsetX: offsetX,
+      offsetY: offsetY,
+      noteIndex: noteIndex,
+      hueIndex: hueIndex,
+    ));
+  }
+
+  @override
+  Future<List<RemoteWave>> fetchNearby({
+    required double centerX,
+    required double centerY,
+    required double radius,
+  }) async =>
+      nearby;
+}
 
 void main() {
   group('WaveMath (mécanique du POC portée en Flutter)', () {
@@ -66,8 +96,12 @@ void main() {
   });
 
   group('WaveController', () {
-    test('emit crée une onde correctement mappée et purge les mortes', () {
-      final container = ProviderContainer();
+    test('emit crée une onde mappée, traversée par le repo, purgée à temps',
+        () async {
+      final repo = FakeFrequencyRepository();
+      final container = ProviderContainer(overrides: [
+        frequencyRepositoryProvider.overrideWithValue(repo),
+      ]);
       addTearDown(container.dispose);
 
       final controller = container.read(waveControllerProvider.notifier);
@@ -76,10 +110,45 @@ void main() {
       expect(wave.hueIndex, 3, reason: 'X=0.9 → bande cyan');
       expect(wave.noteIndex, greaterThan(15), reason: 'Y=0.1 → registre haut');
       expect(container.read(waveControllerProvider).length, 1);
+      // The wave crossed to the ether (fire-and-forget, awaited via pump).
+      await Future<void>.delayed(Duration.zero);
+      expect(repo.emitted.single.noteIndex, wave.noteIndex);
+    });
+
+    test('le poll fusionne les ondes des autres une seule fois chacune',
+        () async {
+      final repo = FakeFrequencyRepository();
+      final container = ProviderContainer(overrides: [
+        frequencyRepositoryProvider.overrideWithValue(repo),
+      ]);
+      addTearDown(container.dispose);
+
+      final controller = container.read(waveControllerProvider.notifier);
+      controller.nowSource = () => DateTime(2026, 8, 31, 12);
+      repo.nearby = [
+        RemoteWave(
+          id: 'remote-1',
+          offsetX: 0.3,
+          offsetY: 0.7,
+          noteIndex: 3,
+          hueIndex: 0,
+          createdAt: DateTime(2026, 8, 31, 11, 59, 58),
+        ),
+      ];
+
+      await controller.debugPollOnce();
+      final heard = container.read(waveControllerProvider);
+      expect(heard.single.id, 'remote-1');
+      // A second identical poll must not duplicate the wave.
+      await controller.debugPollOnce();
+      expect(container.read(waveControllerProvider).length, 1);
     });
 
     test('emit plafonne le nombre d\'ondes actives', () {
-      final container = ProviderContainer();
+      final container = ProviderContainer(overrides: [
+        frequencyRepositoryProvider
+            .overrideWithValue(FakeFrequencyRepository()),
+      ]);
       addTearDown(container.dispose);
 
       final controller = container.read(waveControllerProvider.notifier);
@@ -93,7 +162,10 @@ void main() {
     });
 
     test('purgeExpired retire les ondes au-delà de leur vie', () {
-      final container = ProviderContainer();
+      final container = ProviderContainer(overrides: [
+        frequencyRepositoryProvider
+            .overrideWithValue(FakeFrequencyRepository()),
+      ]);
       addTearDown(container.dispose);
 
       final controller = container.read(waveControllerProvider.notifier);

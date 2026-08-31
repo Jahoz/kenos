@@ -34,11 +34,45 @@ class _FrequenciesScreenState extends ConsumerState<FrequenciesScreen> {
 
   DateTime _now = DateTime.now();
   Timer? _ticker;
+  StreamSubscription<KenosWave>? _heard;
+
+  // Captured in initState: `ref` is already dead when dispose runs.
+  late final WaveController _controller =
+      ref.read(waveControllerProvider.notifier);
+
+  @override
+  void initState() {
+    super.initState();
+    // Start hearing the ether (V3.2): a 2 s poll feeds incoming waves.
+    _controller.activate();
+    _heard = _controller.incomingWaves.listen(_soundIncoming);
+  }
 
   @override
   void dispose() {
+    _heard?.cancel();
+    _controller.deactivate();
     _ticker?.cancel();
     super.dispose();
+  }
+
+  /// A stranger's wave just landed: sound it, softer the further it
+  /// was born from our listening point. The wave keeps aging from its
+  /// server birth, so late arrivals may already be fading.
+  void _soundIncoming(KenosWave wave) {
+    // Softer the further it was born from our listening point.
+    final d = ref
+        .read(waveControllerProvider.notifier)
+        .listenDistanceTo(wave.offsetX, wave.offsetY);
+    final volume = (1.0 - d / WaveController.hearingRadius)
+        .clamp(0.15, 0.85);
+    KenosHaptics.pulse(KenosPulse.waveEmit, reduceMotion: platformDisablesAnimations());
+    unawaited(
+      ref
+          .read(audioControllerProvider)
+          .playAsset(WaveMath.assetForNote(wave.noteIndex), volume: volume),
+    );
+    _startTickerIfNeeded();
   }
 
   void _emit(Offset local, Size size) {

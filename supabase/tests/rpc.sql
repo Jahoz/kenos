@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(38);
+select plan(47);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -378,6 +378,72 @@ select is(
   (select (sector_x, sector_y) = (0, 7) from public.echoes where encrypted_text = 'borne-secteur'),
   true,
   'sector columns floor — SQL and Dart agree on bin boundaries'
+);
+
+-- ── Symphonie Collective: waves cross the ether (V3.2) ─────────────────
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+
+-- 35 — u1 emits the wave under test, inside u2's future hearing radius.
+select lives_ok(
+  $$select public.emit_frequency(0.5::float8, 0.5::float8, 9::smallint, 2::smallint)$$,
+  'emit_frequency accepts a valid wave'
+);
+-- 36 — chords allowed (2nd wave), flood refused (3rd within 5 s).
+select lives_ok(
+  $$select public.emit_frequency(0.05::float8, 0.95::float8, 4::smallint, 1::smallint)$$,
+  'a second wave within 5 s is a chord, not a flood'
+);
+-- 37 — the threshold is >= 3: the FOURTH emission within 5 s refuses.
+select lives_ok(
+  $$select public.emit_frequency(0.05::float8, 0.95::float8, 4::smallint, 1::smallint)$$,
+  'the third wave within 5 s is still allowed (ceiling is inclusive)'
+);
+select throws_ok(
+  $$select public.emit_frequency(0.05::float8, 0.95::float8, 4::smallint, 1::smallint)$$,
+  'P0001', 'KENOS_RATE_LIMIT',
+  'wave flood limit: a fourth emission within 5 s refuses'
+);
+
+-- 38 — u2 hears exactly u1's wave inside the radius.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a2","role":"authenticated"}', true);
+select is(
+  (select note_index from public.fetch_nearby_frequencies(0.55, 0.5, 0.2)),
+  9::smallint,
+  'a stranger hears the wave within the hearing radius'
+);
+-- 39 — far away: silence.
+select is(
+  (select count(*) from public.fetch_nearby_frequencies(0.95, 0.95, 0.2)),
+  0::bigint,
+  'outside the radius, the wave is inaudible'
+);
+
+-- 40 — u2 emits; u2 never hears themself.
+select emit_frequency(0.1::float8, 0.1::float8, 15::smallint, 0::smallint);
+select is(
+  (select count(*) from public.fetch_nearby_frequencies(0.1, 0.1, 0.15)),
+  0::bigint,
+  'own waves never come back — you already heard yourself'
+);
+-- 41 — but u1 hears u2's wave (and never their own).
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+select is(
+  (select note_index from public.fetch_nearby_frequencies(0.1, 0.1, 0.15)),
+  15::smallint,
+  'the wave crosses the ether to the other emitter'
+);
+
+-- 42 — one minute of life, then the purge sweeps it away.
+reset role;
+update public.kenos_frequencies set created_at = now() - interval '61 seconds';
+select public.kenos_purge();
+select is(
+  (select count(*) from public.kenos_frequencies),
+  0::bigint,
+  'kenos_purge sweeps waves older than one minute'
 );
 
 select * from finish();

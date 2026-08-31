@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/echo.dart';
@@ -89,6 +90,8 @@ class KenosException implements Exception {
       PostgrestException e => e.message,
       _ => error.toString(),
     };
+    // A swallowed cause is a mystery ten minutes later: keep it visible.
+    debugPrint('[kenos.rpc] $message');
     if (message.contains('KENOS_RATE_LIMIT')) {
       return const KenosException(KenosErrorCode.rateLimit);
     }

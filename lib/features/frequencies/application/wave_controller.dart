@@ -1,33 +1,82 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/frequency_repository.dart';
 import '../domain/kenos_wave.dart';
 
-/// State of the Symphonie Collective: the currently breathing waves.
-/// Local-only in V3.1 — the ether crossing (table `frequencies`,
-/// radius hearing) is V3.2.
+/// State of the Symphonie Collective: the currently breathing waves —
+/// the user's own, and the strangers' heard within the listening
+/// radius (V3.2: a 2 s poll over the normalized-space bbox).
 class WaveController extends Notifier<List<KenosWave>> {
   static const maxWaves = 24;
 
+  /// Default listening point: the center of the field. Follows the
+  /// user's last tap.
+  static const double hearingRadius = 0.35;
+  static const Duration pollInterval = Duration(seconds: 2);
+
   int _seq = 0;
-  Timer? _ticker;
+  Timer? _purgeTicker;
+  Timer? _poll;
+  bool _activated = false;
+
+  (double, double) _listenCenter = (0.5, 0.5);
+
+  final _incoming = StreamController<KenosWave>.broadcast();
+
+  /// Waves born elsewhere, heard just now. The screen sounds them.
+  Stream<KenosWave> get incomingWaves => _incoming.stream;
 
   /// Injectable clock (tests pin time to exercise the purge).
   @visibleForTesting
   DateTime Function() nowSource = DateTime.now;
 
+  FrequencyRepository get _repo => ref.read(frequencyRepositoryProvider);
+
   @override
   List<KenosWave> build() {
-    ref.onDispose(() => _ticker?.cancel());
+    ref.onDispose(() {
+      _purgeTicker?.cancel();
+      _poll?.cancel();
+      _incoming.close();
+    });
     return const <KenosWave>[];
   }
 
+  /// The screen is alive: start hearing the ether.
+  void activate() {
+    if (_activated) return;
+    _activated = true;
+    _poll = Timer.periodic(pollInterval, (_) => _pollOnce());
+  }
+
+  /// The screen went away: silence the poll.
+  void deactivate() {
+    _activated = false;
+    _poll?.cancel();
+    _poll = null;
+  }
+
+  void setListenCenter(double x, double y) {
+    _listenCenter = (x.clamp(0.0, 1.0), y.clamp(0.0, 1.0));
+  }
+
+  /// Distance of a point to the current listening center, normalized.
+  double listenDistanceTo(double x, double y) {
+    final dx = x - _listenCenter.$1;
+    final dy = y - _listenCenter.$2;
+    return math.sqrt(dx * dx + dy * dy);
+  }
+
   /// Emits a wave at the normalized tap position. Returns it so the
-  /// caller can sound it.
+  /// caller can sound it. The ether crossing is fire-and-forget: an
+  /// unreachable backend degrades to a local-only wave, never an error.
   KenosWave emit(double offsetX, double offsetY) {
     final now = nowSource();
+    setListenCenter(offsetX, offsetY);
     final wave = KenosWave(
       id: 'w${now.microsecondsSinceEpoch}-${_seq++}',
       offsetX: offsetX.clamp(0.0, 1.0),
@@ -36,35 +85,85 @@ class WaveController extends Notifier<List<KenosWave>> {
       hueIndex: WaveMath.hueForX(offsetX),
       bornAt: now,
     );
-    final alive = _alive(now, state);
-    // A sanctuary has a ceiling: beyond it, the oldest waves dissolve
-    // early instead of piling into noise.
+    final alive = _alive(state);
     while (alive.length >= maxWaves) {
       alive.removeAt(0);
     }
     state = [...alive, wave];
-    _ensureTicker();
+    _ensurePurgeTicker();
+    unawaited(
+      _repo
+          .emit(
+            offsetX: wave.offsetX,
+            offsetY: wave.offsetY,
+            noteIndex: wave.noteIndex,
+            hueIndex: wave.hueIndex,
+          )
+          .catchError((Object e) {
+        debugPrint('[kenos.frequencies] emit degraded to local: $e');
+      }),
+    );
     return wave;
+  }
+
+  /// Test hook: run one poll cycle deterministically.
+  @visibleForTesting
+  Future<void> debugPollOnce() => _pollOnce();
+
+  Future<void> _pollOnce() async {
+    final List<RemoteWave> heard;
+    try {
+      heard = await _repo.fetchNearby(
+        centerX: _listenCenter.$1,
+        centerY: _listenCenter.$2,
+        radius: hearingRadius,
+      );
+    } catch (e) {
+      debugPrint('[kenos.frequencies] poll unreachable: $e');
+      return;
+    }
+    if (heard.isEmpty) return;
+    final known = state.map((w) => w.id).toSet();
+    for (final remote in heard) {
+      if (known.contains(remote.id)) continue;
+      final wave = KenosWave(
+        id: remote.id,
+        offsetX: remote.offsetX,
+        offsetY: remote.offsetY,
+        noteIndex: remote.noteIndex,
+        hueIndex: remote.hueIndex,
+        // The server's birth time: the wave keeps aging in transit.
+        bornAt: remote.createdAt,
+      );
+      final alive = _alive(state);
+      while (alive.length >= maxWaves) {
+        alive.removeAt(0);
+      }
+      state = [...alive, wave];
+      _ensurePurgeTicker();
+      if (!_incoming.isClosed) _incoming.add(wave);
+    }
   }
 
   /// Drops the waves whose life is over.
   void purgeExpired() {
-    final now = nowSource();
-    final alive = _alive(now, state);
+    final alive = _alive(state);
     if (alive.length != state.length) {
       state = alive;
     }
     if (alive.isEmpty) {
-      _ticker?.cancel();
-      _ticker = null;
+      _purgeTicker?.cancel();
+      _purgeTicker = null;
     }
   }
 
-  List<KenosWave> _alive(DateTime now, List<KenosWave> waves) =>
-      waves.where((w) => !w.isExpiredAt(now)).toList();
+  List<KenosWave> _alive(List<KenosWave> waves) {
+    final now = nowSource();
+    return waves.where((w) => !w.isExpiredAt(now)).toList();
+  }
 
-  void _ensureTicker() {
-    _ticker ??= Timer.periodic(const Duration(milliseconds: 250), (_) {
+  void _ensurePurgeTicker() {
+    _purgeTicker ??= Timer.periodic(const Duration(milliseconds: 250), (_) {
       purgeExpired();
     });
   }

@@ -2,7 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/frequencies/application/wave_controller.dart';
+import 'package:kenos/features/frequencies/data/frequency_repository.dart';
 import 'package:kenos/features/frequencies/presentation/frequencies_screen.dart';
+
+/// Silent ether (see frequencies_test.dart).
+class FakeFrequencyRepository implements FrequencyRepository {
+  @override
+  Future<void> emit({
+    required double offsetX,
+    required double offsetY,
+    required int noteIndex,
+    required int hueIndex,
+  }) async {}
+
+  @override
+  Future<List<RemoteWave>> fetchNearby({
+    required double centerX,
+    required double centerY,
+    required double radius,
+  }) async =>
+      const [];
+}
 
 void main() {
   testWidgets('un tap émet une onde : compteur à 1, indice envolé', (
@@ -12,8 +32,16 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
+    final container = ProviderContainer(overrides: [
+      frequencyRepositoryProvider.overrideWithValue(FakeFrequencyRepository()),
+    ]);
+    addTearDown(container.dispose);
+
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: FrequenciesScreen())),
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: FrequenciesScreen()),
+      ),
     );
     await tester.pump();
     expect(find.textContaining('0 ONDE'), findsOneWidget);
@@ -30,12 +58,16 @@ void main() {
     expect(find.textContaining('TOUCHE L\'ESPACE'), findsNothing);
 
     // The controller holds exactly one living wave, mapped from the tap.
-    final container = ProviderScope.containerOf(
-      tester.element(find.byType(FrequenciesScreen)),
-    );
     final waves = container.read(waveControllerProvider);
     expect(waves.length, 1);
     expect(waves.first.hueIndex, 3, reason: 'X ≈ 0.85 → bande cyan');
     expect(waves.first.noteIndex, greaterThan(10), reason: 'Y ≈ 0.2 → registre haut');
+
+    // Age past the wave life and purge: no purge timer must survive
+    // the widget tree disposal.
+    final controller = container.read(waveControllerProvider.notifier);
+    controller.nowSource = () => DateTime.now().add(const Duration(seconds: 8));
+    controller.purgeExpired();
+    await tester.pump();
   });
 }
