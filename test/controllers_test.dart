@@ -21,6 +21,7 @@ class FakeEchoRepository implements EchoRepository {
   FakeEchoRepository({List<Echo> ether = const []}) : _ether = [...ether];
 
   final List<Echo> _ether;
+  List<Echo> get ether => _ether;
   final Set<String> _consumed = {};
   final List<Reception> _receptions = [];
   final _changes = StreamController<void>.broadcast();
@@ -269,6 +270,39 @@ void main() {
           .leaveTrace('ether-1', 'Merci.');
       expect(left, isTrue);
       expect(store.stats.totalTracesLeft, 1);
+    });
+
+    test('refreshViewport fusionne : ajoute les nouvelles, garde l\'hors-rect, drop les parties',
+        () async {
+      await container.read(mapControllerProvider.future);
+
+      // A star appears in a freshly travelled-to sector.
+      repo.ether.add(_remote('far-1', x: 0.95, y: 0.95));
+      await container.read(mapControllerProvider.notifier).refreshViewport(
+            minX: 0.8,
+            minY: 0.8,
+            maxX: 1.0,
+            maxY: 1.0,
+          );
+      var echoes = container.read(mapControllerProvider).valueOrNull!;
+      expect(echoes.map((e) => e.id), containsAll(['ether-1', 'ether-2', 'far-1']),
+          reason: 'les étoiles hors rect restent, la nouvelle entre');
+
+      // The ether no longer returns a star inside the synced rect:
+      // consumed elsewhere — it must leave the map.
+      repo.ether.removeWhere((e) => e.id == 'far-1');
+      // Travel a bit further: a NEW window re-asks the ether (the same
+      // window would be skipped — already synced).
+      await container.read(mapControllerProvider.notifier).refreshViewport(
+            minX: 0.7,
+            minY: 0.7,
+            maxX: 1.0,
+            maxY: 1.0,
+          );
+      echoes = container.read(mapControllerProvider).valueOrNull!;
+      expect(echoes.map((e) => e.id), isNot(contains('far-1')));
+      expect(echoes.map((e) => e.id), contains('ether-1'),
+          reason: 'hors rect : intouché par la fusion');
     });
 
     test('rebound : le phénix devient une étoile scellée à momentum + 1',

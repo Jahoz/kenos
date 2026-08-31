@@ -107,6 +107,10 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     if (_busy) return;
     _busy = true;
     _stopBeats();
+    // Freeze the target NOW: the layer may rebuild and reassign this
+    // element to another echo while the reveal is open (no keys on a
+    // culled, re-sorted list) — forgetting must hit what was read.
+    final targetId = _echo.id;
     KenosHaptics.pulse(
       KenosPulse.holdComplete,
       reduceMotion: platformDisablesAnimations(),
@@ -114,17 +118,17 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     try {
       final echo = await ref
           .read(mapControllerProvider.notifier)
-          .consume(_echo.id);
+          .consume(targetId);
       if (!mounted) return;
       if (echo == null) {
-        ref.read(mapControllerProvider.notifier).forget(_echo.id);
+        ref.read(mapControllerProvider.notifier).forget(targetId);
         _intercepted();
       } else {
         unawaited(ref.read(audioControllerProvider).playBell(KenosBell.reveal));
         KenosHaptics.pulse(KenosPulse.reveal);
         await showRevealSheet(context, echo: echo);
         if (!mounted) return;
-        ref.read(mapControllerProvider.notifier).forget(_echo.id);
+        ref.read(mapControllerProvider.notifier).forget(targetId);
       }
     } catch (e) {
       if (mounted) {

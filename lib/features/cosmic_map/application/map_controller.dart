@@ -143,6 +143,76 @@ class MapController extends AsyncNotifier<List<Echo>> {
     state = AsyncData([echo, ...current]);
   }
 
+  /// V3.7a — Le Voyage: refresh what the traveller's eye can see.
+  ///
+  /// Fetches the visible rect (clamped to the server's [0,1]²) plus a
+  /// margin, then MERGES: fresh rows upsert by id (new stars appear as
+  /// you travel), stars that left the rect are kept (you may go back),
+  /// and stars the ether no longer returns inside the rect are dropped
+  /// (consumed elsewhere). Sealed stars are never touched.
+  /// Slack around the visible rect sent to the ether AND used to
+  /// decide which old stars the fresh answer may replace. One single
+  /// constant: a star "in rect" is exactly a star the fetch could see.
+  static const _travelSlack = 0.05;
+
+  /// Last rect already synced — a stationary release or a jitter does
+  /// not re-ask the ether.
+  ({double loX, double loY, double hiX, double hiY})? _lastSyncedRect;
+
+  Future<void> refreshViewport({
+    required double minX,
+    required double minY,
+    required double maxX,
+    required double maxY,
+  }) async {
+    final repo = ref.read(echoRepositoryProvider);
+    final loX = (minX - _travelSlack).clamp(0.0, 1.0);
+    final loY = (minY - _travelSlack).clamp(0.0, 1.0);
+    final hiX = (maxX + _travelSlack).clamp(0.0, 1.0);
+    final hiY = (maxY + _travelSlack).clamp(0.0, 1.0);
+    if (hiX - loX <= 0 || hiY - loY <= 0) return;
+    final synced = _lastSyncedRect;
+    if (synced != null &&
+        synced.loX <= loX &&
+        synced.loY <= loY &&
+        synced.hiX >= hiX &&
+        synced.hiY >= hiY) {
+      return; // already seen: nothing new beyond the last sync.
+    }
+    _lastSyncedRect = (loX: loX, loY: loY, hiX: hiX, hiY: hiY);
+
+    final fresh = await repo.fetchStarMapInSector(
+      loX,
+      loY,
+      hiX,
+      hiY,
+    );
+    if (!state.hasValue) return;
+    final current = [...(state.value ?? const <Echo>[])];
+
+    final freshIds = fresh.map((e) => e.id).toSet();
+    bool inRect(Echo e) =>
+        e.coordX >= loX &&
+        e.coordX <= hiX &&
+        e.coordY >= loY &&
+        e.coordY <= hiY;
+
+    // Drop foreign stars the rect no longer returns (gone from the
+    // ether); keep sealed ones whatever happens.
+    final kept = current
+        .where((e) => e.isMine || !inRect(e) || freshIds.contains(e.id))
+        .toList();
+
+    // Upsert fresh rows.
+    for (final echo in fresh) {
+      final index = kept.indexWhere((e) => e.id == echo.id);
+      if (index == -1) {
+        kept.add(echo);
+      }
+    }
+    state = AsyncValue.data(kept);
+  }
+
   /// Forgets an echo (after post-read dissolution or interception elsewhere).
   void forget(String id) {
     final current = state.valueOrNull ?? const <Echo>[];

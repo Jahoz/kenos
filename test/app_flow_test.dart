@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/app/kenos_app.dart';
+import 'package:kenos/features/cosmic_map/application/map_controller.dart';
 import 'package:kenos/features/cosmic_map/application/motion_service.dart';
 import 'package:kenos/features/cosmic_map/presentation/widgets/mindful_hold_star.dart';
 import 'package:kenos/features/echo/data/echo_providers.dart';
@@ -61,14 +62,18 @@ void main() {
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pump(const Duration(milliseconds: 2600));
 
-    final starsBefore = tester
-        .widgetList<MindfulHoldStar>(find.byType(MindfulHoldStar))
-        .length;
-    expect(starsBefore, greaterThan(0), reason: 'l\'éther démo est vide');
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(KenosApp)),
+      listen: false,
+    );
+    final stateBefore = container.read(mapControllerProvider).valueOrNull ?? [];
+    expect(stateBefore, isNotEmpty, reason: 'l\'éther démo est vide');
 
     // 3-second long press on an ether star.
     // NB: le premier pump n'attache que le ticker de l'animation.
     final star = find.byType(MindfulHoldStar).first;
+    final heldId = (tester.widget(star) as MindfulHoldStar).echo.id;
+    expect(heldId, isNotEmpty);
     final gesture = await tester.startGesture(tester.getCenter(star));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 3200));
@@ -117,10 +122,15 @@ void main() {
     );
 
     // The read echo is gone from the map: single read, for real.
-    final starsAfter = tester
-        .widgetList<MindfulHoldStar>(find.byType(MindfulHoldStar))
-        .length;
-    expect(starsAfter, starsBefore - 1);
+    // Single read, for real: THE read echo is gone from the ether's
+    // state — and only it (widget counting is no longer the contract:
+    // stars beyond the traveller's window are legitimately unbuilt).
+    final stateAfter = container.read(mapControllerProvider).valueOrNull ?? [];
+    // The READ echo is gone — and only it: the id was frozen for the
+    // whole flow (an element reassignment mid-reveal must never make
+    // the app forget the wrong star).
+    expect(stateAfter.map((e) => e.id), isNot(contains(heldId)));
+    expect(stateAfter.length, stateBefore.length - 1);
   });
 
   testWidgets('un appui relâché trop tôt ne consomme rien', (tester) async {
@@ -131,6 +141,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 2600));
 
     final star = find.byType(MindfulHoldStar).first;
+    final heldId = (tester.widget(star) as MindfulHoldStar).echo.id;
+    expect(heldId, isNotEmpty);
     final gesture = await tester.startGesture(tester.getCenter(star));
     await tester.pump(); // attache le ticker
     await tester.pump(const Duration(milliseconds: 1200)); // trop court

@@ -16,6 +16,7 @@ import '../../echo/domain/echo.dart';
 import '../application/map_controller.dart';
 import '../application/motion_service.dart';
 import '../application/reception_controller.dart';
+import '../application/travel_camera.dart';
 import 'widgets/awakening_sas.dart';
 import 'widgets/background_painters.dart';
 import 'widgets/mindful_hold_star.dart';
@@ -39,6 +40,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// receptions sync — never again (silence is the default state).
   static bool _aubeSpokenThisSession = false;
 
+  /// V3.7a — Le Voyage: the traveller's eye. Fixed zoom, the void
+  /// follows the finger, drift accumulates in Années-Lumière.
+  final TravelCamera _camera = TravelCamera();
+  Timer? _glide;
+  Size _viewport = Size.zero;
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +61,73 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (receptions == null) return; // still syncing: wait.
     _aubeSpokenThisSession = true;
     unawaited(maybeShowAwakening(context, ref));
+  }
+
+  @override
+  void dispose() {
+    _glide?.cancel();
+    super.dispose();
+  }
+
+  /// The sky follows the finger: pan the void, travel the ether.
+  void _onPanUpdate(DragUpdateDetails details) {
+    _glide?.cancel();
+    setState(() {
+      _camera.panByScreen(details.delta, _viewport);
+    });
+  }
+
+  /// Release: the void keeps a soft inertia (skipped under
+  /// reduce-motion — the eye simply stops).
+  void _onPanEnd(DragEndDetails details) {
+    if (context.wantsReducedMotion) {
+      _refreshAfterTravel();
+      return;
+    }
+    final velocity = Offset(
+      details.velocity.pixelsPerSecond.dx,
+      details.velocity.pixelsPerSecond.dy,
+    );
+    final worldPerSecond = Offset(
+      velocity.dx / (_viewport.width) * _camera.viewExtent,
+      velocity.dy / (_viewport.height) * _camera.viewExtent,
+    );
+    final path = DriftGlide().path(-worldPerSecond).toList();
+    if (path.isEmpty) {
+      _refreshAfterTravel();
+      return;
+    }
+    var i = 0;
+    _glide?.cancel();
+    _glide = Timer.periodic(const Duration(milliseconds: 16), (_) {
+      if (i >= path.length) {
+        _glide?.cancel();
+        _glide = null;
+        _refreshAfterTravel();
+        return;
+      }
+      setState(() => _camera.panByWorld(path[i++]));
+    });
+  }
+
+  /// What the eye sees changed: ask the ether for this window.
+  void _refreshAfterTravel() {
+    final r = _camera.visibleRect;
+    unawaited(
+      ref.read(mapControllerProvider.notifier).refreshViewport(
+            minX: r.minX,
+            minY: r.minY,
+            maxX: r.maxX,
+            maxY: r.maxY,
+          ),
+    );
+  }
+
+  /// RECALIBRER, travelled: return the eye to the heart of the ether.
+  void _recenter() {
+    _glide?.cancel();
+    setState(() => _camera.recenter());
+    _refreshAfterTravel();
   }
 
   @override
@@ -95,20 +169,37 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           children: [
             // Spatial void + diffuse nebulae + dead star field (scenery).
             const _AmbientBackground(),
-            // The matter: the echoes.
-            echoes.when(
-              data: (list) =>
-                  list.isEmpty ? const _CalmEther() : _ParallaxStarLayer(echoes: list),
-              loading: () => const _Centered(
-                'CALIBRATION DE L\'ÉTHER…',
-                color: AppColors.teal,
-              ),
-              error: (e, _) => _UnreachableEther(
-                onRetry: () {
-                  ref.invalidate(sessionReadyProvider);
-                  ref.invalidate(mapControllerProvider);
-                },
-              ),
+            // The matter: the echoes — and the travelling eye.
+            LayoutBuilder(
+              builder: (context, constraints) {
+                _viewport = Size(constraints.maxWidth, constraints.maxHeight);
+                return GestureDetector(
+                  // The sky follows the finger; holding a star keeps
+                  // its own friction (a >28px drift cancels the hold
+                  // and hands the gesture to the void).
+                  onPanUpdate: _onPanUpdate,
+                  onPanEnd: _onPanEnd,
+                  behavior: HitTestBehavior.translucent,
+                  child: echoes.when(
+                    data: (list) => list.isEmpty
+                        ? const _CalmEther()
+                        : _ParallaxStarLayer(
+                            echoes: list,
+                            camera: _camera,
+                          ),
+                    loading: () => const _Centered(
+                      'CALIBRATION DE L\'ÉTHER…',
+                      color: AppColors.teal,
+                    ),
+                    error: (e, _) => _UnreachableEther(
+                      onRetry: () {
+                        ref.invalidate(sessionReadyProvider);
+                        ref.invalidate(mapControllerProvider);
+                      },
+                    ),
+                  ),
+                );
+              },
             ),
             // Top HUD — machine typography. On narrow portraits the
             // controls wrap to their own row under the telemetry:
@@ -137,6 +228,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         fontSize: 9,
                         letterSpacing: 3,
                         color: AppColors.fade(AppColors.pureLight, 0.4),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'DÉRIVE — ${_camera.driftLabel}',
+                      style: TextStyle(
+                        fontFamily: AppFonts.mono,
+                        fontSize: 9,
+                        letterSpacing: 3,
+                        color: AppColors.fade(AppColors.cyan, 0.45),
                       ),
                     ),
                     if (signals > 0) ...[
@@ -168,7 +269,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           child: const Text('TON IMPACT'),
                         ),
                         TextButton(
-                          onPressed: () => ref.invalidate(mapControllerProvider),
+                          onPressed: () {
+                            _recenter();
+                            ref.invalidate(mapControllerProvider);
+                          },
                           child: const Text('RECALIBRER'),
                         ),
                       ],
@@ -280,9 +384,13 @@ class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
 /// position at sensor rate. Distant buckets share one blur layer instead
 /// of one saveLayer per star.
 class _ParallaxStarLayer extends ConsumerStatefulWidget {
-  const _ParallaxStarLayer({required this.echoes});
+  const _ParallaxStarLayer({required this.echoes, required this.camera});
 
   final List<Echo> echoes;
+
+  /// The traveller's eye: stars are placed in the WORLD, the camera
+  /// decides which sky the screen holds.
+  final TravelCamera camera;
 
   @override
   ConsumerState<_ParallaxStarLayer> createState() =>
@@ -314,19 +422,26 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
           for (final echo in sorted) {
             final z = echo.resolveZ(now);
             if (z < _bucketEdges[b] || z >= _bucketEdges[b + 1]) continue;
+            final sp =
+                widget.camera.worldToScreen(Offset(echo.coordX, echo.coordY), Size(w, h));
+            // Travel culling: only the visible sky carries widgets.
+            if (sp.dx < -60 || sp.dx > w + 60 || sp.dy < -60 || sp.dy > h + 60) {
+              continue;
+            }
             final diameter = ParallaxMath.starDiameter(z);
             final hit = diameter + 26; // comfortable touch target
-            final baseX =
-                ParallaxMath.clamp(echo.coordX * w, hit / 2, w - hit / 2);
-            final baseY =
-                ParallaxMath.clamp(echo.coordY * h, hit / 2, h - hit / 2);
+            final screenPos =
+                widget.camera.worldToScreen(Offset(echo.coordX, echo.coordY), Size(w, h));
+            final baseX = screenPos.dx;
+            final baseY = screenPos.dy;
             children.add(
               Positioned(
+                key: ValueKey(echo.id),
                 left: baseX - hit / 2,
                 top: baseY - hit / 2,
                 width: hit,
                 height: hit,
-                child: MindfulHoldStar(echo: echo, z: z),
+                child: MindfulHoldStar(key: ValueKey('star-${echo.id}'), echo: echo, z: z),
               ),
             );
           }
