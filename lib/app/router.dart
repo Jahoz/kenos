@@ -8,6 +8,7 @@ import '../features/cosmic_map/presentation/impact_screen.dart';
 import '../features/cosmic_map/presentation/map_screen.dart';
 import '../features/create_echo/presentation/mirror_screen.dart';
 import '../features/echo/data/echo_providers.dart';
+import '../features/frequencies/presentation/frequencies_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 
 /// KENOS routing: fades only, no abrupt screen changes.
@@ -42,6 +43,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/impact',
         pageBuilder: (context, state) => _fade(context, child: const ImpactScreen()),
+      ),
+      GoRoute(
+        path: '/frequencies',
+        pageBuilder: (context, state) => _fade(context, child: const FrequenciesScreen()),
       ),
     ],
   );

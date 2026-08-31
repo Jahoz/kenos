@@ -34,6 +34,9 @@ enum KenosPulse {
 
   /// A color theme is picked in the Mirror.
   themePick,
+
+  /// A wave is emitted into the Symphonie Collective (decorative).
+  waveEmit,
 }
 
 /// Enriched haptics with a single accessibility rule: when the platform
@@ -76,6 +79,8 @@ class KenosHaptics {
           );
         }
       case KenosPulse.themePick:
+        if (!reduceMotion) HapticFeedback.selectionClick();
+      case KenosPulse.waveEmit:
         if (!reduceMotion) HapticFeedback.selectionClick();
     }
   }

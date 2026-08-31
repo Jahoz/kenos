@@ -149,6 +149,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     children: [
                       const _SoundToggle(),
                       TextButton(
+                        onPressed: () => context.push('/frequencies'),
+                        child: const Text('FRÉQUENCES'),
+                      ),
+                      TextButton(
                         onPressed: () => context.push('/impact'),
                         child: const Text('TON IMPACT'),
                       ),

@@ -57,17 +57,23 @@ class AudioController {
     }
   }
 
-  Future<void> playBell(KenosBell bell) async {
+  Future<void> playBell(KenosBell bell) =>
+      playAsset(bell.asset, volume: 0.5);
+
+  /// One-shot player for any synthesized asset (bells, wave notes).
+  /// Fire-and-forget by contract: the wave plays its full baked
+  /// envelope (6 s) without blocking or monitoring.
+  Future<void> playAsset(String asset, {double volume = 0.5}) async {
     try {
       final player = AudioPlayer();
       _oneShots.add(player);
-      await player.setAsset(bell.asset);
-      await player.setVolume(_muted ? 0 : 0.5);
+      await player.setAsset(asset);
+      await player.setVolume(_muted ? 0 : volume);
       await player.play();
       await player.dispose();
       _oneShots.remove(player);
     } catch (e) {
-      debugPrint('[kenos.audio] bell unavailable: $e');
+      debugPrint('[kenos.audio] $asset unavailable: $e');
     }
   }
 

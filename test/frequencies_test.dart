@@ -1,0 +1,110 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:kenos/core/constants/app_colors.dart';
+import 'package:kenos/features/frequencies/application/wave_controller.dart';
+import 'package:kenos/features/frequencies/domain/kenos_wave.dart';
+
+void main() {
+  group('WaveMath (mécanique du POC portée en Flutter)', () {
+    test('Y → note : le bas est grave, le haut cristallin', () {
+      expect(WaveMath.noteForY(1.0), 0, reason: 'tout en bas = C2');
+      expect(WaveMath.noteForY(0.0), 19, reason: 'tout en haut = A5');
+      expect(WaveMath.noteForY(0.5), 10, reason: 'mi-hauteur = C4, moitié de la gamme');
+      // Monotonic: sliding DOWN the screen lowers the register.
+      expect(WaveMath.noteForY(0.8), lessThan(WaveMath.noteForY(0.5)));
+      expect(WaveMath.noteForY(0.2), greaterThan(WaveMath.noteForY(0.5)));
+    });
+
+    test('Y → note : bornes hors écran bornées, jamais d\'exception', () {
+      expect(WaveMath.noteForY(-0.5), 19);
+      expect(WaveMath.noteForY(1.5), 0);
+    });
+
+    test('X → teinte : 4 bandes, bornées', () {
+      expect(WaveMath.hueForX(0.0), 0);
+      expect(WaveMath.hueForX(0.24), 0);
+      expect(WaveMath.hueForX(0.25), 1);
+      expect(WaveMath.hueForX(1.0), 3);
+      expect(WaveMath.hueForX(-1.0), 0);
+      expect(WaveMath.hueForX(9.0), 3);
+    });
+
+    test('la palette des ondes ne contient JAMAIS le rose (destruction)', () {
+      final forbidden = {AppColors.rose.toARGB32(), AppColors.roseText.toARGB32()};
+      for (final hue in WavePalette.hues) {
+        expect(forbidden, isNot(contains(hue.toARGB32())));
+      }
+    });
+
+    test('chaque note pointe vers un asset nommé wave_XX.wav', () {
+      expect(WaveMath.assetForNote(0), 'assets/audio/waves/wave_00.wav');
+      expect(WaveMath.assetForNote(19), 'assets/audio/waves/wave_19.wav');
+    });
+  });
+
+  group('KenosWave (cycle de vie)', () {
+    test('progress et expiration', () {
+      final born = DateTime(2026, 8, 31, 12);
+      final wave = KenosWave(
+        id: 'w1',
+        offsetX: 0.5,
+        offsetY: 0.5,
+        noteIndex: 9,
+        hueIndex: 2,
+        bornAt: born,
+      );
+      expect(wave.progressAt(born), 0.0);
+      expect(wave.progressAt(born.add(KenosWave.visualLife)), 1.0);
+      expect(wave.isExpiredAt(born.add(KenosWave.visualLife)), isTrue);
+      expect(
+        wave.isExpiredAt(
+          born.add(KenosWave.visualLife - const Duration(milliseconds: 1)),
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  group('WaveController', () {
+    test('emit crée une onde correctement mappée et purge les mortes', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final controller = container.read(waveControllerProvider.notifier);
+      final wave = controller.emit(0.9, 0.1);
+
+      expect(wave.hueIndex, 3, reason: 'X=0.9 → bande cyan');
+      expect(wave.noteIndex, greaterThan(15), reason: 'Y=0.1 → registre haut');
+      expect(container.read(waveControllerProvider).length, 1);
+    });
+
+    test('emit plafonne le nombre d\'ondes actives', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final controller = container.read(waveControllerProvider.notifier);
+      for (var i = 0; i < 30; i++) {
+        controller.emit(0.5, 0.5);
+      }
+      expect(
+        container.read(waveControllerProvider).length,
+        WaveController.maxWaves,
+      );
+    });
+
+    test('purgeExpired retire les ondes au-delà de leur vie', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final controller = container.read(waveControllerProvider.notifier);
+      controller.nowSource = () => DateTime(2026, 8, 31, 12);
+      controller.emit(0.5, 0.5);
+      expect(container.read(waveControllerProvider).length, 1);
+
+      // 8 s later: the wave's visual life (7 s) is over.
+      controller.nowSource = () => DateTime(2026, 8, 31, 12, 0, 8);
+      controller.purgeExpired();
+      expect(container.read(waveControllerProvider), isEmpty);
+    });
+  });
+}

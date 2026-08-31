@@ -61,6 +61,7 @@ flutter:
 
   assets:
     - assets/audio/
+    - assets/audio/waves/
 
   # Fragment shaders (compiled at build time; a CPU painter fallback
   # covers platforms where the program cannot load).
