@@ -1,8 +1,9 @@
--- KENOS security tests — RPC invariants: atomic single read,
--- bottle-in-the-sea traces, rate limits, author isolation.
--- Every statement tries to break a promise; the schema must hold.
+-- KENOS security tests — RPC invariants: atomic single read, Ether Seal
+-- key exchange, bottle-in-the-sea traces, sector culling, purge, rate
+-- limits, author isolation. Every statement tries to break a promise;
+-- the schema must hold.
 begin;
-select plan(24);
+select plan(34);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -12,9 +13,13 @@ create or replace function tests.echo_by_text(t text) returns uuid
 language sql security definer set search_path = public as $$
   select id from public.echoes where encrypted_text = t limit 1
 $$;
-create or replace function tests.reception_echo_for(p_author uuid) returns uuid
+-- Deterministic: the reception of the echo THIS user read.
+create or replace function tests.reception_for_reader(p_reader uuid) returns uuid
 language sql security definer set search_path = public as $$
-  select echo_id from public.kenos_receptions where author_id = p_author limit 1
+  select r.echo_id
+  from public.kenos_receptions r
+  join public.kenos_reads k on k.echo_id = r.echo_id and k.reader_id = p_reader
+  limit 1
 $$;
 
 insert into auth.users (id, email, aud, role) values
@@ -25,19 +30,19 @@ insert into auth.users (id, email, aud, role) values
   ('00000000-0000-4000-8000-0000000000a5', 'u5@test.kenos', 'authenticated', 'authenticated'),
   ('00000000-0000-4000-8000-0000000000a6', 'u6@test.kenos', 'authenticated', 'authenticated');
 
--- ── u1 launches one echo ───────────────────────────────────────────────
+-- ── u1 launches one echo (legacy plaintext tooling path: p_key = '') ────
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
 
 -- 1
 select is(
-  (select count(*) from public.launch_echo('premier secret', 0.4, 0.6, 1.0, 'TEAL') l),
+  (select count(*) from public.launch_echo('premier secret', '', 0.4, 0.6, 1.0, 'TEAL') l),
   1::bigint,
   'launch_echo creates the echo'
 );
 -- 2 — friction: one echo per 20 s per author.
 select throws_ok(
-  $$select * from public.launch_echo('trop vite', 0.4, 0.6, 1.0, 'TEAL')$$,
+  $$select * from public.launch_echo('trop vite', '', 0.4, 0.6, 1.0, 'TEAL')$$,
   'P0001', 'KENOS_RATE_LIMIT',
   'launch rate limit enforces the 20 s breath'
 );
@@ -46,40 +51,61 @@ select throws_ok(
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a2","role":"authenticated"}', true);
 
--- 3
+-- 3 — E2E price: the bound now applies to the sealed payload.
 select throws_ok(
-  $$select * from public.launch_echo(rpad('x', 281, 'x'), 0.5, 0.5, 0.9, 'INDIGO')$$,
+  $$select * from public.launch_echo(rpad('x', 4001, 'x'), '', 0.5, 0.5, 0.9, 'INDIGO')$$,
   'P0001', 'KENOS_INVALID_LENGTH',
-  '281-char echo rejected server-side'
+  'oversized sealed payload rejected server-side'
 );
 -- 4
 select throws_ok(
-  $$select * from public.launch_echo('coords', 1.7, 0.5, 0.9, 'TEAL')$$,
+  $$select * from public.launch_echo('coords', '', 1.7, 0.5, 0.9, 'TEAL')$$,
   'P0001', 'KENOS_INVALID_COORDS',
   'out-of-bound coordinates rejected'
 );
 -- 5
 select throws_ok(
-  $$select * from public.launch_echo('theme', 0.5, 0.5, 0.9, 'ROSE')$$,
+  $$select * from public.launch_echo('theme', '', 0.5, 0.5, 0.9, 'ROSE')$$,
   'P0001', 'KENOS_INVALID_THEME',
   'ROSE theme rejected — destruction color never selectable'
 );
 -- 6
 select is(
-  (select count(*) from public.launch_echo('second secret', 0.5, 0.5, 0.9, 'INDIGO') l),
+  (select count(*) from public.launch_echo('second secret', '', 0.5, 0.5, 0.9, 'INDIGO') l),
   1::bigint,
   'u2 launches cleanly'
+);
+
+-- ── u2 launches a SEALED echo (backdate first: the 20 s breath) ────────
+reset role;
+update public.echoes set created_at = now() - interval '30 seconds';
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a2","role":"authenticated"}', true);
+
+-- 7
+select is(
+  (select count(*) from public.launch_echo(
+     'AAECAwQFBgcICQ==', 'a2Vub3Mta2V5LXRlc3Q=', 0.4, 0.6, 1.0, 'TEAL') l),
+  1::bigint,
+  'launch_echo accepts a sealed echo (ciphertext + key)'
+);
+reset role;
+-- 8
+select is(
+  (select key_seal <> '' from public.echoes where encrypted_text = 'AAECAwQFBgcICQ=='),
+  true,
+  'the per-echo key is stored sealed, never in the clear'
 );
 
 -- ── u5: one cannot intercept one's own echo ────────────────────────────
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a5","role":"authenticated"}', true);
 
-select * from public.launch_echo('secret de u5', 0.1, 0.1, 0.5, 'LUMEN');
--- 7
+select * from public.launch_echo('secret de u5', '', 0.1, 0.1, 0.5, 'LUMEN');
+-- 9
 select is(
   (select public.consume_echo(tests.echo_by_text('secret de u5'))),
-  null::text,
+  null::jsonb,
   'own echo is shielded from its author'
 );
 
@@ -87,27 +113,33 @@ select is(
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a3","role":"authenticated"}', true);
 
--- 8
+-- 10 — legacy echo: plaintext passthrough, key null.
 select is(
-  (select public.consume_echo(tests.echo_by_text('premier secret'))),
+  (select public.consume_echo(tests.echo_by_text('premier secret')) ->> 'ciphertext'),
   'premier secret',
-  'the winner gets the text'
+  'the winner gets the payload (legacy path)'
+);
+-- 11 (the row is already gone — the bundle is null).
+select is(
+  (select public.consume_echo(tests.echo_by_text('premier secret')) ->> 'key'),
+  null::text,
+  'legacy echoes carry no key'
 );
 
 reset role;
--- 9
+-- 12
 select is(
   (select count(*) from public.echoes where encrypted_text = 'premier secret'),
   0::bigint,
   'the read echo is destroyed — burn after reading'
 );
--- 10
+-- 13
 select is(
   (select count(*) from public.kenos_receptions),
   1::bigint,
   'contentless reception recorded for the author'
 );
--- 11
+-- 14
 select is(
   (select r.drift_seconds >= 0 from public.kenos_receptions r limit 1),
   true,
@@ -118,89 +150,107 @@ select is(
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a4","role":"authenticated"}', true);
 
--- 12
+-- 15
 select is(
   (select public.consume_echo(tests.echo_by_text('premier secret'))),
-  null::text,
+  null::jsonb,
   'a later reader finds nothing — single read is absolute'
 );
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a3","role":"authenticated"}', true);
--- 13
+-- 16
 select throws_ok(
   $$select public.consume_echo(tests.echo_by_text('secret de u5'))$$,
   'P0001', 'KENOS_RATE_LIMIT',
   'interception rate limit: breathe between two reads'
 );
 
--- ── u4 reads the second echo ───────────────────────────────────────────
+-- ── u4 reads the SEALED echo: the one-shot key exchange ────────────────
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a4","role":"authenticated"}', true);
--- 14
+
+-- 17 — the key comes back exactly as the author's device sealed it.
 select is(
-  (select public.consume_echo(tests.echo_by_text('second secret'))),
+  (select public.consume_echo(tests.echo_by_text('AAECAwQFBgcICQ==')) ->> 'key'),
+  'a2Vub3Mta2V5LXRlc3Q=',
+  'the interceptor receives the escrowed key (exchange at interception)'
+);
+-- 18
+select is(
+  (select public.consume_echo(tests.echo_by_text('AAECAwQFBgcICQ==')) ->> 'ciphertext'),
+  null::text,
+  'single read is absolute for sealed echoes too'
+);
+
+-- ── u6 launches + reads for the remaining loop tests ───────────────────
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a6","role":"authenticated"}', true);
+select * from public.launch_echo('troisième secret', '', 0.2, 0.2, 0.7, 'LUMEN');
+-- 19
+select is(
+  (select public.consume_echo(tests.echo_by_text('second secret')) ->> 'ciphertext'),
   'second secret',
-  'u4 gets the second echo'
+  'u6 gets the second echo'
 );
 
 -- ── Traces: one line, one shot, reader-only ────────────────────────────
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a3","role":"authenticated"}', true);
--- 15
+-- 20
 select is(
-  (select public.leave_trace(tests.reception_echo_for('00000000-0000-4000-8000-0000000000a1'), 'Je te vois.')),
+  (select public.leave_trace(tests.reception_for_reader('00000000-0000-4000-8000-0000000000a3'), 'Je te vois.')),
   true,
   'the reader leaves one trace'
 );
--- 16
+-- 21
 select is(
-  (select public.leave_trace(tests.reception_echo_for('00000000-0000-4000-8000-0000000000a1'), 'remplacement')),
+  (select public.leave_trace(tests.reception_for_reader('00000000-0000-4000-8000-0000000000a3'), 'remplacement')),
   false,
   'a trace can never be edited or replaced'
 );
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a5","role":"authenticated"}', true);
--- 17
+-- 22
 select throws_ok(
-  $$select public.leave_trace(tests.reception_echo_for('00000000-0000-4000-8000-0000000000a1'), 'vol')$$,
+  $$select public.leave_trace(tests.reception_for_reader('00000000-0000-4000-8000-0000000000a5'), 'vol')$$,
   'P0001', 'KENOS_RATE_LIMIT',
   'only the reader can leave the trace'
 );
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a4","role":"authenticated"}', true);
--- 18
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a6","role":"authenticated"}', true);
+-- 23
 select throws_ok(
-  $$select public.leave_trace(tests.reception_echo_for('00000000-0000-4000-8000-0000000000a2'), rpad('x', 141, 'x'))$$,
+  $$select public.leave_trace(tests.reception_for_reader('00000000-0000-4000-8000-0000000000a6'), rpad('x', 141, 'x'))$$,
   'P0001', 'KENOS_INVALID_LENGTH',
   'trace length enforced server-side'
 );
--- 19
+-- 24
 select is(
-  (select public.leave_trace(tests.reception_echo_for('00000000-0000-4000-8000-0000000000a2'), 'Lu. Merci.')),
+  (select public.leave_trace(tests.reception_for_reader('00000000-0000-4000-8000-0000000000a6'), 'Lu. Merci.')),
   true,
-  'u4 traces the second echo'
+  'u6 traces the second echo'
 );
 
 -- ── Author isolation: view once, burn, nobody else ─────────────────────
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
--- 20
+-- 25
 select is(
   (select count(*) from public.fetch_receptions()),
   1::bigint,
   'u1 sees exactly their own reception'
 );
--- 21
+-- 26
 select is(
   (select reply_text from public.fetch_receptions()),
   'Je te vois.',
   'the trace reached the author'
 );
-select public.burn_reception(tests.reception_echo_for('00000000-0000-4000-8000-0000000000a1'));
--- 22
+select public.burn_reception(tests.reception_for_reader('00000000-0000-4000-8000-0000000000a3'));
+-- 27
 select is(
   (select count(*) from public.fetch_receptions()),
   0::bigint,
@@ -208,22 +258,77 @@ select is(
 );
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a6","role":"authenticated"}', true);
--- 23
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a5","role":"authenticated"}', true);
+-- 28
 select is(
   (select count(*) from public.fetch_receptions()),
   0::bigint,
   'an intruder sees no receptions at all'
 );
-select public.burn_reception(tests.reception_echo_for('00000000-0000-4000-8000-0000000000a2'));
+select public.burn_reception(tests.reception_for_reader('00000000-0000-4000-8000-0000000000a6'));
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a2","role":"authenticated"}', true);
--- 24
+-- 29
 select is(
   (select count(*) from public.fetch_receptions()),
-  1::bigint,
+  2::bigint,
   'a non-author burn is a silent no-op'
+);
+
+-- ── Sector culling: viewport rect + per-sector caps ────────────────────
+-- Seed a dense single sector (100 echoes in the top-left cell) as postgres.
+reset role;
+insert into public.echoes (author_id, encrypted_text, coord_x, coord_y, coord_z, color_theme, created_at)
+select '00000000-0000-4000-8000-0000000000a1', 'dense-' || g, 0.01, 0.01, 0.5, 'TEAL',
+       now() - (interval '1 minute' * g)
+from generate_series(1, 100) g;
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a3","role":"authenticated"}', true);
+
+-- 30 — a dense sector is capped at the newest 24, newest first.
+select is(
+  (select count(*) from public.fetch_map_sector(0.0, 0.0, 0.125, 0.125)),
+  24::bigint,
+  'a dense sector is culled to the newest 24'
+);
+-- 31 — viewport rect excludes out-of-rect echoes.
+select is(
+  (select count(*) from public.fetch_map_sector(0.9, 0.9, 1.0, 1.0)
+    where coord_x < 0.9 or coord_y < 0.9),
+  0::bigint,
+  'nothing outside the viewport rect comes back'
+);
+
+-- ── Purge: the ether forgets what drifted too long ─────────────────────
+reset role;
+update public.echoes set created_at = now() - interval '31 days'
+where encrypted_text like 'dense-%';
+update public.kenos_reads set read_at = now() - interval '2 days';
+
+select public.kenos_purge();
+-- 32
+select is(
+  (select count(*) from public.echoes where encrypted_text like 'dense-%'),
+  0::bigint,
+  'kenos_purge destroys echoes drifting for more than 30 days'
+);
+-- 33
+select is(
+  (select count(*) from public.kenos_reads),
+  0::bigint,
+  'kenos_purge also clears the stale audit journal'
+);
+
+-- ── KEK escrow: clients can never reach the wrapping key ───────────────
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a3","role":"authenticated"}', true);
+-- 34
+select throws_ok(
+  $$select * from public.kenos_ether_kek()$$,
+  '42501', 'permission denied for function kenos_ether_kek',
+  'the KEK function is unreachable for clients'
 );
 
 select * from finish();

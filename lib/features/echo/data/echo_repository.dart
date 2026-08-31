@@ -11,6 +11,15 @@ abstract class EchoRepository {
   /// Stellar map metadata (never the text).
   Future<List<Echo>> fetchStarMap();
 
+  /// Viewport variant: normalized rect, sector-culled (8×8 grid, newest
+  /// per sector, capped total). Demo mode mirrors the exact semantics.
+  Future<List<Echo>> fetchStarMapInSector(
+    double minX,
+    double minY,
+    double maxX,
+    double maxY,
+  );
+
   /// Atomic consumption: returns the text to the winner, `null` if the
   /// echo was just intercepted elsewhere.
   Future<String?> consumeEcho(String id);

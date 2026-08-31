@@ -3,10 +3,12 @@ import 'dart:math';
 
 import '../../../core/utils/parallax_math.dart';
 import '../domain/echo.dart';
+import '../domain/echo_cipher.dart';
 import '../domain/echo_color_theme.dart';
 import '../domain/reception.dart';
 import 'echo_repository.dart';
 import 'local_echo_store.dart';
+import 'sector_grid.dart';
 
 /// Offline demo mode: simulates the ether locally with the same semantics
 /// as the backend (atomic single read, texts never on the map) — plus the
@@ -38,6 +40,7 @@ class LocalEchoRepository implements EchoRepository {
   final _changes = StreamController<void>.broadcast();
   final Map<String, Timer> _pendingDeliveries = {};
   bool _loaded = false;
+  Future<void>? _seedFuture;
 
   static const _demoTraces = [
     'Reçu. Respiré. Merci.',
@@ -55,11 +58,14 @@ class LocalEchoRepository implements EchoRepository {
     LocalEchoStore? store,
   }) {
     final repo = LocalEchoRepository(latency: latency, store: store);
-    repo._seed();
+    repo._seedFuture = repo._seed();
     return repo;
   }
 
-  void _seed() {
+  /// Demo parity with the backend: the seeded ether holds only ciphertext.
+  /// Each seed is sealed under its own ephemeral key, exactly as a real
+  /// author's device would before launching.
+  Future<void> _seed() async {
     const seeds = [
       ('Je souris toute la journée puis je pleure dans le métro.', 'INDIGO'),
       ('Je n\'ai jamais osé dire que ce travail m\'épuisait.', 'TEAL'),
@@ -94,6 +100,7 @@ class LocalEchoRepository implements EchoRepository {
     ];
     for (final (text, theme) in seeds) {
       final id = _uuid();
+      final sealed = await EchoCipher.seal(text);
       _echoes[id] = _DemoEcho(
         echo: Echo(
           id: id,
@@ -105,9 +112,15 @@ class LocalEchoRepository implements EchoRepository {
             Duration(minutes: _random.nextInt(60 * 48)),
           ),
         ),
-        text: text,
+        sealed: sealed,
       );
     }
+  }
+
+  /// Sealing the demo ether is asynchronous — every read waits for it.
+  Future<void> _ready() async {
+    await _seedFuture;
+    await _ensureLoaded();
   }
 
   Future<void> _ensureLoaded() async {
@@ -159,16 +172,34 @@ class LocalEchoRepository implements EchoRepository {
   }
 
   @override
-  Future<List<Echo>> fetchStarMap() async {
+  Future<List<Echo>> fetchStarMap() => fetchStarMapInSector(0, 0, 1, 1);
+
+  @override
+  Future<List<Echo>> fetchStarMapInSector(
+    double minX,
+    double minY,
+    double maxX,
+    double maxY,
+  ) async {
+    await _ready();
     await Future<void>.delayed(latency);
-    return _echoes.values
+    final visible = _echoes.values
         .where((e) => !_consumed.contains(e.echo.id))
         .map((e) => e.echo)
+        .where((e) =>
+            e.coordX >= minX &&
+            e.coordX <= maxX &&
+            e.coordY >= minY &&
+            e.coordY <= maxY)
         .toList();
+    // Same culling as the backend RPC: the demo ether stays a galaxy,
+    // never a scrollable feed.
+    return SectorGrid.cull(visible);
   }
 
   @override
   Future<String?> consumeEcho(String id) async {
+    await _ready();
     final demo = _echoes[id];
     if (demo == null || _consumed.contains(id)) {
       await Future<void>.delayed(latency);
@@ -179,7 +210,9 @@ class LocalEchoRepository implements EchoRepository {
     await Future<void>.delayed(latency);
     if (_consumed.contains(id)) return null;
     _consumed.add(id);
-    return demo.text;
+    // The key is exchanged at interception: decryption happens here,
+    // only for the single winner.
+    return EchoCipher.open(demo.sealed.keyB64, demo.sealed.payloadB64);
   }
 
   @override
@@ -245,7 +278,10 @@ class LocalEchoRepository implements EchoRepository {
 }
 
 class _DemoEcho {
-  _DemoEcho({required this.echo, required this.text});
+  _DemoEcho({required this.echo, required this.sealed});
   final Echo echo;
-  final String text;
+
+  /// What the demo "ether" holds: ciphertext + the sealed key escrow.
+  /// The plaintext exists nowhere — not even here.
+  final SealedEchoContent sealed;
 }

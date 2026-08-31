@@ -30,16 +30,18 @@ TOKEN_B=$(curl -s -X POST "$API/auth/v1/signup" -H "$(auth_header)" -H 'Content-
 [ -n "$TOKEN_A" ] && [ -n "$TOKEN_B" ] && ok "deux anonymes distincts créés" || ko "sign-in anonyme"
 
 # ── A launches an echo ───────────────────────────────────────────────────
+# (legacy tooling path: p_key = '' → plaintext passthrough. The real app
+#  seals with AES-256-GCM on-device and sends ciphertext + key.)
 LAUNCH=$(curl -s -X POST "$API/rest/v1/rpc/launch_echo" \
   -H "$(auth_header)" -H "$(bearer "$TOKEN_A")" -H 'Content-Type: application/json' \
-  -d '{"p_text":"je navigue dans le vide pour toi","p_x":0.5,"p_y":0.5,"p_z":0.9,"p_theme":"TEAL"}')
+  -d '{"p_ciphertext":"je navigue dans le vide pour toi","p_key":"","p_x":0.5,"p_y":0.5,"p_z":0.9,"p_theme":"TEAL"}')
 ECHO_ID=$(echo "$LAUNCH" | json_field "[0]['id']")
 [ -n "$ECHO_ID" ] && ok "A lance son écho ($ECHO_ID)" || ko "launch_echo: $LAUNCH"
 
 # Cheat: immediate second launch → rate limit.
 SECOND=$(curl -s -X POST "$API/rest/v1/rpc/launch_echo" \
   -H "$(auth_header)" -H "$(bearer "$TOKEN_A")" -H 'Content-Type: application/json' \
-  -d '{"p_text":"trop vite","p_x":0.1,"p_y":0.1,"p_z":0.5,"p_theme":"TEAL"}')
+  -d '{"p_ciphertext":"trop vite","p_key":"","p_x":0.1,"p_y":0.1,"p_z":0.5,"p_theme":"TEAL"}')
 echo "$SECOND" | grep -q KENOS_RATE_LIMIT && ok "anti-spam de lancement respecté" || ko "rate limit launch: $SECOND"
 
 # Cheat: try to read the secret column through the Data API.
@@ -47,16 +49,30 @@ CHEAT=$(curl -s "$API/rest/v1/echoes?select=encrypted_text" \
   -H "$(auth_header)" -H "$(bearer "$TOKEN_B")")
 echo "$CHEAT" | grep -qi "permission denied" && ok "encrypted_text illisible via REST" || ko "FUITE via REST: $CHEAT"
 
+# Cheat: the sealed key escrow is just as opaque.
+KEYCHEAT=$(curl -s "$API/rest/v1/echoes?select=key_seal" \
+  -H "$(auth_header)" -H "$(bearer "$TOKEN_B")")
+echo "$KEYCHEAT" | grep -qi "permission denied" && ok "key_seal illisible via REST" || ko "FUITE clé via REST: $KEYCHEAT"
+
 # ── B reads the map ──────────────────────────────────────────────────────
 MAP=$(curl -s "$API/rest/v1/echoes_map?select=*" -H "$(auth_header)" -H "$(bearer "$TOKEN_B")")
 echo "$MAP" | grep -q "$ECHO_ID" && ok "la carte expose les métadonnées" || ko "carte: $MAP"
 echo "$MAP" | grep -q "encrypted_text" && ko "la carte expose du texte !" || ok "aucune colonne de texte sur la carte"
 
-# ── B intercepts: single read ────────────────────────────────────────────
+# ── B reads the sector-culled viewport ───────────────────────────────────
+SECTOR=$(curl -s -X POST "$API/rest/v1/rpc/fetch_map_sector" \
+  -H "$(auth_header)" -H "$(bearer "$TOKEN_B")" -H 'Content-Type: application/json' \
+  -d '{"p_min_x":0,"p_min_y":0,"p_max_x":1,"p_max_y":1}')
+echo "$SECTOR" | grep -q "$ECHO_ID" && ok "fetch_map_sector renvoie l'écho du viewport" || ko "sector: $SECTOR"
+
+# ── B intercepts: single read (consume returns the sealed bundle) ────────
 TEXT=$(curl -s -X POST "$API/rest/v1/rpc/consume_echo" \
   -H "$(auth_header)" -H "$(bearer "$TOKEN_B")" -H 'Content-Type: application/json' \
   -d "{\"target_echo_id\":\"$ECHO_ID\"}")
-check "$TEXT" '"je navigue dans le vide pour toi"' "B reçoit le texte (lecture unique)"
+CIPHERTEXT=$(echo "$TEXT" | json_field "['ciphertext']")
+KEY=$(echo "$TEXT" | json_field "['key']")
+check "$CIPHERTEXT" 'je navigue dans le vide pour toi' "B reçoit la charge scellée (lecture unique)"
+check "$KEY" 'None' "l'écho legacy ne porte aucune clé"
 
 AGAIN=$(curl -s -X POST "$API/rest/v1/rpc/consume_echo" \
   -H "$(auth_header)" -H "$(bearer "$TOKEN_A")" -H 'Content-Type: application/json' \

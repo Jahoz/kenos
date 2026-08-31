@@ -1,7 +1,7 @@
 -- KENOS security tests — access control as an authenticated client.
 -- These tests actively try to cheat; every attempt must fail.
 begin;
-select plan(11);
+select plan(13);
 
 -- Seed: one echo owned by a test author, created outside client reach.
 insert into auth.users (id, email, aud, role)
@@ -35,6 +35,19 @@ select throws_ok(
   'select author_id from public.echoes',
   42501, 'permission denied for table echoes',
   'author_id not granted either'
+);
+
+-- The sealed key escrow is as opaque as the ciphertext itself.
+select throws_ok(
+  'select key_seal from public.echoes',
+  42501, 'permission denied for table echoes',
+  'key_seal permission-denied for clients'
+);
+-- And the KEK store has no client access whatsoever.
+select throws_ok(
+  'select * from public.kenos_ether_kek',
+  42501, 'permission denied for table kenos_ether_kek',
+  'the KEK table is invisible to clients'
 );
 
 -- No writes of any kind on the table.
