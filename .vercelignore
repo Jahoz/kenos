@@ -1,0 +1,29 @@
+# Safety net: a plain `vercel deploy` from the repository root must
+# never upload source code (it once did — a 358 MB "deployment" that
+# briefly served the repo as static files). Anchored patterns only
+# match when the deploy root IS the repo; `make deploy-web` deploys
+# from build/web and is unaffected.
+/lib
+/test
+/supabase
+/ios
+/android
+/macos
+/web
+/site
+/tool
+/docs
+/scripts
+/shaders
+/assets
+/.github
+Makefile
+pubspec.yaml
+pubspec.lock
+analysis_options.yaml
+CLAUDE.md
+AGENTS.md
+CONTRIBUTING.md
+README.md
+repomix.config.json
+kenos.iml
