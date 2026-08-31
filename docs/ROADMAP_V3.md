@@ -90,13 +90,16 @@ charte (règle du registre : ne jamais importer un design d'ailleurs).
 - **DoD** : parité mécanique avec `poc/frequencies.html`, analyze 0,
   tests (mapping Y→note, X→teinte, purge), mode démo complet.
 
-### V3.2 — Symphonie connectée (l'onde traverse l'éther)
-- Migration 0005 : table `frequencies` (x, y, freq, hue, created_at),
-  RPC `emit_frequency` + `fetch_nearby_frequencies(x, y, radius)` —
-  bbox, T3 — purge > 60 s (`kenos_purge` l'absorbe), RLS RPC-only.
-- Polling 2 s côté client, volume selon distance au tap.
-- **DoD** : deux appareils émettent et s'entendent dans le rayon,
-  purge vérifiée en pgTAP, demo mode iso-sémantique.
+### V3.2 — Symphonie connectée ✅ (livrée 2026-08-31)
+- Migrations 0005 (`kenos_frequencies`, `emit_frequency`, `fetch_nearby_frequencies`
+  — bbox, T3) + `20260831120000_purge_consolidation` (la purge de 0005
+  et celle d'echo_reports se marchaient dessus : source unique désormais).
+- Polling 2 s, volume selon la distance au point d'écoute, démo
+  habitée par des inconnus fantômes, dégradation locale silencieuse.
+- Edge Function `consume-media` déployée au cloud (elle ne l'était
+  pas : chaque lecture échouait silencieusement en prod).
+- DoD atteint : smoke réel A émet → B entend (cloud_smoke_test 2/2),
+  purge en pgTAP (60/60).
 
 ### V3.3 — Sling-Shot « phénix » (après arbitrage T1)
 - RevealSheet : après le burn, geste drag — bas = cendres (rite),
