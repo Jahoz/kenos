@@ -203,9 +203,15 @@ trouve ce qui y dérive.
 - **V3.7b (visuel centre)** : le trou noir — disque noir-sur-noir,
   anneau rosé discret, lentille gravitationnelle très douce sur les
   étoiles proches (déplacement apparent), jamais éblouissant.
-- **V3.7c — Comètes & musique des sphères** : orbites elliptiques des
-  momentum (frôlant le trou noir), nœud d'origine en ancrage
-  personnel, rayon d'écoute lié à la caméra.
+- **V3.7c ✅ (livrée 2026-09-01)** : comètes (momentum > 0 → ellipse
+  excentrique autour du vide, périhélie frôlant le trou noir,
+  aphélie au-delà des planètes, excentricité croissant avec le
+  momentum — déterministe), constellations de lignage (parent_id via
+  migration 20260901100000 ; segments faint vers le point de
+  renaissance ; parent consumé = ancre fantôme), musique des sphères
+  (le centre d'écoute FRÉQUENCES s'ouvre là où repose l'œil —
+  travelPositionProvider). pgTAP 58/58, 103 tests Dart, déployé et
+  vérifié live.
 
 ## V3.8 — Germination : le Cadavre Exquis (idée Hugo, 2026-09-01)
 
