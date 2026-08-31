@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/haptics/kenos_haptics.dart';
+import '../../../core/widgets/hud.dart';
 import '../../../core/widgets/scramble_text.dart';
 import '../../cosmic_map/application/map_controller.dart';
 import '../../echo/data/echo_repository.dart';
@@ -52,14 +54,14 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     // Security theater: clear text freezes, scrambles, vanishes.
     // The bell rings DURING the sealing, without delaying it.
     KenosHaptics.pulse(KenosPulse.seal);
-    audio.playBell(KenosBell.seal);
+    unawaited(audio.playBell(KenosBell.seal));
     await Future<void>.delayed(AppDurations.scramble);
 
     try {
       await ref
           .read(mapControllerProvider.notifier)
           .sendEcho(text: text, theme: _theme);
-      audio.playBell(KenosBell.send);
+      unawaited(audio.playBell(KenosBell.send));
       KenosHaptics.pulse(KenosPulse.launch);
       if (!mounted) return;
       await Future<void>.delayed(const Duration(milliseconds: 500));
@@ -70,9 +72,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
       final message = e is KenosException
           ? e.hudMessage
           : 'L\'ÉTHER A REFUSÉ L\'ÉCHO.';
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(message)));
+      showHud(context, message);
     }
   }
 

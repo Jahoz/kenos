@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -114,7 +115,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
       await ref
           .read(mapControllerProvider.notifier)
           .leaveTrace(widget.echo.id, text);
-      ref.read(audioControllerProvider).playBell(KenosBell.send);
+      unawaited(ref.read(audioControllerProvider).playBell(KenosBell.send));
       KenosHaptics.pulse(KenosPulse.launch);
       if (!mounted) return;
       setState(() => _phase = _Phase.sent);

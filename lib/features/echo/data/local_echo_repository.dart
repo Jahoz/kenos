@@ -243,7 +243,7 @@ class LocalEchoRepository implements EchoRepository {
     await Future<void>.delayed(latency);
     final trimmed = text.trim();
     if (trimmed.isEmpty || trimmed.length > 140) {
-      throw const KenosException('INVALID');
+      throw const KenosException(KenosErrorCode.invalid);
     }
     // In demo mode, traces left on the seeded ether vanish into the void.
     return true;

@@ -2,10 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'echo_repository.dart';
 import 'local_echo_repository.dart';
 import 'local_echo_store.dart';
 import 'supabase_echo_repository.dart';
-import 'echo_repository.dart';
 
 /// App boot state, computed in `main()` before runApp.
 class Bootstrap {

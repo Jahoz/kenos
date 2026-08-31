@@ -12,7 +12,7 @@ import '../../../../core/haptics/kenos_haptics.dart';
 import '../../../../core/widgets/scramble_text.dart';
 import '../../../echo/domain/echo.dart';
 import '../../../echo/domain/reception.dart';
-import '../../application/map_controller.dart';
+import '../../application/reception_controller.dart';
 
 /// Bottle-in-the-sea signal, author side: tap your sealed echo to learn
 /// whether it was intercepted — how long it drifted, how far it traveled,
@@ -80,8 +80,8 @@ class _ReceptionPanelState extends ConsumerState<ReceptionPanel>
       // The signal burns — one look, then the void.
       KenosHaptics.pulse(KenosPulse.burn);
       await ref
-          .read(mapControllerProvider.notifier)
-          .burnReception(widget.echo.id);
+          .read(receptionControllerProvider.notifier)
+          .burn(widget.echo.id);
     }
     await _dissolve.forward(from: 0);
     if (mounted) Navigator.of(context, rootNavigator: true).pop();

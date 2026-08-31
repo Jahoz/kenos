@@ -14,6 +14,8 @@ class ParallaxMath {
 
   /// Pixel offset induced by the device tilt.
   /// Close objects (z → 1) follow the motion, the background stays put.
+  /// One home for THE parallax formula — layers must use this, not
+  /// hand-rolled copies of it.
   static double offsetPixels({
     required double tilt,
     required double z,

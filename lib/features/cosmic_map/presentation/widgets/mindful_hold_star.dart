@@ -12,12 +12,15 @@ import '../../../../core/constants/app_durations.dart';
 import '../../../../core/haptics/kenos_haptics.dart';
 import '../../../../core/utils/motion_preferences.dart';
 import '../../../../core/utils/parallax_math.dart';
+import '../../../../core/widgets/hud.dart';
 import '../../../echo/data/echo_repository.dart';
 import '../../../echo/domain/echo.dart';
+import '../../../echo/domain/reception.dart';
 import '../../application/map_controller.dart';
-import 'ring_painters.dart';
+import '../../application/reception_controller.dart';
 import 'reception_sheet.dart';
 import 'reveal_sheet.dart';
+import 'ring_painters.dart';
 
 /// A star on the map.
 ///
@@ -119,7 +122,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
         ref.read(mapControllerProvider.notifier).forget(_echo.id);
         _intercepted();
       } else {
-        ref.read(audioControllerProvider).playBell(KenosBell.reveal);
+        unawaited(ref.read(audioControllerProvider).playBell(KenosBell.reveal));
         KenosHaptics.pulse(KenosPulse.reveal);
         await showRevealSheet(context, echo: echo);
         if (!mounted) return;
@@ -136,7 +139,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
       _busy = false;
       if (mounted) {
         _controller.value = 0;
-        ref.read(audioControllerProvider).setDronePitch(1.0);
+        unawaited(ref.read(audioControllerProvider).setDronePitch(1.0));
       }
     }
   }
@@ -148,9 +151,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
 
   void _toast(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    showHud(context, message);
   }
 
   void _onPointerDown(PointerDownEvent event) {
@@ -160,7 +161,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
       KenosHaptics.pulse(KenosPulse.holdStart);
       ref.read(audioControllerProvider).playBell(KenosBell.seal);
       final reception = ref
-          .read(mapControllerProvider.notifier)
+          .read(receptionControllerProvider.notifier)
           .receptionFor(_echo.id);
       showReceptionSheet(context, echo: _echo, reception: reception);
       return;
@@ -261,9 +262,12 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   }
 
   bool _hasUnreadReception() {
-    final reception =
-        ref.read(mapControllerProvider.notifier).receptionFor(_echo.id);
-    return reception != null && !reception.seen;
+    // Watch the receptions themselves (not just the notifier): a signal
+    // landing must relight this star on the next frame.
+    final receptions =
+        ref.watch(receptionControllerProvider).valueOrNull ??
+            const <Reception>[];
+    return receptions.any((r) => r.echoId == _echo.id && !r.seen);
   }
 }
 

@@ -12,6 +12,7 @@ import '../../echo/data/echo_providers.dart';
 import '../../echo/domain/echo.dart';
 import '../application/map_controller.dart';
 import '../application/motion_service.dart';
+import '../application/reception_controller.dart';
 import 'widgets/background_painters.dart';
 import 'widgets/mindful_hold_star.dart';
 
@@ -30,9 +31,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     vsync: this,
     duration: const Duration(seconds: 60),
   );
-
-  /// Last known signal count — to feel new ones land.
-  int _lastSignals = 0;
 
   @override
   void initState() {
@@ -62,18 +60,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final tilt = ref.watch(tiltProvider).valueOrNull ?? Tilt.zero;
     final boot = ref.watch(bootstrapProvider);
     final count = echoes.valueOrNull?.length ?? 0;
-    final signals =
-        ref.read(mapControllerProvider.notifier).unseenReceptionCount;
-    if (signals > _lastSignals) {
-      _lastSignals = signals;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
+    final signals = ref.watch(receptionControllerProvider).valueOrNull?.length ?? 0;
+
+    // A new signal lands: the device feels it (single informative
+    // pulse, kept even under reduce-motion).
+    ref.listen<int>(
+      receptionControllerProvider.select(
+        (receptions) => receptions.valueOrNull?.length ?? 0,
+      ),
+      (previous, next) {
+        if ((previous ?? 0) < next) {
           KenosHaptics.pulse(KenosPulse.signal, reduceMotion: reduced);
         }
-      });
-    } else {
-      _lastSignals = signals;
-    }
+      },
+    );
 
     return Scaffold(
       backgroundColor: AppColors.voidBlack,
@@ -232,10 +232,10 @@ class _StarLayer extends StatelessWidget {
 
           final baseX =
               ParallaxMath.clamp(echo.coordX * w, hit / 2, w - hit / 2) +
-              tilt.x * 46 * z;
+              ParallaxMath.offsetPixels(tilt: tilt.x, z: z, amplitude: 46);
           final baseY =
               ParallaxMath.clamp(echo.coordY * h, hit / 2, h - hit / 2) +
-              tilt.y * 32 * z;
+              ParallaxMath.offsetPixels(tilt: tilt.y, z: z, amplitude: 32);
 
           children.add(
             Positioned(

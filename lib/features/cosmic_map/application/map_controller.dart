@@ -1,44 +1,17 @@
-import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../echo/data/echo_providers.dart';
 import '../../echo/domain/echo.dart';
 import '../../echo/domain/echo_color_theme.dart';
-import '../../echo/domain/reception.dart';
 
-/// Stellar map controller: merges ether echoes (remote metadata)
-/// and the user's sealed echoes (local), plus the reception signals
-/// of the bottle-in-the-sea loop.
+/// Stellar map controller: merges the ether (remote metadata, never the
+/// text) and the user's sealed echoes (local store, sealed without
+/// text). Bottle-in-the-sea signals live in [ReceptionController].
 class MapController extends AsyncNotifier<List<Echo>> {
-  StreamSubscription<void>? _receptionSub;
-  Timer? _poll;
-
-  List<Reception> _receptions = const [];
-  bool _receptionsLoaded = false;
-
-  /// Unseen receptions, newest first.
-  List<Reception> get receptions => _receptions;
-
-  int get unseenReceptionCount =>
-      _receptions.where((r) => !r.seen).length;
-
-  Reception? receptionFor(String echoId) {
-    for (final r in _receptions) {
-      if (r.echoId == echoId) return r;
-    }
-    return null;
-  }
-
   @override
   Future<List<Echo>> build() async {
-    ref.onDispose(() {
-      _receptionSub?.cancel();
-      _poll?.cancel();
-    });
-
     // Anonymous session: on failure we still try the map;
     // the view only needs metadata if a session already exists.
     try {
@@ -52,44 +25,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
 
     final remote = await repo.fetchStarMap();
     final mine = await store.sealedEchoes();
-    await _refreshReceptions();
-
-    // Live signals: demo simulation stream + gentle polling for the server.
-    _receptionSub = repo.receptionChanges().listen((_) => _refreshReceptions());
-    _poll?.cancel();
-    _poll = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (!_receptionsLoaded) return;
-      _refreshReceptions();
-    });
-
     return [...mine, ...remote];
-  }
-
-  Future<void> _refreshReceptions() async {
-    try {
-      final repo = ref.read(echoRepositoryProvider);
-      final fresh = await repo.fetchReceptions();
-      _receptionsLoaded = true;
-      if (!_sameReceptions(fresh)) {
-        _receptions = fresh;
-        // Re-emit the echo list so sealed stars re-render their pulse.
-        final echoes = state.valueOrNull ?? const <Echo>[];
-        state = AsyncData([...echoes]);
-      }
-    } catch (e) {
-      debugPrint('[kenos.map] receptions unreachable: $e');
-    }
-  }
-
-  bool _sameReceptions(List<Reception> fresh) {
-    if (fresh.length != _receptions.length) return false;
-    for (var i = 0; i < fresh.length; i++) {
-      if (fresh[i].echoId != _receptions[i].echoId ||
-          fresh[i].reply != _receptions[i].reply) {
-        return false;
-      }
-    }
-    return true;
   }
 
   /// Atomic interception of an echo.
@@ -123,16 +59,6 @@ class MapController extends AsyncNotifier<List<Echo>> {
   Future<bool> leaveTrace(String echoId, String text) async {
     final repo = ref.read(echoRepositoryProvider);
     return repo.leaveTrace(echoId, text);
-  }
-
-  /// Viewing a reception burns it — the signal exists once.
-  Future<void> burnReception(String echoId) async {
-    final repo = ref.read(echoRepositoryProvider);
-    await repo.burnReception(echoId);
-    _receptions =
-        _receptions.where((r) => r.echoId != echoId).toList();
-    final echoes = state.valueOrNull ?? const <Echo>[];
-    state = AsyncData([...echoes]);
   }
 
   /// Seals the echo, launches it into the ether and anchors it locally (no text).

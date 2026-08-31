@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../constants/app_durations.dart';
@@ -99,10 +97,4 @@ TextStyle secretStyle({double fontSize = 19}) => TextStyle(
   fontSize: fontSize,
   height: 1.75,
   color: const Color(0xFFF4F4F6),
-);
-
-/// Utility: blur a widget (dissolve / depth).
-Widget blurred({required double sigma, required Widget child}) => ImageFiltered(
-  imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-  child: child,
 );

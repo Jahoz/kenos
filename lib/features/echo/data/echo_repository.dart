@@ -1,3 +1,5 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../domain/echo.dart';
 import '../domain/echo_color_theme.dart';
 import '../domain/reception.dart';
@@ -49,26 +51,43 @@ abstract class EchoRepository {
   Stream<void> receptionChanges();
 }
 
+/// Functional error codes raised by server-side RPCs — exhaustive on
+/// purpose: a new server code must become a new enum value here, not a
+/// silent fallthrough to "unreachable".
+enum KenosErrorCode { rateLimit, invalid, unauthenticated, unreachable }
+
 /// Functional exceptions raised by server-side RPCs.
 class KenosException implements Exception {
   const KenosException(this.code);
-  final String code;
 
+  final KenosErrorCode code;
+
+  /// Typed origin: PostgREST carries the server's `raise exception`
+  /// token in [PostgrestException.message]; anything else (network,
+  /// serialization) is genuinely unreachable.
   factory KenosException.from(Object error) {
-    final raw = error.toString();
-    if (raw.contains('KENOS_RATE_LIMIT')) {
-      return const KenosException('RATE_LIMIT');
+    if (error is KenosException) return error;
+    final message = switch (error) {
+      PostgrestException e => e.message,
+      _ => error.toString(),
+    };
+    if (message.contains('KENOS_RATE_LIMIT')) {
+      return const KenosException(KenosErrorCode.rateLimit);
     }
-    if (raw.contains('KENOS_INVALID')) {
-      return const KenosException('INVALID');
+    if (message.contains('KENOS_INVALID')) {
+      return const KenosException(KenosErrorCode.invalid);
     }
-    return const KenosException('UNREACHABLE');
+    if (message.contains('KENOS_UNAUTHENTICATED')) {
+      return const KenosException(KenosErrorCode.unauthenticated);
+    }
+    return const KenosException(KenosErrorCode.unreachable);
   }
 
   /// French HUD message, machine typography (product UI language).
   String get hudMessage => switch (code) {
-    'RATE_LIMIT' => 'TROP RAPIDE. RESPIRE, PUIS RECOMMENCE.',
-    'INVALID' => 'CET ÉCHO EST MALFORMÉ.',
-    _ => 'L\'ÉTHER EST INJOIGNABLE.',
+    KenosErrorCode.rateLimit => 'TROP RAPIDE. RESPIRE, PUIS RECOMMENCE.',
+    KenosErrorCode.invalid => 'CET ÉCHO EST MALFORMÉ.',
+    KenosErrorCode.unauthenticated => 'L\'ÉTHER NE TE RECONNAÎT PAS.',
+    KenosErrorCode.unreachable => 'L\'ÉTHER EST INJOIGNABLE.',
   };
 }
