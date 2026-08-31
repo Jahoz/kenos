@@ -152,8 +152,15 @@ trouve ce qui y dérive.
 
 ### Le monde proposé
 
-- **Le soleil est le Vide.** Au centre du monde : rien — KENOS. Les
-  planètes orbitent lentement autour du vide, pas autour d'un astre.
+- **Le centre est un trou noir** (arbitrage Hugo, 2026-09-01 — mieux
+  que le « soleil de vide » : KENOS ne source aucune lumière, les
+  échos sont les seules lumières du produit). Un disque plus noir que
+  le fond, un fin anneau d'accrétion rosé — le ROSE, réservé à la
+  destruction, trouve ici son seul objet céleste légitime. L'horizon
+  des événements dit le contrat de lecture : ce qui franchit la ligne
+  ne revient jamais. Les planètes orbitent le vide ; les comètes le
+  frôlent ; plus tard, les échos non interceptés à la dérive
+  s'en approchent jusqu'à la purge des 30 jours.
 - **Trois planètes = les trois intentions déjà présentes** dans le
   Miroir : APAISER (sarcelle), CONFIER (indigo), ÉCLAIRER (lumen).
   Ce ne sont pas des hashtags : ce sont des états d'être, des gravités.
@@ -193,9 +200,12 @@ trouve ce qui y dérive.
   des échos par intention, halos CustomPainter + lente rotation, tap
   planète = glissement de caméra (« voyager vers »), le soleil vide au
   centre. Zéro backend.
+- **V3.7b (visuel centre)** : le trou noir — disque noir-sur-noir,
+  anneau rosé discret, lentille gravitationnelle très douce sur les
+  étoiles proches (déplacement apparent), jamais éblouissant.
 - **V3.7c — Comètes & musique des sphères** : orbites elliptiques des
-  momentum, nœud d'origine en ancrage personnel, rayon d'écoute lié à
-  la caméra.
+  momentum (frôlant le trou noir), nœud d'origine en ancrage
+  personnel, rayon d'écoute lié à la caméra.
 
 ## 4. Règles inchangées (rappel)
 
