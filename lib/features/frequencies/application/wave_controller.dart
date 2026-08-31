@@ -123,17 +123,27 @@ class WaveController extends Notifier<List<KenosWave>> {
       return;
     }
     if (heard.isEmpty) return;
+    final now = nowSource();
     final known = state.map((w) => w.id).toSet();
     for (final remote in heard) {
       if (known.contains(remote.id)) continue;
+
+      // How old is this wave at arrival? The ether's life is 60 s, but
+      // the NEBULA breathes for its full envelope from ARRIVAL — a wave
+      // heard late must still be seen, never flash-and-vanish (or worse,
+      // arrive already dead, which made strangers inaudible-invisible).
+      final age = now.difference(remote.createdAt);
+      if (age.inSeconds > 45) continue; // almost gone: let it rest.
+      final fresh = age.inSeconds <= 10; // sound only for the freshly born.
+
       final wave = KenosWave(
         id: remote.id,
         offsetX: remote.offsetX,
         offsetY: remote.offsetY,
         noteIndex: remote.noteIndex,
         hueIndex: remote.hueIndex,
-        // The server's birth time: the wave keeps aging in transit.
-        bornAt: remote.createdAt,
+        // Arrival, not server birth: the envelope plays in full here.
+        bornAt: now,
       );
       final alive = _alive(state);
       while (alive.length >= maxWaves) {
@@ -141,7 +151,9 @@ class WaveController extends Notifier<List<KenosWave>> {
       }
       state = [...alive, wave];
       _ensurePurgeTicker();
-      if (!_incoming.isClosed) _incoming.add(wave);
+      // Catch-up of stale waves stays silent (no wall of sound on
+      // open); fresh ones sing, softer the further they were born.
+      if (fresh && !_incoming.isClosed) _incoming.add(wave);
     }
   }
 

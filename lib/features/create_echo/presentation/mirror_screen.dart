@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 
@@ -56,23 +58,38 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
       _input.text.length <= _maxLength;
 
   Future<void> _pickImage() async {
-    final image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 78,
-      maxWidth: 1600,
-    );
-    if (image == null) return;
-    final draft = EchoMediaDraft(
-      kind: EchoMediaKind.image,
-      bytes: await image.readAsBytes(),
-      name: image.name,
-    );
-    if (!mounted) return;
-    if (!draft.isWithinLimit) {
-      showHud(context, 'CE FRAGMENT VISUEL EST TROP LOURD.');
-      return;
+    try {
+      final image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 78,
+        maxWidth: 1600,
+      );
+      if (image == null) return;
+      final draft = EchoMediaDraft(
+        kind: EchoMediaKind.image,
+        bytes: await image.readAsBytes(),
+        name: image.name,
+      );
+      if (!mounted) return;
+      if (!draft.isWithinLimit) {
+        showHud(context, 'CE FRAGMENT VISUEL EST TROP LOURD.');
+        return;
+      }
+      setState(() => _media = draft);
+    } catch (e) {
+      debugPrint('[kenos.mirror] image pick failed: $e');
+      if (mounted) showHud(context, 'LE FRAGMENT VISUEL REFUSE DE VENIR.');
     }
-    setState(() => _media = draft);
+  }
+
+  /// Recording bytes, cross-platform: native paths read via XFile,
+  /// web blob: URLs via a same-origin fetch.
+  Future<Uint8List> _readRecordingBytes(String path) async {
+    if (kIsWeb && path.startsWith('blob:')) {
+      final response = await http.get(Uri.parse(path));
+      return response.bodyBytes;
+    }
+    return XFile(path).readAsBytes();
   }
 
   Future<void> _toggleRecording() async {
@@ -81,9 +98,12 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
       if (path == null || !mounted) return;
       final draft = EchoMediaDraft(
         kind: EchoMediaKind.audio,
-        bytes: await XFile(path).readAsBytes(),
+        // On the web, stop() returns a blob: URL that XFile cannot
+        // read — fetch it as bytes instead (same-origin).
+        bytes: await _readRecordingBytes(path),
         name: path.split('/').last,
       );
+      if (!mounted) return;
       if (!mounted) return;
       if (!draft.isWithinLimit) {
         showHud(context, 'CE FRAGMENT SONORE EST TROP LOURD.');

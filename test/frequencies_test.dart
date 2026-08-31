@@ -115,6 +115,75 @@ void main() {
       expect(repo.emitted.single.noteIndex, wave.noteIndex);
     });
 
+    test('une onde entendue tard respire ENTIÈREMENT depuis son arrivée', () async {
+      // Regression: the nebula's life used to run from the SERVER's
+      // birth — a wave heard 5 s after its emission showed for 2 s
+      // only; heard after 7 s, never at all. It must breathe in full
+      // from ARRIVAL.
+      final repo = FakeFrequencyRepository();
+      final container = ProviderContainer(overrides: [
+        frequencyRepositoryProvider.overrideWithValue(repo),
+      ]);
+      addTearDown(container.dispose);
+
+      final controller = container.read(waveControllerProvider.notifier);
+      controller.nowSource = () => DateTime(2026, 8, 31, 12);
+      // Born 30 s ago: stale catch-up — visible, silent.
+      // Born 3 s ago: fresh — visible, and it sings.
+      repo.nearby = [
+        RemoteWave(
+          id: 'stale-wave',
+          offsetX: 0.4,
+          offsetY: 0.4,
+          noteIndex: 3,
+          hueIndex: 0,
+          createdAt: DateTime(2026, 8, 31, 11, 59, 30),
+        ),
+        RemoteWave(
+          id: 'fresh-wave',
+          offsetX: 0.6,
+          offsetY: 0.6,
+          noteIndex: 12,
+          hueIndex: 2,
+          createdAt: DateTime(2026, 8, 31, 11, 59, 57),
+        ),
+      ];
+
+      final sung = <String>[];
+      final sub = controller.incomingWaves.listen((w) => sung.add(w.id));
+      addTearDown(sub.cancel);
+
+      await controller.debugPollOnce();
+      await Future<void>.delayed(const Duration(milliseconds: 30)); // stream delivery
+      final heard = container.read(waveControllerProvider);
+      expect(heard.length, 2, reason: 'les deux ondes arrivent à l\'écran');
+
+      // 5 s after arrival, both still breathe (life counts from HERE).
+      controller.nowSource = () => DateTime(2026, 8, 31, 12, 0, 5);
+      controller.purgeExpired();
+      expect(container.read(waveControllerProvider).length, 2);
+
+      // Only the fresh one sang.
+      expect(sung, ['fresh-wave']);
+
+      // A wave older than 45 s at arrival is left to rest.
+      repo.nearby = [
+        RemoteWave(
+          id: 'dead-wave',
+          offsetX: 0.2,
+          offsetY: 0.2,
+          noteIndex: 1,
+          hueIndex: 1,
+          createdAt: DateTime(2026, 8, 31, 11, 59, 10),
+        ),
+      ];
+      await controller.debugPollOnce();
+      expect(
+        container.read(waveControllerProvider).map((w) => w.id),
+        isNot(contains('dead-wave')),
+      );
+    });
+
     test('le poll fusionne les ondes des autres une seule fois chacune',
         () async {
       final repo = FakeFrequencyRepository();

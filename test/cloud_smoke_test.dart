@@ -1,10 +1,13 @@
 @Timeout(Duration(minutes: 2))
 library;
 
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/echo/data/echo_repository.dart';
 import 'package:kenos/features/echo/data/supabase_echo_repository.dart';
+
 import 'package:kenos/features/echo/domain/echo_color_theme.dart';
+import 'package:kenos/features/echo/domain/echo_media.dart';
 import 'package:kenos/features/frequencies/data/frequency_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -137,6 +140,54 @@ void main() {
         ? false
         : 'SUPABASE_URL / SUPABASE_ANON_KEY absents (make dev-cloud fournit .env.cloud)',
   );
+
+  test('Média réel : fragment image chiffré, one-shot via Edge Function',
+      () async {
+    final a = SupabaseClient(_url, _key);
+    final b = SupabaseClient(_url, _key);
+    addTearDown(a.dispose);
+    addTearDown(b.dispose);
+    await a.auth.signInAnonymously();
+    await b.auth.signInAnonymously();
+
+    final repoA = SupabaseEchoRepository(a);
+    final repoB = SupabaseEchoRepository(b);
+
+    // A tiny valid JPEG (1x1, baseline) as the fragment.
+    const jpegB64 =
+        '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0a'
+        'HBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAQAAA'
+        'AAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8Q'
+        'AFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//9k=';
+    final bytes = base64Decode(jpegB64);
+
+    final u = 0.1 + (DateTime.now().millisecondsSinceEpoch % 700) / 1000;
+    final echo = await repoA.sendEcho(
+      text: 'fragment visuel',
+      coordX: u,
+      coordY: 0.9,
+      coordZ: 0.9,
+      theme: EchoColorTheme.lumen,
+      media: EchoMediaDraft(
+        kind: EchoMediaKind.image,
+        bytes: bytes,
+        name: 'fragment.jpg',
+      ),
+    );
+    expect(echo.mediaKind, EchoMediaKind.image);
+
+    // B intercepts: the Edge Function must return the sealed fragment,
+    // decrypted with the same escrowed key.
+    final consumed = await repoB.consumeEcho(echo.id);
+    expect(consumed?.text, 'fragment visuel');
+    expect(consumed?.media, isNotNull, reason: 'le fragment traverse l\'Edge Function');
+    expect(consumed!.media!.kind, EchoMediaKind.image);
+    expect(consumed.media!.bytes.length, bytes.length,
+        reason: 'le fragment déchiffré est intact');
+  },
+      skip: configured
+          ? false
+          : 'SUPABASE_URL / SUPABASE_ANON_KEY absents (make dev-cloud fournit .env.cloud)');
 
   test('Phénix réel : A lance, B lit et relance, C lit un momentum 1',
       () async {
