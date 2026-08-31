@@ -115,12 +115,20 @@ charte (règle du registre : ne jamais importer un design d'ailleurs).
   u1→u4→u3 et les refus), smoke réel A lance → B lit+relance → C lit
   un momentum 1 (3/3).
 
-### V3.4 — L'Aube complète
-- Sas d'ouverture avant la carte : phrases poétiques depuis les
-  réceptions accumulées + stats (`user_stats_store` déjà posé), aura
-  ambre sur le nœud d'origine, stardust.
-- **DoD** : ouvrir l'app raconte ce qui s'est passé pendant l'absence,
-  jamais une notification.
+### V3.4 — L'Aube complète ✅ (livrée 2026-08-31)
+- Sas d'ouverture : lignes poétiques sur ce qui s'est passé pendant
+  l'absence (strictement réceptions non vues — les traces restent
+  non brûlées), point ambre qui respire, « touche le vide pour
+  entrer ». Parle une fois par session, puis se tait ; la visite est
+  enregistrée à la fermeture.
+- Nœud d'origine sur la carte : cœur ambre dont la lueur monte avec
+  la stardust (une mote par écho lu, une par réception reçue),
+  jusqu'à 9 motes en orbite (plafonné : le vide reste un vide),
+  un tap vers l'observation d'impact. Label sémantique.
+- Token dédié `ember` (#F59E0B/#D97706) ajouté au registre — impact
+  chaleureux, jamais confondu avec le rose destructif (testé).
+- DoD atteint : ouvrir l'app raconte l'absence, jamais une
+  notification — 77 tests, analyze 0, déployé et vérifié.
 
 ### V3.5 — Médias : finir le dé-bruitage
 - Finaliser shaders photo (constellation de points, dé-brouillage au
