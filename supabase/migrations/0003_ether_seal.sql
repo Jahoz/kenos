@@ -107,7 +107,9 @@ create function public.launch_echo(
 returns table (id uuid, created_at timestamptz)
 language plpgsql
 security definer
-set search_path = public
+-- pgcrypto lives in the `extensions` schema on Supabase: it MUST be in
+-- the path or pgp_sym_encrypt is unresolved at runtime.
+set search_path = public, extensions
 as $$
 declare
     uid     uuid := auth.uid();
@@ -178,7 +180,9 @@ create function public.consume_echo(target_echo_id uuid)
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+-- pgcrypto lives in the `extensions` schema on Supabase: it MUST be in
+-- the path or pgp_sym_decrypt is unresolved at runtime.
+set search_path = public, extensions
 as $$
 declare
     echo_content text;

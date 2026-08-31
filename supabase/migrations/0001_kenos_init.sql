@@ -7,8 +7,9 @@
 --     Here RLS + COLUMN-LEVEL grants make `encrypted_text` structurally
 --     unreadable by clients: the role has no SELECT privilege on that
 --     column, so even a modified view cannot leak it.
---  2. The map view uses `security_invoker = true` (no owner-RLS bypass,
---     per Supabase security guidance) and only reads granted columns.
+--  2. The map reads metadata only, through RPC (security definer,
+--     granted columns only) — `encrypted_text` stays structurally
+--     unreadable for clients.
 --  3. `consume_echo` is hardened: `SET search_path` (SECURITY DEFINER
 --     hijack protection), an `author_id <> auth.uid()` guard (one cannot
 --     intercept one's own echo), and a `kenos_reads` journal (contentless
@@ -63,18 +64,11 @@ revoke all on public.kenos_reads from anon, authenticated;
 grant select (id, coord_x, coord_y, coord_z, color_theme, created_at)
     on public.echoes to authenticated;
 
--- ── Stellar map view (metadata only) ────────────────────────────────────
--- security_invoker = true: the view executes as the CALLING role (no
--- owner-RLS bypass). It can only expose columns the caller may read:
--- even if someone later edits this view, encrypted_text stays
--- permission-denied for clients.
-create or replace view public.echoes_map
-with (security_invoker = true)
-as
-select id, coord_x, coord_y, coord_z, color_theme, created_at
-from public.echoes;
-
-grant select on public.echoes_map to authenticated;
+-- ── Stellar map access ──────────────────────────────────────────────────
+-- (since migration 0004) the client reads the map through the
+-- `fetch_map_sector` RPC: metadata only, author-excluded, sector-culled.
+-- An intermediate `echoes_map` view existed in early revisions and is
+-- dropped by 0004 — RPC-only access means one surface, not two.
 
 -- ── RPC 1: launch an echo (validation + anti-spam) ──────────────────────
 create or replace function public.launch_echo(

@@ -14,14 +14,22 @@
 --     enable it once `pg_cron` is available on the project.
 -- ═══════════════════════════════════════════════════════════════════════
 
+-- ── Retired: the echoes_map view ────────────────────────────────────────
+-- The client reads the map through `fetch_map_sector` (metadata only,
+-- author-excluded, sector-culled); the view added surface for zero value.
+drop view if exists public.echoes_map;
+
 -- Sector coordinates of an echo on the 8×8 grid (generated, always fresh).
--- `least(..., 7)`: coord 1.0 is a legal position and must land in the last
--- sector, not overflow the grid.
+-- `floor` is NOT optional: a float→int cast ROUNDS in Postgres
+-- ((0.0626*8)::int = 1, not 0), which would desynchronize SQL sectors
+-- from the Dart client (which floors) and silently break demo parity.
+-- `least(..., 7)`: coord 1.0 is a legal position and must land in the
+-- last sector, not overflow the grid.
 alter table public.echoes
     add column if not exists sector_x smallint
-        generated always as (least((coord_x * 8)::int, 7)::smallint) stored,
+        generated always as (least(floor(coord_x * 8)::int, 7)::smallint) stored,
     add column if not exists sector_y smallint
-        generated always as (least((coord_y * 8)::int, 7)::smallint) stored;
+        generated always as (least(floor(coord_y * 8)::int, 7)::smallint) stored;
 
 create index if not exists idx_echoes_sector
     on public.echoes (sector_x, sector_y, created_at desc);
@@ -65,6 +73,11 @@ begin
           and e.coord_x <= greatest(p_min_x, p_max_x)
           and e.coord_y >= least(p_min_y, p_max_y)
           and e.coord_y <= greatest(p_min_y, p_max_y)
+          -- One's own echo never appears on one's map: the sealed star
+          -- already represents it, and it is untouchable by contract
+          -- ("jamais toi"). Without this, the author would see it twice
+          -- and a 3 s hold would lie ("dissolved elsewhere").
+          and e.author_id <> auth.uid()
     ) s
     where s.rn <= greatest(1, least(p_max_per_sector, 100))
     order by s.created_at desc

@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(34);
+select plan(35);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -113,17 +113,13 @@ select is(
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a3","role":"authenticated"}', true);
 
--- 10 — legacy echo: plaintext passthrough, key null.
+-- 10 — legacy echo: one consume returns the full bundle (plaintext
+-- passthrough, no key). NB: never call consume twice within 5 s — the
+-- anti-spam breath applies to the winner too.
 select is(
-  (select public.consume_echo(tests.echo_by_text('premier secret')) ->> 'ciphertext'),
-  'premier secret',
-  'the winner gets the payload (legacy path)'
-);
--- 11 (the row is already gone — the bundle is null).
-select is(
-  (select public.consume_echo(tests.echo_by_text('premier secret')) ->> 'key'),
-  null::text,
-  'legacy echoes carry no key'
+  (select public.consume_echo(tests.echo_by_text('premier secret'))),
+  jsonb_build_object('ciphertext', 'premier secret', 'key', null),
+  'the winner gets the legacy bundle (plaintext, no key)'
 );
 
 reset role;
@@ -170,17 +166,12 @@ select throws_ok(
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a4","role":"authenticated"}', true);
 
--- 17 — the key comes back exactly as the author's device sealed it.
+-- 16 — the key comes back exactly as the author's device sealed it,
+-- in the same single call as the payload.
 select is(
-  (select public.consume_echo(tests.echo_by_text('AAECAwQFBgcICQ==')) ->> 'key'),
-  'a2Vub3Mta2V5LXRlc3Q=',
+  (select public.consume_echo(tests.echo_by_text('AAECAwQFBgcICQ=='))),
+  jsonb_build_object('ciphertext', 'AAECAwQFBgcICQ==', 'key', 'a2Vub3Mta2V5LXRlc3Q='),
   'the interceptor receives the escrowed key (exchange at interception)'
-);
--- 18
-select is(
-  (select public.consume_echo(tests.echo_by_text('AAECAwQFBgcICQ==')) ->> 'ciphertext'),
-  null::text,
-  'single read is absolute for sealed echoes too'
 );
 
 -- ── u6 launches + reads for the remaining loop tests ───────────────────
@@ -329,6 +320,39 @@ select throws_ok(
   $$select * from public.kenos_ether_kek()$$,
   '42501', 'permission denied for function kenos_ether_kek',
   'the KEK function is unreachable for clients'
+);
+
+-- ── One's own echo never appears on one's map ───────────────────────────
+-- (u5's 'secret de u5' is still drifting at (0.1, 0.1).)
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a5","role":"authenticated"}', true);
+-- 35
+select is(
+  (select count(*) from public.fetch_map_sector(0, 0, 1, 1)
+    where id = tests.echo_by_text('secret de u5')),
+  0::bigint,
+  'the author does not see their own echo as an interceptable star'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a3","role":"authenticated"}', true);
+-- 36
+select is(
+  (select count(*) from public.fetch_map_sector(0, 0, 1, 1)
+    where id = tests.echo_by_text('secret de u5')),
+  1::bigint,
+  'a stranger does see it'
+);
+
+-- ── Sector bins use floor, not float→int rounding ──────────────────────
+reset role;
+insert into public.echoes (author_id, encrypted_text, coord_x, coord_y, coord_z, color_theme)
+values ('00000000-0000-4000-8000-0000000000a1', 'borne-secteur', 0.0626, 0.9376, 0.5, 'TEAL');
+-- 37 (a naive cast would round 0.5008 → 1 and 7.5008 → 8.)
+select is(
+  (select (sector_x, sector_y) = (0, 7) from public.echoes where encrypted_text = 'borne-secteur'),
+  true,
+  'sector columns floor — SQL and Dart agree on bin boundaries'
 );
 
 select * from finish();

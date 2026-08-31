@@ -55,15 +55,19 @@ KEYCHEAT=$(curl -s "$API/rest/v1/echoes?select=key_seal" \
 echo "$KEYCHEAT" | grep -qi "permission denied" && ok "key_seal illisible via REST" || ko "FUITE clé via REST: $KEYCHEAT"
 
 # ── B reads the map ──────────────────────────────────────────────────────
-MAP=$(curl -s "$API/rest/v1/echoes_map?select=*" -H "$(auth_header)" -H "$(bearer "$TOKEN_B")")
-echo "$MAP" | grep -q "$ECHO_ID" && ok "la carte expose les métadonnées" || ko "carte: $MAP"
-echo "$MAP" | grep -q "encrypted_text" && ko "la carte expose du texte !" || ok "aucune colonne de texte sur la carte"
-
 # ── B reads the sector-culled viewport ───────────────────────────────────
 SECTOR=$(curl -s -X POST "$API/rest/v1/rpc/fetch_map_sector" \
   -H "$(auth_header)" -H "$(bearer "$TOKEN_B")" -H 'Content-Type: application/json' \
   -d '{"p_min_x":0,"p_min_y":0,"p_max_x":1,"p_max_y":1}')
 echo "$SECTOR" | grep -q "$ECHO_ID" && ok "fetch_map_sector renvoie l'écho du viewport" || ko "sector: $SECTOR"
+echo "$SECTOR" | grep -q "encrypted_text" && ko "la carte expose du texte !" || ok "aucune colonne de texte sur la carte"
+echo "$SECTOR" | grep -q "key_seal" && ko "la carte expose la clé !" || ok "aucune colonne de clé sur la carte"
+
+# ── A's own echo must NOT appear on A's own map ──────────────────────────
+OWNMAP=$(curl -s -X POST "$API/rest/v1/rpc/fetch_map_sector" \
+  -H "$(auth_header)" -H "$(bearer "$TOKEN_A")" -H 'Content-Type: application/json' \
+  -d '{"p_min_x":0,"p_min_y":0,"p_max_x":1,"p_max_y":1}')
+echo "$OWNMAP" | grep -q "$ECHO_ID" && ko "l'auteur voit son propre écho !" || ok "l'auteur ne voit pas son propre écho (étoile scellée only)"
 
 # ── B intercepts: single read (consume returns the sealed bundle) ────────
 TEXT=$(curl -s -X POST "$API/rest/v1/rpc/consume_echo" \

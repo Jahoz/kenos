@@ -79,25 +79,25 @@ select throws_ok(
   'kenos_receptions invisible to clients'
 );
 
--- The map view: metadata yes, text impossible.
+-- The map RPC: metadata yes, text impossible (and the retired view is gone).
 select is(
-  (select count(*) from public.echoes_map),
+  (select count(*) from public.fetch_map_sector()),
   1::bigint,
-  'map view exposes the echo metadata'
+  'map RPC exposes the foreign echo metadata'
 );
 select throws_ok(
-  'select encrypted_text from public.echoes_map',
-  42703, 'column "encrypted_text" does not exist',
-  'map view has no text column at all'
+  $$select * from public.echoes_map$$,
+  '42P01', 'relation "public.echoes_map" does not exist',
+  'the echoes_map view is retired — RPC-only access'
 );
 
 -- ── As anon: nothing at all ────────────────────────────────────────────
 reset role;
 set local role anon;
 select throws_ok(
-  'select * from public.echoes_map',
-  42501, 'permission denied for table echoes',
-  'anon cannot even read the map (invoker view delegates the check)'
+  $$select * from public.fetch_map_sector()$$,
+  42501, 'permission denied for function fetch_map_sector',
+  'anon cannot read the map RPC'
 );
 
 select * from finish();
