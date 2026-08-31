@@ -1,0 +1,126 @@
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import '../domain/echo.dart';
+import '../domain/reception.dart';
+
+/// Secure local storage: onboarding flag, anonymous local UUID,
+/// and the user's sealed echoes (metadata WITHOUT text).
+///
+/// Any native storage error falls back to an in-memory cache:
+/// the app must never crash over a keychain issue.
+class LocalEchoStore {
+  LocalEchoStore({FlutterSecureStorage? storage})
+    : _storage = storage ?? const FlutterSecureStorage();
+
+  final FlutterSecureStorage _storage;
+  final Map<String, String> _mem = {};
+
+  static const _kOnboarded = 'kenos.onboarded';
+  static const _kUid = 'kenos.uid';
+  static const _kSealed = 'kenos.sealed_echoes';
+  static const _kReceptions = 'kenos.receptions';
+  static const _maxSealed = 50;
+
+  /// Safety net: a wedged keychain I/O must never freeze the
+  /// experience — we fall back to the memory cache.
+  static const _ioTimeout = Duration(seconds: 2);
+
+  Future<String?> _read(String key) async {
+    if (_mem.containsKey(key)) return _mem[key];
+    try {
+      final value = await _storage
+          .read(key: key)
+          .timeout(_ioTimeout, onTimeout: () => null);
+      if (value != null) _mem[key] = value;
+      return value;
+    } catch (e) {
+      debugPrint('[kenos.store] read failed ($key): $e');
+      return _mem[key];
+    }
+  }
+
+  Future<void> _write(String key, String value) async {
+    _mem[key] = value;
+    try {
+      await _storage
+          .write(key: key, value: value)
+          .timeout(_ioTimeout, onTimeout: () {});
+    } catch (e) {
+      debugPrint('[kenos.store] write failed ($key): $e');
+    }
+  }
+
+  Future<bool> hasOnboarded() async => await _read(_kOnboarded) == '1';
+
+  Future<void> setOnboarded() => _write(_kOnboarded, '1');
+
+  /// Local anonymous UUID (backend-less demo mode).
+  Future<String> localUserId() async {
+    final existing = await _read(_kUid);
+    if (existing != null) return existing;
+    final id = _uuidV4();
+    await _write(_kUid, id);
+    return id;
+  }
+
+  Future<List<Echo>> sealedEchoes() async {
+    final raw = await _read(_kSealed);
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final list = (jsonDecode(raw) as List)
+          .map((e) => Echo.fromJson(e as Map<String, dynamic>, isMine: true))
+          .toList();
+      return list;
+    } catch (e) {
+      debugPrint('[kenos.store] sealed echoes corrupted: $e');
+      return const [];
+    }
+  }
+
+  Future<void> addSealed(Echo echo) async {
+    final current = await sealedEchoes();
+    final next = [echo, ...current];
+    if (next.length > _maxSealed) next.removeRange(_maxSealed, next.length);
+    await _write(_kSealed, jsonEncode(next.map((e) => e.toJson()).toList()));
+  }
+
+  /// Demo-mode persistence for the bottle-in-the-sea loop.
+  Future<List<Reception>> readReceptions() async {
+    final raw = await _read(_kReceptions);
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      return (jsonDecode(raw) as List)
+          .map((r) => Reception.fromJson(r as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      debugPrint('[kenos.store] receptions corrupted: $e');
+      return const [];
+    }
+  }
+
+  Future<void> writeReceptions(List<Reception> receptions) async {
+    await _write(
+      _kReceptions,
+      jsonEncode(receptions.map((r) => r.toJson()).toList()),
+    );
+  }
+
+  String _uuidV4() {
+    final r = Random.secure();
+    final b = List<int>.generate(16, (_) => r.nextInt(256));
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    String hex(int i) => b[i].toRadixString(16).padLeft(2, '0');
+    return '${hex(0)}${hex(1)}${hex(2)}${hex(3)}-'
+        '${hex(4)}${hex(5)}-${hex(6)}${hex(7)}-'
+        '${hex(8)}${hex(9)}-${hex(10)}${hex(11)}${hex(12)}${hex(13)}${hex(14)}${hex(15)}';
+  }
+
+  /// Releases resources (the plugin exposes nothing critical, kept
+  /// for symmetry with the Riverpod lifecycle).
+  void dispose() {}
+}

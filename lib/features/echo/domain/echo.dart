@@ -1,0 +1,78 @@
+import '../../../core/utils/parallax_math.dart';
+import 'echo_color_theme.dart';
+
+/// An echo: a sealed thought, suspended in the ether.
+///
+/// [text] is never present on the map (metadata only);
+/// it exists only at revelation time, after atomic consumption.
+class Echo {
+  const Echo({
+    required this.id,
+    required this.coordX,
+    required this.coordY,
+    required this.coordZ,
+    required this.theme,
+    required this.createdAt,
+    this.text,
+    this.isMine = false,
+  });
+
+  final String id;
+
+  /// Normalized X position (0..1 — fraction of the screen).
+  final double coordX;
+
+  /// Normalized Y position (0..1).
+  final double coordY;
+
+  /// Launch depth (0.05..1) — one's own echoes are born at 1.
+  final double coordZ;
+
+  final EchoColorTheme theme;
+  final DateTime createdAt;
+
+  /// Clear text — only after a successful interception.
+  final String? text;
+
+  /// The local user's echo: sealed, untouchable, drifting.
+  final bool isMine;
+
+  /// Rendered depth: one's own echoes slowly drift toward the background.
+  double resolveZ(DateTime now) =>
+      isMine ? ParallaxMath.driftZ(sentAt: createdAt, now: now) : coordZ;
+
+  Echo copyWith({String? text}) => Echo(
+    id: id,
+    coordX: coordX,
+    coordY: coordY,
+    coordZ: coordZ,
+    theme: theme,
+    createdAt: createdAt,
+    text: text ?? this.text,
+    isMine: isMine,
+  );
+
+  factory Echo.fromJson(Map<String, dynamic> json, {bool isMine = false}) =>
+      Echo(
+        id: json['id'] as String,
+        coordX: (json['coord_x'] as num).toDouble(),
+        coordY: (json['coord_y'] as num).toDouble(),
+        coordZ: (json['coord_z'] as num).toDouble(),
+        theme: EchoColorTheme.fromWire(json['color_theme'] as String?),
+        createdAt:
+            DateTime.tryParse(json['created_at'] as String? ?? '') ??
+            DateTime.now(),
+        isMine: isMine,
+      );
+
+  /// Local serialization of sealed echoes — deliberately WITHOUT the text:
+  /// once launched, even its author cannot read it again.
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'coord_x': coordX,
+    'coord_y': coordY,
+    'coord_z': coordZ,
+    'color_theme': theme.wire,
+    'created_at': createdAt.toIso8601String(),
+  };
+}
