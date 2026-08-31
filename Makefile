@@ -40,6 +40,12 @@ deploy-web: ## Build for the real ether and deploy the PWA to Vercel (prod)
 	@# state travels with the copied .vercel so nothing else uploads.
 	rm -rf build/web/.vercel && cp -R .vercel build/web/.vercel
 	cd build/web && vercel deploy --prod --yes
+	@# Build gate: the web pickers MUST be in the bundle. A poisoned
+	@# incremental cache once shipped a bundle without them — the buttons
+	@# then hung silently forever. If this fails: flutter clean && retry.
+	@grep -q getUserMedia build/web/main.dart.js \
+		&& echo "build sane: web pickers present" \
+		|| (echo "BROKEN BUILD CACHE - run: flutter clean && make deploy-web" && exit 1)
 	@# Post-deploy gate: the domain MUST serve the app (it once silently
 	@# served an empty redeploy). Fails the target if not.
 	@sleep 5; curl -fsS -o /dev/null https://kenos-lemon.vercel.app/main.dart.js \
