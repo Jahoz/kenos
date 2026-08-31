@@ -48,3 +48,6 @@ app.*.map.json
 repomix-output.md
 supabase/.temp/
 supabase/.branches/
+
+# Real ether credentials (publishable key is client-safe, still untracked)
+.env.cloud
