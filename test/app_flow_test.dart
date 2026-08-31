@@ -71,7 +71,10 @@ void main() {
 
     // 3-second long press on an ether star.
     // NB: le premier pump n'attache que le ticker de l'animation.
-    final star = find.byType(MindfulHoldStar).first;
+    // Orbits cluster stars near their planets: hold the TOPMOST star
+    // (paint order = last in tree) — the one the pointer will actually
+    // press when another lies beneath it.
+    final star = find.byType(MindfulHoldStar).last;
     final heldId = (tester.widget(star) as MindfulHoldStar).echo.id;
     expect(heldId, isNotEmpty);
     final gesture = await tester.startGesture(tester.getCenter(star));
@@ -140,7 +143,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pump(const Duration(milliseconds: 2600));
 
-    final star = find.byType(MindfulHoldStar).first;
+    // Orbits cluster stars near their planets: hold the TOPMOST star
+    // (paint order = last in tree) — the one the pointer will actually
+    // press when another lies beneath it.
+    final star = find.byType(MindfulHoldStar).last;
     final heldId = (tester.widget(star) as MindfulHoldStar).echo.id;
     expect(heldId, isNotEmpty);
     final gesture = await tester.startGesture(tester.getCenter(star));

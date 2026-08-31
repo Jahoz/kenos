@@ -52,3 +52,25 @@ class ConsumedEcho {
   final EchoMedia? media;
   final int momentum;
 }
+/// Actual audio container of decrypted bytes: web recordings arrive as
+/// webm/opus (EBML magic 0x1A45DFA3), native ones as mp4 (ftyp box at
+/// offset 4). Anything unrecognized falls back to the wire kind's mp4.
+/// The wire carries a KIND, not a container — mislabelling webm bytes
+/// as mp4 makes browsers refuse to play them.
+String playbackAudioMime(List<int> bytes) {
+  if (bytes.length > 4 &&
+      bytes[0] == 0x1A &&
+      bytes[1] == 0x45 &&
+      bytes[2] == 0xDF &&
+      bytes[3] == 0xA3) {
+    return 'audio/webm';
+  }
+  if (bytes.length > 8 &&
+      bytes[4] == 0x66 && // f
+      bytes[5] == 0x74 && // t
+      bytes[6] == 0x79 && // y
+      bytes[7] == 0x70) { // p
+    return 'audio/mp4';
+  }
+  return EchoMediaKind.audio.mimeType;
+}

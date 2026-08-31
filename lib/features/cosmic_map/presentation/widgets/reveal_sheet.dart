@@ -100,8 +100,13 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     final media = widget.echo.media;
     if (media == null || media.kind != EchoMediaKind.audio) return;
     try {
+      // The wire kind says AUDIO, not the container: web recordings are
+      // webm/opus (browsers ignore the requested encoder) and native
+      // ones are mp4 — label the bytes with what they actually are,
+      // or the element refuses to play them.
+      final mime = playbackAudioMime(media.bytes);
       await _mediaPlayer.setAudioSource(
-        AudioSource.uri(Uri.dataFromBytes(media.bytes, mimeType: media.kind.mimeType)),
+        AudioSource.uri(Uri.dataFromBytes(media.bytes, mimeType: mime)),
       );
       unawaited(_mediaPlayer.play());
     } catch (_) {
@@ -611,3 +616,5 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     );
   }
 }
+
+

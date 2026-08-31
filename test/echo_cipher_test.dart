@@ -3,8 +3,26 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/echo/domain/echo_cipher.dart';
+import 'package:kenos/features/echo/domain/echo_media.dart';
 
 void main() {
+  group('playbackAudioMime — conteneurs réels', () {
+    test('webm/opus (enregistrement web) reconnu', () {
+      expect(playbackAudioMime([0x1A, 0x45, 0xDF, 0xA3, 0x9F]), 'audio/webm');
+    });
+
+    test('mp4 natif reconnu (boîte ftyp à l\'offset 4)', () {
+      expect(
+        playbackAudioMime([0, 0, 0, 0x20, 0x66, 0x74, 0x79, 0x70, 0, 0, 0, 0]),
+        'audio/mp4',
+      );
+    });
+
+    test('inconnu → repli mp4 du genre filaire', () {
+      expect(playbackAudioMime([1, 2, 3, 4, 5, 6, 7, 8]), 'audio/mp4');
+    });
+  });
+
   group('EchoCipher (Ether Seal)', () {
     test('roundtrip: seal then open restores the exact plaintext', () async {
       const text = 'un aveu que personne ne doit relire, même pas l\'éther';
@@ -84,3 +102,4 @@ void main() {
     });
   });
 }
+

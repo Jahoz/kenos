@@ -14,6 +14,7 @@ import '../../../core/utils/parallax_math.dart';
 import '../../echo/data/echo_providers.dart';
 import '../../echo/domain/echo.dart';
 import '../application/map_controller.dart';
+import '../application/kenos_system.dart';
 import '../application/motion_service.dart';
 import '../application/reception_controller.dart';
 import '../application/travel_camera.dart';
@@ -21,6 +22,7 @@ import 'widgets/awakening_sas.dart';
 import 'widgets/background_painters.dart';
 import 'widgets/mindful_hold_star.dart';
 import 'widgets/origin_node.dart';
+import 'widgets/system_painter.dart';
 
 /// The stellar map: KENOS public space.
 /// No lists, no scrolling — a three-dimensional Stack where the void dominates.
@@ -123,6 +125,25 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
+  /// Tap: a planet glides the eye toward its gravity — « voyager
+  /// vers ». Tapping the void itself travels nowhere (the drag is the
+  /// road, the tap is the intention).
+  void _onTapUp(TapUpDetails details) {
+    final hit = planetHitTest(
+      screenPoint: details.localPosition,
+      camera: _camera,
+      viewport: _viewport,
+      now: DateTime.now(),
+    );
+    if (hit < 0) return;
+    final target = KenosSystem.planetPosition(hit, DateTime.now());
+    _glide?.cancel();
+    setState(() {
+      _camera.panByWorld(target - _camera.center);
+    });
+    _refreshAfterTravel();
+  }
+
   /// RECALIBRER, travelled: return the eye to the heart of the ether.
   void _recenter() {
     _glide?.cancel();
@@ -173,14 +194,31 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             LayoutBuilder(
               builder: (context, constraints) {
                 _viewport = Size(constraints.maxWidth, constraints.maxHeight);
+                final epoch = DateTime.now();
                 return GestureDetector(
                   // The sky follows the finger; holding a star keeps
                   // its own friction (a >28px drift cancels the hold
-                  // and hands the gesture to the void).
+                  // and hands the gesture to the void). Tapping a
+                  // planet glides the eye toward its gravity.
                   onPanUpdate: _onPanUpdate,
                   onPanEnd: _onPanEnd,
+                  onTapUp: _onTapUp,
                   behavior: HitTestBehavior.translucent,
-                  child: echoes.when(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // The heavens: black hole + planets, behind stars.
+                      RepaintBoundary(
+                        child: CustomPaint(
+                          painter: SystemPainter(
+                            camera: _camera,
+                            viewport: _viewport,
+                            now: epoch,
+                            reducedMotion: context.wantsReducedMotion,
+                          ),
+                        ),
+                      ),
+                      echoes.when(
                     data: (list) => list.isEmpty
                         ? const _CalmEther()
                         : _ParallaxStarLayer(
@@ -197,7 +235,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         ref.invalidate(mapControllerProvider);
                       },
                     ),
-                  ),
+                    ),
+                  ],
+                ),
                 );
               },
             ),
@@ -422,16 +462,19 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
           for (final echo in sorted) {
             final z = echo.resolveZ(now);
             if (z < _bucketEdges[b] || z >= _bucketEdges[b + 1]) continue;
-            final sp =
-                widget.camera.worldToScreen(Offset(echo.coordX, echo.coordY), Size(w, h));
+            // V3.7b: an echo orbits the planet of its intent — the
+            // server's raw launch point was only its birth place.
+            final sp = widget.camera.worldToScreen(
+              KenosSystem.echoPosition(echo, now),
+              Size(w, h),
+            );
             // Travel culling: only the visible sky carries widgets.
             if (sp.dx < -60 || sp.dx > w + 60 || sp.dy < -60 || sp.dy > h + 60) {
               continue;
             }
             final diameter = ParallaxMath.starDiameter(z);
             final hit = diameter + 26; // comfortable touch target
-            final screenPos =
-                widget.camera.worldToScreen(Offset(echo.coordX, echo.coordY), Size(w, h));
+            final screenPos = sp;
             final baseX = screenPos.dx;
             final baseY = screenPos.dy;
             children.add(
