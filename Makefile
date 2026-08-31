@@ -1,6 +1,6 @@
 # KENOS — canonical commands (see CONTRIBUTING.md for the full picture)
 .DEFAULT_GOAL := help
-.PHONY: help dev dev-cloud analyze test test-cloud build-web serve-web db-start db-reset db-test db-push e2e gen-icons gen-audio
+.PHONY: help dev dev-cloud analyze test test-cloud build-web deploy-web serve-web db-start db-reset db-test db-push e2e gen-icons gen-audio
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -24,6 +24,11 @@ test-cloud: ## Real-ether smoke test (seal → escrow → decrypt); needs .env.c
 
 build-web: ## Release web build (compiles the fragment shader)
 	flutter build web --release
+
+deploy-web: ## Build for the real ether and deploy the PWA to Vercel (prod)
+	@touch .env.cloud
+	flutter build web --release $$(grep -v '^#' .env.cloud | sed 's/^/--dart-define=/' | tr '\n' ' ')
+	vercel deploy build/web --prod
 
 serve-web: build-web ## Serve the built PWA on :4308
 	cd build/web && python3 -m http.server 4308

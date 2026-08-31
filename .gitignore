@@ -51,3 +51,6 @@ supabase/.branches/
 
 # Real ether credentials (publishable key is client-safe, still untracked)
 .env.cloud
+
+# Vercel CLI link state
+.vercel/
