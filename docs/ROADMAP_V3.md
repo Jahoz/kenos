@@ -207,6 +207,30 @@ trouve ce qui y dérive.
   momentum (frôlant le trou noir), nœud d'origine en ancrage
   personnel, rayon d'écoute lié à la caméra.
 
+## V3.8 — Germination : le Cadavre Exquis (idée Hugo, 2026-09-01)
+
+À travailler — trois déclinautions, de la trace involontaire à
+l'œuvre collective à l'aveugle :
+
+1. **Constellations de lignage** (presque gratuit, complète V3.7c) :
+   relier les points d'une chaîne phénix (`parent_id` existe déjà) —
+   la carte du voyage d'une pensée à travers N inconnus. Personne ne
+   dessine : le monde dessine en lisant. Zéro backend.
+2. **UNE LIGNE — le vrai cadavre exquis** : un troisième mode de
+   lancement. Chaque inconnu ajoute une ligne SANS voir les
+   précédentes (le serveur ne renvoie jamais les fragments, seulement
+   le compte) ; sa ligne devient une étoile au point suivant d'une
+   figure émergente (angle d'or). À 5-7 contributions elle se
+   referme, et une seule personne peut alors la lire entière une
+   fois, puis elle se dissout. Le contributeur ne verra JAMAIS le
+   tout qu'il a aidé à faire — on donne une ligne au vide, même
+   l'auteur collectif ne se relit pas.
+3. **Garde-fou d'âme (le point dur)** : l'attente est le danger (le
+   contributeur voudra revenir voir). Parade : seul L'Aube murmure à
+   la prochaine visite (« la constellation que tu as touchée s'est
+   refermée ») — jamais de push, jamais de compteur vivant, zéro
+   stardust, zéro signature.
+
 ## 4. Règles inchangées (rappel)
 
 - Single-read atomique, Ether Seal, RPC-only, ROSE destructif,
