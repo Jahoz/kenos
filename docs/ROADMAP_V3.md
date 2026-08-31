@@ -1,0 +1,135 @@
+# KENOS — Roadmap V3 « The Cosmic Introspection Engine »
+
+Alignement du manifeste V2 ([`MANIFESTE_V2.md`](MANIFESTE_V2.md)) avec
+l'état réel du produit, tensions à trancher, et plan d'incréments.
+Rédigé le 2026-08-31, après la passe qualité et le branchement du réel.
+
+---
+
+## 1. Ce que le manifeste demande — et ce qui existe déjà
+
+| Manifeste | État | Où |
+|---|---|---|
+| Single Receiver (1 émetteur, 1 lecteur) | ✅ livré, prouvé cloud | `consume_echo` FOR UPDATE SKIP LOCKED, e2e 18/18 |
+| Zéro égo, anonymat absolu | ✅ livré | auth anonyme, zéro profil |
+| Friction volontaire (Mindful Hold) | ✅ livré | 3 s, anneau, pitch drone |
+| Éphémère absolu (burn after reading) | ✅ livré | détruit dans la transaction atomique |
+| Intouchabilité de ses propres échos | ✅ livré | garde SQL + exclusion carte |
+| Bouteilles à la mer qui dérivent | ✅ livré | étoiles scellées, dérive z, réceptions |
+| Ether Seal (chiffrement réel au repos) | ✅ livré, au-delà du manifeste | AES-256-GCM, escrow Vault |
+| **§2C Sling-Shot** (cendres / rebond, momentum, queue de comète) | ❌ absent | — |
+| **§2D Symphonie Collective** (ondes pentatoniques, rayon, purge 60 s) | ❌ absent (POC React + port HTML dans `poc/`) | — |
+| **§2E L'Aube** (sas poétique d'ouverture, stardust, aura ambre) | 🟡 partiel | `impact_screen` + `user_stats_store` (dashboard local, one-shot reports) |
+| **§4 Médias** (photo/audio chiffrés, dé-bruitage au hold) | 🟡 partiel | fragments chiffrés + Edge Function `consume-media` (session du 31/08) ; shaders de dé-bruitage à finaliser |
+| `users_impact`, `echoes.momentum/type`, `frequencies` | ❌ absent (sauf `echo_reports` livré) | migrations à venir |
+
+## 2. Les tensions à trancher (Design Readiness Gate)
+
+### T1 — Sling-Shot vs Éphémérité Absolue (LA décision produit)
+
+Le pilier 3 déclare « une fois lue, détruite de l'univers » ; le §2C
+donne au lecteur le pouvoir de la faire **renaître**. Les deux ne
+peuvent pas être vrais en même temps. Le manifeste tranche implicitement
+(§2C prime), mais l'implémentation proposée (`claim_echo` + `locked_by`
++ `locked_at`) coûte cher :
+
+- des étoiles verrouillées fantômes si le lecteur ferme l'app pendant
+  la fenêtre de décision (il faudrait un cron de déblocage) ;
+- deux états pour une étoile (verrouillée/consumée) sur toute la carte ;
+- l'invariant atomique le plus sacré du projet (lock → delete → return)
+  se retrouve étiré sur une fenêtre utilisateur.
+
+**Proposition (variante « phénix », recommandée)** : l'écho lu **meurt
+toujours atomiquement** — rien ne change sur le socle. Le Swipe Up
+recrée **un nouvel écho scellé** (`parent_id`, `momentum = parent + 1`),
+même position, re-chiffré côté client pour UN nouveau récepteur unique.
+Le Swipe Down ne fait rien de plus (l'écho est déjà mort — le geste
+devient le rite). Le momentum est une métadonnée **publique** (compte de
+rebonds, jamais de contenu), la queue de comète s'anime sur
+`momentum > 0`. Coût : une insertion au lieu d'un lock fenêtré.
+Gagné : l'atomicité absolue reste vraie, « Single Receiver » devient «
+**un récepteur par cycle de vie** », et une comète à N rebonds prouve N
+humains touchés — plus fort que l'original.
+
+⚠️ Décision appartenant à Hugo : phénix (recommandé) vs lock fenêtré
+(fidèle au §3.2 du manifeste, avec les coûts ci-dessus).
+
+### T2 — `flutter_soloud` « obligatoire » (§3.3)
+
+Vrai pour la spatialisation 3D native et les oscillateurs temps réel.
+Lourd à avaler d'un coup (libs natives par plateforme). Escalier
+proposé : **V1 des ondes avec les 20 notes pré-générées** par
+`tool/gen_audio.py` (zéro dépendance, cohérent avec le drone/cloches
+existants — un tap déclenche un asset enveloppé) ; `flutter_soloud`
+arrive avec la spatialisation par rayon (V3.2/V3.6) où il apporte
+réellement de la valeur.
+
+### T3 — PostGIS `ST_DWithin` (§2D)
+
+Un rayon sur une carte normalisée (x, y ∈ [0,1]) se calcule avec une
+simple bbox indexée — PostGIS est sur-ingénierie tant que la carte n'a
+pas de géographie réelle. Documenté comme refus de complexité
+(Roadmap+ si la géographie réelle arrive un jour).
+
+### T4 — La charte du POC React
+
+Le POC soumis (violet/rose Tailwind) n'est pas l'identité Cosmic Zen du
+registre. Le portage `poc/frequencies.html` reprend la **mécanique** du
+POC avec les tokens KENOS. C'est la mécanique qui est porte, jamais la
+charte (règle du registre : ne jamais importer un design d'ailleurs).
+
+## 3. Incréments (petits, complets, dans l'ordre)
+
+### V3.1 — Symphonie Collective, locale (le POC devient Flutter)
+- Écran « FRÉQUENCES » accessible depuis la carte (route + icône HUD).
+- Tap → onde : note pentatonique (asset pré-généré ×20 via
+  `gen_audio.py`), nébuleuse CustomPainter (blur, enveloppe 10 s,
+  60 fps — aucun widget par onde), X → timbre/teinte, Y → registre.
+- Durée de vie 10 s locale, compteur HUD, respect « réduire les
+  animations » (onde sans anim, note conservée).
+- **DoD** : parité mécanique avec `poc/frequencies.html`, analyze 0,
+  tests (mapping Y→note, X→teinte, purge), mode démo complet.
+
+### V3.2 — Symphonie connectée (l'onde traverse l'éther)
+- Migration 0005 : table `frequencies` (x, y, freq, hue, created_at),
+  RPC `emit_frequency` + `fetch_nearby_frequencies(x, y, radius)` —
+  bbox, T3 — purge > 60 s (`kenos_purge` l'absorbe), RLS RPC-only.
+- Polling 2 s côté client, volume selon distance au tap.
+- **DoD** : deux appareils émettent et s'entendent dans le rayon,
+  purge vérifiée en pgTAP, demo mode iso-sémantique.
+
+### V3.3 — Sling-Shot « phénix » (après arbitrage T1)
+- RevealSheet : après le burn, geste drag — bas = cendres (rite),
+  haut = rebond (re-scellement + relance, `parent_id`, momentum+1).
+- Migration 0006 : colonnes `parent_id`, `momentum` sur `echoes`
+  (métadonnées publiques via RPC carte), RPC `rebound_echo`
+  (valide fenêtre 60 s post-lecture, cadence).
+- Queue de comète visuelle sur `momentum > 0` (CustomPainter).
+- **DoD** : invariant single-read intact (tests pgTAP étendus),
+  rebond = un écho scellé de plus pour un autre humain, comète visible.
+
+### V3.4 — L'Aube complète
+- Sas d'ouverture avant la carte : phrases poétiques depuis les
+  réceptions accumulées + stats (`user_stats_store` déjà posé), aura
+  ambre sur le nœud d'origine, stardust.
+- **DoD** : ouvrir l'app raconte ce qui s'est passé pendant l'absence,
+  jamais une notification.
+
+### V3.5 — Médias : finir le dé-bruitage
+- Finaliser shaders photo (constellation de points, dé-brouillage au
+  hold) et voix inversée/distordue (déjà amorcé par la session
+  médias), en respectant Ether Seal (chiffré au repos, one-shot).
+- **DoD** : aucune image nette ni voix claire avant 100 % du hold.
+
+### V3.6 — Spatialisation (flutter_soloud, rayon réel)
+- Évaluer le poids natif, puis remplacer les assets par des
+  oscillateurs spatialisés, volume/pan par distance.
+- **DoD** : les ondes lointaines s'entendent moins, sans engorger le
+  thread principal.
+
+## 4. Règles inchangées (rappel)
+
+- Single-read atomique, Ether Seal, RPC-only, ROSE destructif,
+  haptique/audio non bloquants, demo mode iso-sémantique, lints
+  `unawaited_futures` et Cie. Toute mécanique nouvelle passe par les
+  mêmes épreuves (pgTAP + tests Dart + parity démo).

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<!--
+  KENOS — Symphonie Collective (poc port, build-free).
+  Mechanics of poc/frequencies_poc.jsx in the Cosmic Zen identity:
+  20-note major pentatonic (always consonant), Y = register
+  (bottom = heavy, top = hope), X = timbre (sine → triangle) and hue
+  within the KENOS palette, slow nebula ADSR, compressor on the master.
+  Tap to emit. Open this file on a phone to feel the mechanic.
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>KENOS // FRÉQUENCES</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #030508; overflow: hidden;
+    font-family: "Courier New", monospace; user-select: none; touch-action: none; }
+  header, footer { position: fixed; left: 0; right: 0; z-index: 2; padding: 14px 20px;
+    font-size: 9px; letter-spacing: 3px; color: rgba(244,244,246,.45); }
+  header { top: 0; display: flex; justify-content: space-between; }
+  footer { bottom: 0; text-align: center; color: rgba(244,244,246,.3); }
+  header b { color: rgba(20,184,166,.8); font-weight: normal; }
+  main { position: fixed; inset: 0; cursor: crosshair; }
+  .hint { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; letter-spacing: 4px; color: rgba(244,244,246,.35); pointer-events: none;
+    transition: opacity 1s; }
+  .grid { position: absolute; left: 0; right: 0; height: 1px; background: rgba(255,255,255,.05); }
+  .label { position: absolute; left: 20px; font-size: 8px; letter-spacing: 3px;
+    color: rgba(244,244,246,.25); }
+  .neb { position: absolute; border-radius: 50%; pointer-events: none;
+    transform: translate(-50%, -50%); filter: blur(30px); will-change: width, height, opacity; }
+  .core { position: absolute; inset: 0; margin: auto; width: 14px; height: 14px;
+    border-radius: 50%; background: #fff; filter: blur(4px); }
+</style>
+</head>
+<body>
+<header>
+  <span><b>KENOS // FRÉQUENCES</b>&nbsp;&nbsp;générateur symbiotique</span>
+  <span id="count">0 ONDES ACTIVES</span>
+</header>
+<main id="field">
+  <div class="grid" style="top:25%"></div>
+  <div class="grid" style="top:50%"></div>
+  <div class="grid" style="top:75%"></div>
+  <div class="label" style="top:20px">AIGU / LÉGER / ESPÉRANCE</div>
+  <div class="label" style="bottom:56px">GRAVE / LOURD / MÉLANCOLIE</div>
+</main>
+<div class="hint" id="hint">TOUCHE L'ESPACE POUR ÉMETTRE UNE ONDE</div>
+<footer>UNE GAMME PENTATONIQUE — TOUTES LES ONDES SONT HARMONIEUSES</footer>
+<script>
+'use strict';
+// C-major pentatonic across 4 octaves — identical to the submitted POC.
+const SCALE = [65.41,73.42,82.41,98.00,110.00,130.81,146.83,164.81,196.00,220.00,
+               261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.25,783.99,880.00];
+const ATTACK = 2.0, SUSTAIN = 4.0, RELEASE = 4.0, MAX_VOL = 0.15;
+const HUES = ['#8B5CF6', '#6366F1', '#14B8A6', '#FB7185']; // X bands (Zen-muted)
+let ctx = null, master = null, active = 0;
+
+function initAudio() {
+  if (ctx) return;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  master = ctx.createGain();
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -24; comp.knee.value = 30; comp.ratio.value = 12;
+  comp.attack.value = 0.003; comp.release.value = 0.25;
+  master.connect(comp); comp.connect(ctx.destination); master.gain.value = 0.5;
+}
+
+function emit(x, y, w, h) {
+  initAudio();
+  if (ctx.state === 'suspended') ctx.resume();
+  document.getElementById('hint').style.opacity = 0;
+
+  const freq = SCALE[Math.min(SCALE.length - 1, Math.floor((1 - y / h) * SCALE.length))];
+  const band = Math.min(3, Math.floor(x / w * 4));
+  const color = HUES[band];
+
+  // Sound: slow ADSR nebula, timbre brightens toward the right edge.
+  const osc = ctx.createOscillator(), g = ctx.createGain();
+  osc.type = x / w > 0.5 ? 'triangle' : 'sine';
+  osc.frequency.setValueAtTime(freq, ctx.currentTime);
+  g.gain.setValueAtTime(0, ctx.currentTime);
+  g.gain.linearRampToValueAtTime(MAX_VOL, ctx.currentTime + ATTACK);
+  g.gain.setTargetAtTime(0, ctx.currentTime + ATTACK + SUSTAIN, RELEASE / 3);
+  osc.connect(g); g.connect(master);
+  osc.start();
+  osc.stop(ctx.currentTime + ATTACK + SUSTAIN + RELEASE + 1);
+
+  // Sight: a breathing nebula in the KENOS palette, synced to the envelope.
+  const el = document.createElement('div');
+  el.className = 'neb';
+  el.style.left = x + 'px'; el.style.top = y + 'px';
+  el.style.background = color;
+  el.innerHTML = '<div class="core"></div>';
+  document.getElementById('field').appendChild(el);
+  requestAnimationFrame(() => {
+    el.style.transition = 'width 2s ease-out, height 2s ease-out, opacity 2s';
+    el.style.width = '150px'; el.style.height = '150px'; el.style.opacity = 0.38;
+  });
+  active++; updateCount();
+  setTimeout(() => {
+    el.style.opacity = 0;
+    active--; updateCount();
+    setTimeout(() => el.remove(), 2000);
+  }, (ATTACK + SUSTAIN + RELEASE) * 1000);
+}
+
+function updateCount() {
+  document.getElementById('count').textContent = active + ' ONDE' +
+    (active > 1 ? 'S' : '') + ' ACTIVE' + (active > 1 ? 'S' : '');
+}
+
+const field = document.getElementById('field');
+field.addEventListener('pointerdown', e => {
+  const r = field.getBoundingClientRect();
+  emit(e.clientX - r.left, e.clientY - r.top, r.width, r.height);
+});
+</script>
+</body>
+</html>
