@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+env:
+  # Pinned to the version the project is developed against; upgrade
+  # deliberately, not by runner drift.
+  FLUTTER_VERSION: 3.41.6
+
 jobs:
   flutter:
     name: analyze + test
@@ -14,6 +19,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
       - run: flutter pub get
       - run: flutter analyze
@@ -27,6 +33,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
       - run: flutter pub get
       # Fragment shaders are compiled at build time: a GLSL error in
@@ -38,9 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: supabase/setup-supabase@v1
-        with:
-          version: latest
+      # There is no official setup action; the CLI ships on npm.
+      - run: sudo npm install -g supabase
       # The job that would have caught the pgcrypto search_path bug
       # before it shipped: apply every migration to a clean local
       # stack, then run the full pgTAP suite (48 invariants).

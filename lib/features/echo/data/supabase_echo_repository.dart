@@ -62,7 +62,7 @@ class SupabaseEchoRepository implements EchoRepository {
       }
       // A seal that fails to open (tampered or corrupted in transit)
       // is a dead echo: null, i.e. dissolved — never a transport error.
-      return EchoCipher.openOrNull(key, ciphertext);
+      return await EchoCipher.openOrNull(key, ciphertext);
     } catch (e) {
       throw KenosException.from(e);
     }
