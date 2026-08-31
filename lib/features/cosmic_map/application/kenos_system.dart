@@ -74,6 +74,12 @@ class KenosSystem {
   /// World position of an echo at a given moment — the orbit everyone
   /// agrees on, derived only from the server timestamp and identity.
   static Offset echoPosition(Echo echo, DateTime at) {
+    // A rebounded echo (momentum > 0) leaves its planet's gravity:
+    // a COMET on an eccentric ellipse around the void, crossing the
+    // three orbits — the trace of the humans who carried it.
+    if (echo.momentum > 0) {
+      return _cometPosition(echo, at);
+    }
     final planet = planetPosition(planetIndexOf(echo), at);
     final radius = _echoOrbitRadius(echo);
     final period = _echoPeriod(echo);
@@ -84,5 +90,70 @@ class KenosSystem {
       planet.dx + radius * math.cos(angle),
       planet.dy + radius * math.sin(angle),
     );
+  }
+
+  // ── Comets (momentum > 0) ─────────────────────────────────────────────
+
+  /// Comet geometry, stable per echo: an eccentric ellipse whose
+  /// perihelion grazes the void's neighbourhood and whose aphelion
+  /// reaches past the planets — every rebound crosses every orbit.
+  static double _cometEccentricity(Echo echo) =>
+      // A much-carried thought travels a wilder arc.
+      (0.55 + 0.06 * echo.momentum).clamp(0.55, 0.82);
+
+  static double _cometAphelion(Echo echo) {
+    final h = echo.id.hashCode & 0x7fffffff;
+    return planetOrbit + 0.12 + 0.05 * (h % 7);
+  }
+
+  static double _cometOrientation(Echo echo) {
+    final h = (echo.id.hashCode & 0x7fffffff);
+    return 2 * math.pi * (h % 360) / 360;
+  }
+
+  static Offset _cometPosition(Echo echo, DateTime at) {
+    final e = _cometEccentricity(echo);
+    final aphelion = _cometAphelion(echo);
+    final orientation = _cometOrientation(echo);
+    final a = aphelion / (1 + e); // aphelion = a(1+e)
+    // Slow eccentrics: the more momentum, the longer the sweep.
+    final period = Duration(
+      seconds: 900 + 120 * echo.momentum + (echo.id.hashCode % 600),
+    );
+    final phase = (at.millisecondsSinceEpoch + echo.id.hashCode % 9973) /
+        period.inMilliseconds;
+    final theta = 2 * math.pi * phase;
+    // Parametric ellipse (poetic, not Kepler-precise — deterministic
+    // is what matters: every device draws the same comet).
+    final r = a * (1 - e * e) / (1 + e * math.cos(theta));
+    final x = r * math.cos(theta + orientation);
+    final y = r * math.sin(theta + orientation);
+    return Offset(blackHole.dx + x, blackHole.dy + y);
+  }
+
+  // ── Lineage constellations (V3.7c) ────────────────────────────────────
+
+  /// The faint lines of a phoenix chain: for each echo carrying a
+  /// parent link, a segment from the parent's sky position to the
+  /// child's. The parent is usually consumed (gone from the sky) —
+  /// its phantom anchor is where the thought was reborn (the child's
+  /// own launch point). Links are metadata, drawn in the lineage hue.
+  static List<(Offset, Offset, EchoColorTheme)> lineageSegments(
+    List<Echo> echoes,
+    DateTime at,
+  ) {
+    final byId = {for (final e in echoes) e.id: e};
+    final segments = <(Offset, Offset, EchoColorTheme)>[];
+    for (final echo in echoes) {
+      final parentId = echo.parentId;
+      if (parentId == null) continue;
+      final parent = byId[parentId];
+      final childPos = echoPosition(echo, at);
+      final parentPos = parent != null
+          ? echoPosition(parent, at)
+          : Offset(echo.coordX, echo.coordY);
+      segments.add((parentPos, childPos, echo.theme));
+    }
+    return segments;
   }
 }

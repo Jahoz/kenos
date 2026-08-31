@@ -1,5 +1,7 @@
 import 'dart:ui';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 /// The traveller's eye over the ether (V3.7a — Le Voyage).
 ///
 /// The world stays the server's normalized [0,1]² (its coordinates are
@@ -119,3 +121,10 @@ class DriftGlide {
       .map((d) => d.distance)
       .fold(0.0, (a, b) => a + b);
 }
+
+
+/// Where the traveller's eye rests in the world — the map writes it,
+/// the Symphonie reads it: waves are heard around WHERE YOU ARE, not
+/// around your last tap. The music of the spheres is local.
+final travelPositionProvider =
+    StateProvider<Offset>((ref) => const Offset(0.5, 0.5));

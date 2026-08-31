@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(57);
+select plan(58);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -566,6 +566,23 @@ select is(
     where id = tests.echo_by_text('phoenix-two')),
   2,
   'the map metadata carries the comet tail'
+);
+
+-- 51b — the map carries the lineage link: phoenix-two's parent is the
+-- phoenix-one id captured at its rebound.
+reset role;
+-- The parent row no longer exists (consumed by its reader — by
+-- design); the truth is the link carried by the child. We assert the
+-- map returns A parent (the consumed phoenix-one's id, non-null) and
+-- that the child's own momentum says how far the chain travelled.
+-- u1 (author of neither phoenix) reads the map as themselves.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+select is(
+  (select m.parent_id is not null from public.fetch_map_sector(0, 0, 1, 1) m
+    where m.id = tests.echo_by_text('phoenix-two')),
+  true,
+  'the map returns parent_id — the client draws lineage constellations'
 );
 
 -- 52 — stale lineages are swept, and with them the rebound window.

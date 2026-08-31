@@ -10,6 +10,7 @@ import '../../../core/constants/app_fonts.dart';
 import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/utils/motion_preferences.dart';
 import '../../../core/widgets/hud.dart';
+import '../../cosmic_map/application/travel_camera.dart';
 import '../application/wave_controller.dart';
 import '../domain/kenos_wave.dart';
 import 'widgets/wave_nebula_painter.dart';
@@ -43,6 +44,10 @@ class _FrequenciesScreenState extends ConsumerState<FrequenciesScreen> {
   @override
   void initState() {
     super.initState();
+    // Music of the spheres (V3.7c): open the field WHERE YOU ARE —
+    // the camera's resting point is the listening center.
+    final position = ref.read(travelPositionProvider);
+    _controller.setListenCenter(position.dx, position.dy);
     // Start hearing the ether (V3.2): a 2 s poll feeds incoming waves.
     _controller.activate();
     _heard = _controller.incomingWaves.listen(_soundIncoming);

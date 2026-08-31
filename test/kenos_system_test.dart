@@ -76,6 +76,67 @@ void main() {
       );
     });
 
+    test('comète : momentum > 0 quitte la gravité de sa planète', () {
+      final comet = _echo('comet-1', EchoColorTheme.teal)
+          .copyWith(momentum: 2);
+      // Repeated sampling over a full sweep: the comet's distance to
+      // the void varies WILDLY (eccentric) — it crosses the planets'
+      // orbit band and dives near the centre.
+      var minD = 1.0;
+      var maxD = 0.0;
+      for (var i = 0; i < 240; i++) {
+        final p = KenosSystem.echoPosition(
+          comet,
+          t0.add(Duration(minutes: 10 * i)),
+        );
+        final d = (p - KenosSystem.blackHole).distance;
+        if (d < minD) minD = d;
+        if (d > maxD) maxD = d;
+      }
+      expect(maxD, greaterThan(KenosSystem.planetOrbit),
+          reason: 'l\'aphélie dépasse les planètes');
+      expect(minD, lessThan(0.20),
+          reason: 'le périhélie frôle le vide');
+      expect(maxD - minD, greaterThan(0.15),
+          reason: 'l\'arc est réellement excentrique');
+    });
+
+    test('comète : déterministe (même ciel partout)', () {
+      final comet = _echo('comet-det', EchoColorTheme.indigo)
+          .copyWith(momentum: 1);
+      expect(
+        KenosSystem.echoPosition(comet, t0),
+        KenosSystem.echoPosition(comet, t0),
+      );
+    });
+
+    test('lignage : les maillons de la chaîne dessinent leurs segments', () {
+      final parent = _echo('line-parent', EchoColorTheme.lumen);
+      final child = Echo(
+        id: 'line-child',
+        coordX: 0.6,
+        coordY: 0.6,
+        coordZ: 0.5,
+        theme: EchoColorTheme.lumen,
+        createdAt: t0,
+        momentum: 1,
+        parentId: 'line-parent',
+      );
+      final segments =
+          KenosSystem.lineageSegments([parent, child], t0);
+      expect(segments, hasLength(1));
+      final (from, to, theme) = segments.single;
+      expect(theme, EchoColorTheme.lumen);
+      expect(from, isNot(to), reason: 'le segment relie deux points');
+
+      // A consumed parent (absent from the sky) still anchors the
+      // constellation: the phantom is the child's launch point.
+      final orphan =
+          KenosSystem.lineageSegments([child], t0);
+      expect(orphan, hasLength(1));
+      expect(orphan.single.$1, const Offset(0.6, 0.6));
+    });
+
     test('les orbites restent dans l\'éther connu [0,1]', () {
       final echo = _echo('bounds-check', EchoColorTheme.teal);
       for (final delta in [

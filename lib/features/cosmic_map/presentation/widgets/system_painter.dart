@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../echo/domain/echo.dart';
 import '../../application/kenos_system.dart';
 import '../../application/travel_camera.dart';
 
@@ -17,12 +18,17 @@ class SystemPainter extends CustomPainter {
     required this.viewport,
     required this.now,
     required this.reducedMotion,
+    this.echoes = const [],
   });
 
   final TravelCamera camera;
   final Size viewport;
   final DateTime now;
   final bool reducedMotion;
+
+  /// The visible sky's echoes — only for the lineage constellations
+  /// (faint links between a phoenix and where it was reborn).
+  final List<dynamic> echoes;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -104,6 +110,31 @@ class SystemPainter extends CustomPainter {
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18),
       );
       canvas.drawCircle(p, viewport.shortestSide / 62, core);
+    }
+
+    // ── Lineage constellations ──────────────────────────────────────
+    // Faint links: the map of a thought's journey through humans.
+    // Consumed parents leave phantom anchors — the line still points
+    // at where the rebirth happened. Never bright: a trace, not a
+    // thread to pull.
+    for (final segment in KenosSystem.lineageSegments(
+      echoes.cast<Echo>(),
+      now,
+    )) {
+      final (from, to, theme) = segment;
+      final a = world(from);
+      final b = world(to);
+      final paint = Paint()
+        ..strokeWidth = 0.7
+        ..style = PaintingStyle.stroke
+        ..color = AppColors.fade(theme.halo, 0.10);
+      canvas.drawLine(a, b, paint);
+      // A mote at the rebirth point: someone carried this further.
+      canvas.drawCircle(
+        b,
+        1.4,
+        Paint()..color = AppColors.fade(theme.halo, 0.28),
+      );
     }
   }
 

@@ -83,6 +83,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     setState(() {
       _camera.panByScreen(details.delta, _viewport);
     });
+    _publishPosition();
+  }
+
+  /// Where the eye rests, the ear listens (music of the spheres).
+  void _publishPosition() {
+    ref.read(travelPositionProvider.notifier).state = _camera.center;
   }
 
   /// Release: the void keeps a soft inertia (skipped under
@@ -144,6 +150,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// « voyager vers ». Tapping empty space travels nowhere (the drag
   /// is the road, the tap is the intention).
   void _onVoidTap() {
+    _publishPosition();
     final hit = planetHitTest(
       screenPoint: _lastPointerDown,
       camera: _camera,
@@ -230,6 +237,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             viewport: _viewport,
                             now: epoch,
                             reducedMotion: context.wantsReducedMotion,
+                            echoes: echoes.valueOrNull ?? const <Echo>[],
                           ),
                         ),
                       ),
