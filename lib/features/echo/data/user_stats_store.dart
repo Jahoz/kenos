@@ -7,6 +7,9 @@ class UserStats {
     required this.totalTracesLeft,
     this.lastEchoSentAt,
     this.readCount = 0,
+    this.stardust = 0,
+    this.seenReceptions = 0,
+    this.lastVisitAt,
   });
 
   final int totalEchosSent;
@@ -14,6 +17,17 @@ class UserStats {
   final int totalTracesLeft;
   final DateTime? lastEchoSentAt;
   final int readCount;
+
+  /// L'Aube: what the user's presence has kindled in others. One mote
+  /// per echo read, one per reception received — impact, never a score.
+  final int stardust;
+
+  /// Receptions already counted at the last visit: the difference is
+  /// what happened during the absence (the sas speaks of it, and only
+  /// of it — never a notification afterwards).
+  final int seenReceptions;
+
+  final DateTime? lastVisitAt;
 
   /// Countdown in seconds until next echo can be sent (based on 20s friction).
   int? get secondsUntilNextEcho {
@@ -38,12 +52,50 @@ class UserStats {
     return 'Tes échos dérivent encore dans l\'éther.';
   }
 
+  /// Receptions that landed since the last visit — L'Aube's material.
+  int get receptionsSinceLastVisit =>
+      (totalReceptionsReceived - seenReceptions).clamp(0, 1 << 30);
+
+  /// Whether the sas has anything to say (silence is also an answer,
+  /// and then the sas stays closed).
+  bool get hasAwakeningToTell =>
+      receptionsSinceLastVisit > 0 ||
+      (lastVisitAt != null && stardust >= 3) ||
+      (lastVisitAt == null && totalEchosSent > 0);
+
+  /// The sas's poetic lines, in order. Pure: the widget test pins them.
+  List<String> awakeningLines() {
+    final waiting = receptionsSinceLastVisit;
+    if (waiting == 1) {
+      return [
+        'Pendant ton absence, un de tes échos a touché un inconnu.',
+        'Le silence a porté tes mots plus loin que tu ne sais.',
+      ];
+    }
+    if (waiting > 1) {
+      return [
+        'Pendant ton absence, $waiting de tes échos ont touché un inconnu.',
+        'Le silence a porté tes mots plus loin que tu ne sais.',
+      ];
+    }
+    if (totalEchosSent > 0) {
+      return [
+        'Tes $totalEchosSent échos dérivent encore, quelque part, intacts.',
+        'Respire. Rien ne presse.',
+      ];
+    }
+    return ['L\'éther est calme. Commence doucement.'];
+  }
+
   UserStats copyWith({
     int? totalEchosSent,
     int? totalReceptionsReceived,
     int? totalTracesLeft,
     DateTime? lastEchoSentAt,
     int? readCount,
+    int? stardust,
+    int? seenReceptions,
+    DateTime? lastVisitAt,
   }) =>
       UserStats(
         totalEchosSent: totalEchosSent ?? this.totalEchosSent,
@@ -52,6 +104,9 @@ class UserStats {
         totalTracesLeft: totalTracesLeft ?? this.totalTracesLeft,
         lastEchoSentAt: lastEchoSentAt ?? this.lastEchoSentAt,
         readCount: readCount ?? this.readCount,
+        stardust: stardust ?? this.stardust,
+        seenReceptions: seenReceptions ?? this.seenReceptions,
+        lastVisitAt: lastVisitAt ?? this.lastVisitAt,
       );
 
   Map<String, dynamic> toJson() => {
@@ -60,6 +115,9 @@ class UserStats {
     'totalTracesLeft': totalTracesLeft,
     'lastEchoSentAt': lastEchoSentAt?.toIso8601String(),
     'readCount': readCount,
+    'stardust': stardust,
+    'seenReceptions': seenReceptions,
+    'lastVisitAt': lastVisitAt?.toIso8601String(),
   };
 
   factory UserStats.fromJson(Map<String, dynamic> json) => UserStats(
@@ -70,6 +128,11 @@ class UserStats {
         ? DateTime.parse(json['lastEchoSentAt'] as String)
         : null,
     readCount: json['readCount'] as int? ?? 0,
+    stardust: json['stardust'] as int? ?? 0,
+    seenReceptions: json['seenReceptions'] as int? ?? 0,
+    lastVisitAt: json['lastVisitAt'] != null
+        ? DateTime.parse(json['lastVisitAt'] as String)
+        : null,
   );
 
   /// Default empty stats.

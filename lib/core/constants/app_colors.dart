@@ -22,6 +22,12 @@ class AppColors {
   static const Color indigo = Color(0xFF6366F1);
   static const Color purple = Color(0xFF8B5CF6);
 
+  /// L'Aube — warm impact: the origin node's aura and the stardust
+  /// it accumulates (manifest V2 §2E). Distinct semantics from teal
+  /// (calm/local) and rose (destruction-only).
+  static const Color ember = Color(0xFFF59E0B);
+  static const Color emberSoft = Color(0xFFD97706);
+
   /// EXCLUSIVELY data destruction (burn after reading).
   static const Color rose = Color(0xFFF43F5E);
 

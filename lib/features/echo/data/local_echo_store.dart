@@ -133,11 +133,25 @@ class LocalEchoStore {
     await _write(_kStats, jsonEncode(updated.toJson()));
   }
 
-  /// Update stats after receiving a reception.
+  /// Update stats after receiving a reception: one more human touched
+  /// by something you launched — one mote of stardust.
   Future<void> recordReceptionReceived() async {
     final stats = await readStats();
-    final updated =
-        stats.copyWith(totalReceptionsReceived: stats.totalReceptionsReceived + 1);
+    final updated = stats.copyWith(
+      totalReceptionsReceived: stats.totalReceptionsReceived + 1,
+      stardust: stats.stardust + 1,
+    );
+    await _write(_kStats, jsonEncode(updated.toJson()));
+  }
+
+  /// L'Aube: close a visit. What was unseen becomes seen; the sas
+  /// will stay silent about it next time.
+  Future<void> recordVisit() async {
+    final stats = await readStats();
+    final updated = stats.copyWith(
+      seenReceptions: stats.totalReceptionsReceived,
+      lastVisitAt: DateTime.now(),
+    );
     await _write(_kStats, jsonEncode(updated.toJson()));
   }
 
@@ -149,10 +163,14 @@ class LocalEchoStore {
     await _write(_kStats, jsonEncode(updated.toJson()));
   }
 
-  /// Update stats after reading an echo.
+  /// Update stats after reading an echo: you carried a stranger's
+  /// thought — the manifest says stardust is earned by reading.
   Future<void> recordEchoRead() async {
     final stats = await readStats();
-    final updated = stats.copyWith(readCount: stats.readCount + 1);
+    final updated = stats.copyWith(
+      readCount: stats.readCount + 1,
+      stardust: stats.stardust + 1,
+    );
     await _write(_kStats, jsonEncode(updated.toJson()));
   }
 

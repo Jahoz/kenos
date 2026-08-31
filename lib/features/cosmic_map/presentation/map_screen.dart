@@ -16,8 +16,10 @@ import '../../echo/domain/echo.dart';
 import '../application/map_controller.dart';
 import '../application/motion_service.dart';
 import '../application/reception_controller.dart';
+import 'widgets/awakening_sas.dart';
 import 'widgets/background_painters.dart';
 import 'widgets/mindful_hold_star.dart';
+import 'widgets/origin_node.dart';
 
 /// The stellar map: KENOS public space.
 /// No lists, no scrolling — a three-dimensional Stack where the void dominates.
@@ -33,12 +35,25 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
+  /// The Awakening sas speaks once per session, after the first
+  /// receptions sync — never again (silence is the default state).
+  static bool _aubeSpokenThisSession = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(audioControllerProvider).ensureStarted();
+      unawaited(ref.read(audioControllerProvider).ensureStarted());
     });
+  }
+
+  void _maybeSpeakAube() {
+    if (_aubeSpokenThisSession || !mounted) return;
+    final receptions =
+        ref.read(receptionControllerProvider).valueOrNull;
+    if (receptions == null) return; // still syncing: wait.
+    _aubeSpokenThisSession = true;
+    unawaited(maybeShowAwakening(context, ref));
   }
 
   @override
@@ -49,6 +64,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final count = echoes.valueOrNull?.length ?? 0;
     final signals =
         ref.watch(receptionControllerProvider).valueOrNull?.length ?? 0;
+
+    // L'Aube: once the first sync settles, the sas may speak.
+    ref.listen(receptionControllerProvider, (previous, next) {
+      if (previous == null || !previous.hasValue) _maybeSpeakAube();
+    });
 
     // A new signal lands: the device feels it (single informative
     // pulse, kept even under reduce-motion).
@@ -163,6 +183,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ],
                   ),
                 ),
+              ),
+            ),
+            // The origin node: one's warm ember anchor, stardust
+            // riding around it. Quiet impact, one tap away.
+            Align(
+              alignment: Alignment.bottomLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 26, bottom: 44),
+                child: const OriginNode(),
               ),
             ),
             // Mirror gate.
