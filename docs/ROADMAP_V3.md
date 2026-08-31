@@ -231,6 +231,28 @@ l'œuvre collective à l'aveugle :
    refermée ») — jamais de push, jamais de compteur vivant, zéro
    stardust, zéro signature.
 
+## V3.9 — Germination : les Vestiges (idée Hugo, 2026-09-01)
+
+Le cold start : un éther vide n'offre rien à découvrir. La réponse est
+de la culture réelle, curatée — JAMAIS de faux échos (le contrat
+sacré : une étoile = une vraie pensée humaine ; une confidence
+fabriquée tuerait la confiance en tout ce qu'on lit).
+
+- **Forme** : éclats géométriques gravés, ternes, qui culbutent — la
+  grammaire visuelle dit « artefact culturel », pas « confidence ».
+- **Rituel différent** : décryptage ~1 s, RE-LISIBLES (une citation ne
+  brûle pas — ce serait du gâchis), aucune réception, aucune trace,
+  aucun rebond, AUCUNE stardust (elle mesure la connexion humaine).
+- **Hors décompte** : « N ÉCHOS EN ORBITE » ne compte que les humains ;
+  « L'ÉTHER EST CALME » reste honnête même si des vestiges dérivent.
+- **Contenu** (curaté, français, public domain, sourcé) : citations sur
+  le vide et le lâcher-prise (stoïciens, Rilke, Bachelard, haïku),
+  étymologies (kénose, dérive, silence, vacance), micro-histoires,
+  invites respiratoires. Embarqué en JSON dans l'app : zéro backend,
+  honnête hors-ligne.
+- **Répartition** : clairsemés (3-4 par secteur), trouvés en voyageant
+  — une bibliothèque du vide, jamais un fil.
+
 ## 4. Règles inchangées (rappel)
 
 - Single-read atomique, Ether Seal, RPC-only, ROSE destructif,
