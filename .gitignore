@@ -54,3 +54,5 @@ supabase/.branches/
 
 # Vercel CLI link state
 .vercel/
+.vercel
+.env*

@@ -28,7 +28,10 @@ build-web: ## Release web build (compiles the fragment shader)
 deploy-web: ## Build for the real ether and deploy the PWA to Vercel (prod)
 	@touch .env.cloud
 	flutter build web --release $$(grep -v '^#' .env.cloud | sed 's/^/--dart-define=/' | tr '\n' ' ')
-	vercel deploy build/web --prod
+	@# Deploy FROM build/web (the documented static path): the root link
+	@# state travels with the copied .vercel so nothing else uploads.
+	rm -rf build/web/.vercel && cp -R .vercel build/web/.vercel
+	cd build/web && vercel deploy --prod --yes
 
 serve-web: build-web ## Serve the built PWA on :4308
 	cd build/web && python3 -m http.server 4308
