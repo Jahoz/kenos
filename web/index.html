@@ -17,6 +17,10 @@
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
+  <!-- Without this meta, mobile browsers render a shrunk desktop page
+       and the keyboard overlays the Mirror input — typing went blind.
+       resizes-content: the keyboard folds the layout, Flutter adapts. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="KENOS — l'anti-réseau social. Lance une pensée intime dans l'éther : une seule personne pourra la lire, puis elle s'autodétruira.">
   <meta name="theme-color" content="#030508">

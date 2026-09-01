@@ -189,8 +189,19 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
       canPop: !_sealing,
       child: Scaffold(
         backgroundColor: AppColors.voidBlack,
+        // Portrait webapp: the keyboard folds the layout so the field
+        // stays in view — one never types blind.
+        resizeToAvoidBottomInset: true,
         body: SafeArea(
-          child: Padding(
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              // Normal case: the column fills the screen exactly
+              // (Expanded works). Keyboard open: the fixed rows scroll
+              // away and the editor keeps its readable window.
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Padding(
             padding: const EdgeInsets.fromLTRB(26, 18, 26, 26),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -234,11 +245,13 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                             style: secretStyle(fontSize: 18),
                           ),
                         )
-                      : TextField(
+                      : ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 100),
+                          child: TextField(
                           controller: _input,
                           focusNode: _focus,
                           maxLines: null,
-                          expands: true,
+                          minLines: 3,
                           autofocus: true,
                           maxLength: _maxLength,
                           cursorColor: AppColors.teal,
@@ -261,6 +274,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                             ),
                           ),
                           onChanged: (_) => setState(() {}),
+                          ),
                         ),
                 ),
                 const SizedBox(height: 18),
@@ -333,6 +347,10 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                   ),
                 ),
               ],
+            ),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
