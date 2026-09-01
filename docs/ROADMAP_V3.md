@@ -217,7 +217,7 @@ trouve ce qui y dérive.
   travelPositionProvider). pgTAP 58/58, 103 tests Dart, déployé et
   vérifié live.
 
-## V3.8 — Germination : le Cadavre Exquis (idée Hugo, 2026-09-01)
+## V3.8 — Le Cadavre Exquis ✅ (livré 2026-09-01)
 
 À travailler — trois déclinautions, de la trace involontaire à
 l'œuvre collective à l'aveugle :
@@ -240,6 +240,14 @@ l'œuvre collective à l'aveugle :
    la prochaine visite (« la constellation que tu as touchée s'est
    refermée ») — jamais de push, jamais de compteur vivant, zéro
    stardust, zéro signature.
+- **Livré** : migration 20260901110000 (4 RPC — contribute_line
+  renvoie le COMPTE, jamais les fragments ; fermeture auto à 4-7
+  lignes ; lecture unique du fermé par un non-contributeur seulement
+  — KENOS_CONTRIBUTOR_BARRED ; purge 7 j), anneaux pointillés sur la
+  carte (points remplis par les inconnus, fermé = anneau indigo
+  plein), panneau « UNE LIGNE, À L'AVEUGLE », lecture du poème entier
+  numéroté, murmure de l'Aube (constellationsTouched), pgTAP 71/71,
+  112 tests, déployé.
 
 ## V3.9 — Les Vestiges ✅ (livrée 2026-09-01)
 
