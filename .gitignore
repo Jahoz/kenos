@@ -56,3 +56,7 @@ supabase/.branches/
 .vercel/
 .vercel
 .env*
+
+# Agent tool state
+.mimosa/
+.video_agent/
