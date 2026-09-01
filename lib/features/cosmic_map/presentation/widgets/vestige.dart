@@ -38,6 +38,20 @@ class Vestige {
         offsetY: (json['y'] as num).toDouble(),
       );
 
+  /// Whether this shard has already been read on this device.
+  /// Read shards dim to a ghost — discoverable vs visited is visible.
+  bool get isRead => _readVestigeIds.contains(id);
+
+  /// Device-local read state (never leaves, never counts anywhere).
+  static final Set<String> _readVestigeIds = <String>{};
+
+  /// Marks the shard as read on this device (re-readable forever —
+  /// the mark is a memory, not a burn).
+  static void markRead(String id) => _readVestigeIds.add(id);
+
+  /// How many curated shards exist in the current bundle.
+  static int knownCount = 0;
+
   String get kindLabel => switch (kind) {
         'quote' => 'CITATION',
         'etymology' => 'ÉTYMOLOGIE',
@@ -48,14 +62,30 @@ class Vestige {
 }
 
 /// Loads the curated vestiges (bundled JSON — zero backend, honest
-/// offline, identical on every device).
+/// offline, identical on every device). A subset shows at a time,
+/// rotating with the days: the library renews itself as you return —
+/// always something left to discover.
 Future<List<Vestige>> loadVestiges() async {
   try {
     final raw = await rootBundle.loadString('assets/vestiges.json');
     final data = jsonDecode(raw) as Map<String, dynamic>;
-    return (data['vestiges'] as List)
+    final all = (data['vestiges'] as List)
         .map((v) => Vestige.fromJson(v as Map<String, dynamic>))
         .toList();
+    Vestige.knownCount = all.length;
+
+    // Daily rotation: ~2/3 of the shards are adrift on any given day,
+    // deterministically — every device sees the same drifting set,
+    // and tomorrow's sky holds shards today's doesn't.
+    final day = DateTime.now().difference(DateTime(2026, 1, 1)).inDays;
+    final visible = <Vestige>[];
+    for (var i = 0; i < all.length; i++) {
+      final slot = (i + day * 5) % all.length;
+      if (slot < all.length * 2 / 3) {
+        visible.add(all[i]);
+      }
+    }
+    return visible;
   } catch (e) {
     // The ether works without its library: the app never blocks.
     debugPrint('[kenos.vestiges] unavailable: $e');
@@ -85,6 +115,7 @@ class VestigePainter extends CustomPainter {
     required this.rotation,
     required this.color,
     required this.pulse,
+    this.read = false,
   });
 
   final double rotation;
@@ -93,14 +124,21 @@ class VestigePainter extends CustomPainter {
   /// 0..1 gentle highlight (a reader's attention passing nearby).
   final double pulse;
 
+  /// Read on this device: dimmed to a ghost.
+  final bool read;
+
+  /// Read on this device: the shard dims to a ghost (still there,
+  /// still re-readable — a memory, not a burn).
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final r = size.shortestSide / 2 - 2;
+    final baseAlpha = read ? 0.12 : (0.28 + 0.3 * pulse);
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.1
-      ..color = AppColors.fade(color, 0.28 + 0.3 * pulse);
+      ..strokeWidth = read ? 0.7 : 1.1
+      ..color = AppColors.fade(color, baseAlpha);
 
     canvas.save();
     canvas.translate(center.dx, center.dy);
@@ -134,6 +172,7 @@ class VestigePainter extends CustomPainter {
 /// The Vestige reveal: serif text, sourced, RE-READABLE (a quote does
 /// not burn — that would be waste). A short hold (~1 s) decipheres.
 Future<void> showVestigeSheet(BuildContext context, {required Vestige vestige}) {
+  Vestige.markRead(vestige.id);
   return showGeneralDialog(
     context: context,
     barrierDismissible: true,

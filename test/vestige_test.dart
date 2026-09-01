@@ -4,12 +4,16 @@ import 'package:kenos/features/cosmic_map/presentation/widgets/vestige.dart';
 
 void main() {
   group('Vestiges — la culture curatée', () {
-    test('le JSON embarqué charge : 12 vestiges, textes sourcés, positions [0,1]',
+    test('le JSON embarqué charge : vestiges quotidiens, textes sourcés, positions [0,1]',
         () async {
       final vestiges = await loadVestiges();
       expect(vestiges, isNotEmpty);
-      expect(vestiges.length, greaterThanOrEqualTo(10),
-          reason: 'la bibliothèque du vide doit être dense');
+      // Daily rotation: ~2/3 of the 12 drift on any given day (8 ± a
+      // few) — always shards left for tomorrow.
+      expect(vestiges.length, greaterThanOrEqualTo(6),
+          reason: 'la dérive quotidienne doit rester dense');
+      expect(Vestige.knownCount, greaterThanOrEqualTo(12),
+          reason: 'la bibliothèque complète est comptée');
       for (final v in vestiges) {
         expect(v.text, isNotEmpty, reason: 'vestige vide : ${v.id}');
         expect(v.source, isNotEmpty, reason: 'sans source : ${v.id}');

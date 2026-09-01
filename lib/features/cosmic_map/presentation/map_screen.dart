@@ -299,8 +299,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                       height: 32,
                                       child: GestureDetector(
                                         behavior: HitTestBehavior.opaque,
-                                        onTap: () =>
-                                            showVestigeSheet(context, vestige: v),
+                                        onTap: () async {
+                                          await showVestigeSheet(
+                                            context,
+                                            vestige: v,
+                                          );
+                                          if (mounted) {
+                                            setState(() {});
+                                          }
+                                        },
                                         child: CustomPaint(
                                           painter: VestigePainter(
                                             rotation:
@@ -312,6 +319,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                             ),
                                             color: AppColors.pureLight,
                                             pulse: 0,
+                                            read: v.isRead,
                                           ),
                                         ),
                                       ),
@@ -382,6 +390,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           fontSize: 8,
                           letterSpacing: 3,
                           color: AppColors.fade(AppColors.teal, 0.35),
+                        ),
+                      ),
+                    ],
+                    if (_vestiges.any((v) => !v.isRead)) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_vestiges.where((v) => !v.isRead).length} VESTIGES À DÉCOUVRIR',
+                        style: TextStyle(
+                          fontFamily: AppFonts.mono,
+                          fontSize: 8,
+                          letterSpacing: 3,
+                          color: AppColors.fade(AppColors.pureLight, 0.30),
                         ),
                       ),
                     ],
