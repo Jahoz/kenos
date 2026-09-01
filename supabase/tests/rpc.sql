@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(79);
+select plan(82);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -746,6 +746,90 @@ select is(
   (select count(*) from public.kenos_constellations),
   0::bigint,
   'kenos_purge sweeps stale open corpses'
+);
+
+-- ── V3.11a — the SEALED corpse: the winner gets ciphertext + key ────────
+-- The regression: 'text' used to carry pgp_sym_decrypt(key_seal) — the
+-- KEY — so real (sealed) corpses read as empty lines on device. The
+-- bundle must pass the client-sealed ciphertext through untouched,
+-- with the key unsealed from escrow beside it (consume_echo parity).
+create table if not exists tests.sealed_bundle (bundle jsonb);
+truncate tests.sealed_bundle;
+create or replace function tests.constellation_at(px float8, py float8) returns uuid
+language sql security definer set search_path = public as $$
+  select id from public.kenos_constellations
+   where seed_x = px and seed_y = py limit 1
+$$;
+create or replace function tests.consume_constellation_at(px float8, py float8)
+returns jsonb
+language plpgsql security definer set search_path = public, tests as $$
+begin
+  insert into tests.sealed_bundle (bundle)
+  values (public.consume_constellation(tests.constellation_at(px, py)));
+  return (select bundle from tests.sealed_bundle limit 1);
+end;
+$$;
+grant execute on function tests.constellation_at(float8, float8) to authenticated;
+grant execute on function tests.consume_constellation_at(float8, float8) to authenticated;
+
+reset role;
+insert into auth.users (id, email, aud, role) values
+  ('00000000-0000-4000-8000-0000000000f1', 'f1@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000f2', 'f2@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000f3', 'f3@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000f4', 'f4@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000f5', 'f5@t.kenos', 'authenticated', 'authenticated');
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000f1","role":"authenticated"}', true);
+select is(
+  (select count(*) from public.seed_constellation(0.7::float8, 0.7::float8)),
+  1::bigint,
+  'the sealed corpse is seeded'
+);
+reset role;
+update public.kenos_constellations set target_lines = 4
+  where seed_x = 0.7 and seed_y = 0.7;
+
+-- Four strangers, each with a REAL sealed pair (key non-empty).
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000f1","role":"authenticated"}', true);
+select public.contribute_line(
+  tests.constellation_at(0.7, 0.7),
+  'AAECAwQFBgcICQ==', 'a2Vub3Mta2V5LXRlc3Q=');
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000f2","role":"authenticated"}', true);
+select public.contribute_line(
+  tests.constellation_at(0.7, 0.7),
+  'AAECAwQFBgcIR0xP', 'a2Vub3Mta2V5LXRlc3Q=');
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000f3","role":"authenticated"}', true);
+select public.contribute_line(
+  tests.constellation_at(0.7, 0.7),
+  'AAECAwQFBgcJVEVN', 'a2Vub3Mta2V5LXRlc3Q=');
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000f4","role":"authenticated"}', true);
+select public.contribute_line(
+  tests.constellation_at(0.7, 0.7),
+  'AAECAwQFBgcKRE9S', 'a2Vub3Mta2V5LXRlc3Q=');
+
+-- The single reader (never a contributor) opens the sealed corpse;
+-- the definer helper stashes the bundle for both assertions.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000f5","role":"authenticated"}', true);
+select tests.consume_constellation_at(0.7, 0.7);
+reset role;
+
+-- 80
+select is(
+  (select bundle -> 'lines' -> 0 ->> 'text' from tests.sealed_bundle),
+  'AAECAwQFBgcICQ==',
+  'sealed corpse: text IS the ciphertext — never the key, never a server decryption'
+);
+-- 81
+select is(
+  (select bundle -> 'lines' -> 0 ->> 'key' from tests.sealed_bundle),
+  'a2Vub3Mta2V5LXRlc3Q=',
+  'sealed corpse: the key travels beside it, unsealed from escrow exactly once'
 );
 
 -- ── V3.10 — the Excerpts: sealed cultural doors ─────────────────────────

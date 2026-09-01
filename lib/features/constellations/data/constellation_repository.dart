@@ -129,24 +129,36 @@ class SupabaseConstellationRepository implements ConstellationRepository {
         params: {'p_constellation_id': id},
       );
       if (result == null) return null;
-      final lines = (result as Map<String, dynamic>)['lines'] as List;
-      final opened = <AssembledLine>[];
-      for (final line in lines) {
-        final map = (line as Map).cast<String, dynamic>();
-        final cipherText = map['text'] as String;
-        final key = map['key'] as String?;
-        final text = (key == null || key.isEmpty)
-            ? cipherText
-            : await EchoCipher.openOrNull(key, cipherText) ?? '';
-        opened.add(AssembledLine(
-          number: (map['line_number'] as num).toInt(),
-          text: text,
-        ));
-      }
-      return opened;
+      return assembleFromBundle(
+        (result as Map<String, dynamic>).cast<String, dynamic>(),
+      );
     } catch (_) {
       return null;
     }
+  }
+
+  /// V3.11a — the winner's bundle, opened on-device: each line travels
+  /// as the client-sealed ciphertext plus its key (unsealed from escrow
+  /// by the RPC, exactly like `consume_echo`). A line that fails to
+  /// open reads as silence — never an error, never a re-read.
+  static Future<List<AssembledLine>> assembleFromBundle(
+    Map<String, dynamic> bundle,
+  ) async {
+    final lines = (bundle['lines'] as List).cast<Map>();
+    final opened = <AssembledLine>[];
+    for (final line in lines) {
+      final map = line.cast<String, dynamic>();
+      final cipherText = map['text'] as String;
+      final key = map['key'] as String?;
+      final text = (key == null || key.isEmpty)
+          ? cipherText
+          : await EchoCipher.openOrNull(key, cipherText) ?? '';
+      opened.add(AssembledLine(
+        number: (map['line_number'] as num).toInt(),
+        text: text,
+      ));
+    }
+    return opened;
   }
 }
 
