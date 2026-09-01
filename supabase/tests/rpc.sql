@@ -800,13 +800,15 @@ select throws_ok(
   'a door kind without a reference is refused'
 );
 
--- 78 — the map carries the door's KIND only, never the reference.
+-- 78 — the map knows nothing of the door: the echo drifts as a normal
+-- star (fetch_map_sector exposes no media column at all).
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000e8","role":"authenticated"}', true);
 select is(
-  (select count(*) from public.fetch_map_sector() where media_kind = 'SONG'),
+  (select count(*) from public.fetch_map_sector()
+   where id = tests.echo_by_text('porte scellée de e7')),
   1::bigint,
-  'the map exposes the door kind, nothing else'
+  'the door echo drifts as a normal star — the map knows nothing of it'
 );
 
 -- 79 — the single winner receives the sealed reference with the key.
