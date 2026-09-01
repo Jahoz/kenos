@@ -90,26 +90,44 @@ class SystemPainter extends CustomPainter {
         orbitPaint,
       );
 
-      // The planet: a breathing halo around a small warm core.
-      final core = Paint()
-        ..shader = RadialGradient(
-          colors: [
-            AppColors.pureLight,
-            theme.core,
-            AppColors.fade(theme.core, 0),
-          ],
-          stops: const [0, 0.35, 1],
-        ).createShader(
-          Rect.fromCircle(center: p, radius: viewport.shortestSide / 52),
-        );
+      // The planet: a RINGED DISC — planets are worlds (a body + a
+      // ring), stars are lights (points + halos). Never confused.
+      final bodyR = viewport.shortestSide / 46;
+      final ringR = bodyR * 1.75;
+      // Soft breathing halo (very dim: it must not outshine stars).
       canvas.drawCircle(
         p,
-        viewport.shortestSide / 52,
+        bodyR,
         Paint()
-          ..color = AppColors.fade(theme.core, 0.10)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18),
+          ..color = AppColors.fade(theme.core, 0.08)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 22),
       );
-      canvas.drawCircle(p, viewport.shortestSide / 62, core);
+      // The ring: a thin ellipse, tilted per planet.
+      canvas.save();
+      canvas.translate(p.dx, p.dy);
+      canvas.rotate(-0.42 + i * 0.35);
+      canvas.drawOval(
+        Rect.fromCircle(center: Offset.zero, radius: ringR),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.4
+          ..color = AppColors.fade(theme.halo, 0.30),
+      );
+      canvas.restore();
+      // The body: a solid disc with a thin bright limb.
+      canvas.drawCircle(
+        p,
+        bodyR,
+        Paint()..color = AppColors.fade(theme.core, 0.55),
+      );
+      canvas.drawCircle(
+        p,
+        bodyR,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..color = AppColors.fade(theme.halo, 0.75),
+      );
     }
 
     // ── Lineage constellations ──────────────────────────────────────

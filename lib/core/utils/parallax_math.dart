@@ -22,11 +22,13 @@ class ParallaxMath {
     required double amplitude,
   }) => tilt * amplitude * z;
 
-  /// Visual radius of a star core, in pixels.
-  static double coreRadius(double z) => 2.0 + 3.5 * z;
+  /// Visual radius of a star core, in pixels — generous: a star must
+  /// read as LIGHT (pointed, alive), never as a planet's disc.
+  static double coreRadius(double z) => 3.5 + 5.5 * z;
 
-  /// Total diameter taken by the star + its charge ring.
-  static double starDiameter(double z) => 20.0 + 46.0 * z;
+  /// Total diameter taken by the star + its charge ring — the hold
+  /// target grows with it (tight clusters stay tappable).
+  static double starDiameter(double z) => 26.0 + 54.0 * z;
 
   /// Opacity: distant objects fade into the void.
   static double opacityFor(double z) => 0.22 + 0.78 * z;

@@ -20,9 +20,9 @@ class KenosSystem {
   /// Orbital radius of each planet around the void (world units).
   static const double planetOrbit = 0.32;
 
-  /// One full planetary revolution — slow enough to feel eternal,
-  /// fast enough to notice between two visits (~6 h).
-  static const Duration planetPeriod = Duration(hours: 6);
+  /// One full planetary revolution (~40 min): the sky visibly drifts
+  /// while you watch — eternal is not motionless.
+  static const Duration planetPeriod = Duration(minutes: 40);
 
   /// Base angles (radians) spread the three intents apart at epoch.
   /// (A literal: Duration members are not const-evaluable here.)
@@ -55,11 +55,12 @@ class KenosSystem {
     return 0.045 + 0.075 * (h / 999);
   }
 
-  /// Orbital period from the radius: inner thoughts whirl faster
-  /// (Kepler-flavored, deliberately poetic rather than physical).
+  /// Orbital period from the radius: inner thoughts whirl faster —
+  /// and the whole clock runs at a contemplative-but-alive pace
+  /// (15–60 s per orbit: you SEE the drift if you linger).
   static Duration _echoPeriod(Echo echo) {
     final r = _echoOrbitRadius(echo);
-    return Duration(seconds: (240 * r / 0.08).round().clamp(90, 300));
+    return Duration(seconds: (90 * r / 0.08).round().clamp(25, 75));
   }
 
   /// Planet index for an echo: its intent decides its gravity. The
@@ -116,9 +117,10 @@ class KenosSystem {
     final aphelion = _cometAphelion(echo);
     final orientation = _cometOrientation(echo);
     final a = aphelion / (1 + e); // aphelion = a(1+e)
-    // Slow eccentrics: the more momentum, the longer the sweep.
+    // Eccentrics sweep in minutes, not hours: a comet's passage is
+    /// an event you can catch, not a rumor.
     final period = Duration(
-      seconds: 900 + 120 * echo.momentum + (echo.id.hashCode % 600),
+      seconds: 180 + 40 * echo.momentum + (echo.id.hashCode % 120),
     );
     final phase = (at.millisecondsSinceEpoch + echo.id.hashCode % 9973) /
         period.inMilliseconds;

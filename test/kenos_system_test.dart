@@ -37,16 +37,18 @@ void main() {
       }
     });
 
-    test('les planètes bougent — lentement (une révolution ~6 h)', () {
+    test('les planètes bougent — visiblement (une révolution ~40 min)', () {
       final before = KenosSystem.planetPosition(0, t0);
       final after = KenosSystem.planetPosition(
         0,
         t0.add(const Duration(minutes: 1)),
       );
       expect(after, isNot(before));
-      // In one minute: ~1° of arc → a small but real movement.
+      // In one minute: ~9° of arc — the drift is perceptible if you
+      // linger (eternal is not motionless).
       final moved = (after - before).distance;
-      expect(moved, lessThan(0.02), reason: 'le ciel est éternel, pas pressé');
+      expect(moved, greaterThan(0.03), reason: 'le ciel doit vivre');
+      expect(moved, lessThan(0.12), reason: 'sans tourner la tête');
     });
 
     test('un écho orbit SA planète d\'intention, dans sa bande', () {

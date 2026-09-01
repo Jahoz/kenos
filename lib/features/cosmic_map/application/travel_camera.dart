@@ -22,10 +22,10 @@ class TravelCamera {
   double _zoom;
   double get zoom => _zoom;
 
-  /// Pinch bounds: far enough apart to separate clustered stars,
-  /// never so close the void feels like a map.
+  /// Pinch bounds: deep enough to split the tightest clusters (8×
+  /// separates stars born a few pixels apart), never a map of pixels.
   static const double minZoom = 1.2;
-  static const double maxZoom = 3.5;
+  static const double maxZoom = 8.0;
 
   /// How far past the known ether the void still carries the eye.
   final double margin;

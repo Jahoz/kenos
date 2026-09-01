@@ -26,10 +26,19 @@ import 'ring_painters.dart';
 ///                 rising drone pitch, then atomic consumption.
 /// Sealed echo (self) → rotating dashed shield, untouchable.
 class MindfulHoldStar extends ConsumerStatefulWidget {
-  const MindfulHoldStar({super.key, required this.echo, required this.z});
+  const MindfulHoldStar({
+    super.key,
+    required this.echo,
+    required this.z,
+    this.breathAt,
+  });
 
   final Echo echo;
   final double z;
+
+  /// The sky's breath clock (V3.7 polish): each star swells and dims
+  /// on its own 6-second phase. Null = frozen (reduce-motion).
+  final DateTime? breathAt;
 
   @override
   ConsumerState<MindfulHoldStar> createState() => _MindfulHoldStarState();
@@ -175,8 +184,21 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   }
 
   void _onPointerMove(PointerMoveEvent event) {
-    // Mindful means steady: drifting off the star cancels the hold.
+    // Mindful means steady — but the SKY moves too: the measure is the
+    // distance to the star's CURRENT center (it orbits while you hold),
+    // not to where your finger first landed.
     if (_downPosition == null) return;
+    final renderObject = context.findRenderObject();
+    if (renderObject is RenderBox && renderObject.hasSize) {
+      final starCenter = renderObject.localToGlobal(
+        renderObject.size.center(Offset.zero),
+      );
+      if ((event.position - starCenter).distance > 42) {
+        _downPosition = null;
+        _onPointerUp();
+      }
+      return;
+    }
     if ((event.position - _downPosition!).distance > 28) {
       _downPosition = null;
       _onPointerUp();
@@ -201,6 +223,18 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     final color = _echo.isMine ? AppColors.teal : _echo.theme.core;
     final hasUnreadSignal =
         _echo.isMine && _hasUnreadReception();
+
+    // The breath: a slow individual swell (id-hash phase, 6 s period)
+    // — the light LIVES, it is not a sticker.
+    var coreScale = 1.0;
+    var glowBoost = 0.0;
+    final breathAt = widget.breathAt;
+    if (breathAt != null && !context.wantsReducedMotion) {
+      final phase =
+          (breathAt.millisecondsSinceEpoch / 6000 + _echo.id.hashCode % 97) % 1.0;
+      coreScale = 0.88 + 0.24 * math.sin(phase * 2 * math.pi);
+      glowBoost = 0.5 + 0.5 * math.sin(phase * 2 * math.pi);
+    }
 
     Widget visual = SizedBox(
       width: diameter,
@@ -232,14 +266,33 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
                       color: _echo.theme.halo,
                     ),
               child: Center(
-                child: Container(
-                  width: coreRadius * 2,
-                  height: coreRadius * 2,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [Colors.white, color, AppColors.fade(color, 0)],
-                      stops: const [0, 0.45, 1],
+                child: Transform.scale(
+                  scale: coreScale,
+                  child: Container(
+                    width: coreRadius * 2,
+                    height: coreRadius * 2,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          Colors.white,
+                          color,
+                          AppColors.fade(color, 0),
+                        ],
+                        stops: const [0, 0.45, 1],
+                      ),
+                      boxShadow: glowBoost > 0.05
+                          ? [
+                              BoxShadow(
+                                color: AppColors.fade(
+                                  color,
+                                  0.30 * glowBoost,
+                                ),
+                                blurRadius: 14 + 10 * glowBoost,
+                                spreadRadius: 1 + 3 * glowBoost,
+                              ),
+                            ]
+                          : null,
                     ),
                   ),
                 ),

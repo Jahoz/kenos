@@ -74,33 +74,40 @@ void main() {
     // Orbits cluster stars near their planets and they MOVE with real
     // time — overlaps vary run to run. Hold a star whose center is
     // covered by no other star: the pressed one is surely the intended.
-    final stars = find.byType(MindfulHoldStar);
-    final rects = [
-      for (var i = 0; i < stars.evaluate().length; i++)
-        tester.getRect(stars.at(i)),
-    ];
     final screen = Offset(
       tester.view.physicalSize.width / tester.view.devicePixelRatio,
       tester.view.physicalSize.height / tester.view.devicePixelRatio,
     );
+    // The living clock sweeps stars through overlaps: retry over a
+    // few beats of orbit until one qualifies (visible + uncovered).
     int pick = -1;
-    for (var i = 0; i < rects.length; i++) {
-      final r = rects[i];
-      final center = r.center;
-      final onScreen = r.left >= 0 &&
-          r.right <= screen.dx &&
-          r.top >= 0 &&
-          r.bottom <= screen.dy;
-      final covered = rects.asMap().entries.any(
-        (e) => e.key != i && e.value.contains(center),
-      );
-      if (onScreen && !covered) {
-        pick = i;
-        break;
+    for (var attempt = 0; attempt < 40 && pick == -1; attempt++) {
+      final starsNow = find.byType(MindfulHoldStar);
+      final rectsNow = [
+        for (var i = 0; i < starsNow.evaluate().length; i++)
+          tester.getRect(starsNow.at(i)),
+      ];
+      for (var i = 0; i < rectsNow.length; i++) {
+        final r = rectsNow[i];
+        final center = r.center;
+        final onScreen = r.left >= 0 &&
+            r.right <= screen.dx &&
+            r.top >= 0 &&
+            r.bottom <= screen.dy;
+        final covered = rectsNow.asMap().entries.any(
+          (e) => e.key != i && e.value.contains(center),
+        );
+        if (onScreen && !covered) {
+          pick = i;
+          break;
+        }
+      }
+      if (pick == -1) {
+        await tester.pump(const Duration(milliseconds: 400));
       }
     }
     expect(pick, greaterThanOrEqualTo(0), reason: 'aucune étoile dégagée et visible');
-    final star = stars.at(pick);
+    final star = find.byType(MindfulHoldStar).at(pick);
     final heldId = (tester.widget(star) as MindfulHoldStar).echo.id;
     expect(heldId, isNotEmpty);
     final gesture = await tester.startGesture(tester.getCenter(star));
@@ -172,33 +179,40 @@ void main() {
     // Orbits cluster stars near their planets and they MOVE with real
     // time — overlaps vary run to run. Hold a star whose center is
     // covered by no other star: the pressed one is surely the intended.
-    final stars = find.byType(MindfulHoldStar);
-    final rects = [
-      for (var i = 0; i < stars.evaluate().length; i++)
-        tester.getRect(stars.at(i)),
-    ];
     final screen = Offset(
       tester.view.physicalSize.width / tester.view.devicePixelRatio,
       tester.view.physicalSize.height / tester.view.devicePixelRatio,
     );
+    // The living clock sweeps stars through overlaps: retry over a
+    // few beats of orbit until one qualifies (visible + uncovered).
     int pick = -1;
-    for (var i = 0; i < rects.length; i++) {
-      final r = rects[i];
-      final center = r.center;
-      final onScreen = r.left >= 0 &&
-          r.right <= screen.dx &&
-          r.top >= 0 &&
-          r.bottom <= screen.dy;
-      final covered = rects.asMap().entries.any(
-        (e) => e.key != i && e.value.contains(center),
-      );
-      if (onScreen && !covered) {
-        pick = i;
-        break;
+    for (var attempt = 0; attempt < 40 && pick == -1; attempt++) {
+      final starsNow = find.byType(MindfulHoldStar);
+      final rectsNow = [
+        for (var i = 0; i < starsNow.evaluate().length; i++)
+          tester.getRect(starsNow.at(i)),
+      ];
+      for (var i = 0; i < rectsNow.length; i++) {
+        final r = rectsNow[i];
+        final center = r.center;
+        final onScreen = r.left >= 0 &&
+            r.right <= screen.dx &&
+            r.top >= 0 &&
+            r.bottom <= screen.dy;
+        final covered = rectsNow.asMap().entries.any(
+          (e) => e.key != i && e.value.contains(center),
+        );
+        if (onScreen && !covered) {
+          pick = i;
+          break;
+        }
+      }
+      if (pick == -1) {
+        await tester.pump(const Duration(milliseconds: 400));
       }
     }
     expect(pick, greaterThanOrEqualTo(0), reason: 'aucune étoile dégagée et visible');
-    final star = stars.at(pick);
+    final star = find.byType(MindfulHoldStar).at(pick);
     final heldId = (tester.widget(star) as MindfulHoldStar).echo.id;
     expect(heldId, isNotEmpty);
     final gesture = await tester.startGesture(tester.getCenter(star));

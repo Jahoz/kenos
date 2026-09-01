@@ -484,12 +484,31 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
   /// Far → near. The last edge breathes past 1.0 so z = 1 lands inside.
   static const _bucketEdges = [0.05, 0.30, 0.55, 0.80, 1.001];
 
+  /// Each star breathes on its own slow phase (the sky is alive —
+  /// eternal is not motionless). ~4 fps is enough for a 6 s breath.
+  DateTime _breathAt = DateTime.now();
+  Timer? _breath;
+
+  @override
+  void dispose() {
+    _breath?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     // Ambient parallax calms down (×0.15) under reduce-motion.
     final motionScale = context.wantsReducedMotion ? 0.15 : 1.0;
     final tilt = ref.watch(tiltProvider).valueOrNull ?? Tilt.zero;
     final now = DateTime.now();
+
+    // The breathing: every star on its own phase (id-hash), a slow
+    // 6-second swell. Frozen under reduce-motion (a star chart).
+    if (!context.wantsReducedMotion && widget.echoes.isNotEmpty) {
+      _breath ??= Timer.periodic(const Duration(milliseconds: 250), (_) {
+        if (mounted) setState(() => _breathAt = DateTime.now());
+      });
+    }
 
     final sorted = widget.echoes.toList()
       ..sort((a, b) => a.resolveZ(now).compareTo(b.resolveZ(now)));
@@ -527,7 +546,12 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
                 top: baseY - hit / 2,
                 width: hit,
                 height: hit,
-                child: MindfulHoldStar(key: ValueKey('star-${echo.id}'), echo: echo, z: z),
+                child: MindfulHoldStar(
+                  key: ValueKey('star-${echo.id}'),
+                  echo: echo,
+                  z: z,
+                  breathAt: _breathAt,
+                ),
               ),
             );
           }
