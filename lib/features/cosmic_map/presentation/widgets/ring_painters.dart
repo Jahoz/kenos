@@ -65,24 +65,31 @@ class ShieldRingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = math.min(size.width, size.height) / 2 - 2;
-    const dashCount = 12;
-
+    final radius = size.shortestSide / 2 - 3;
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
       ..color = AppColors.fade(color, 0.55);
 
-    for (var i = 0; i < dashCount; i++) {
-      final start = rotation + (2 * math.pi * i / dashCount);
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        start,
-        2 * math.pi / dashCount * 0.45,
-        false,
-        paint,
-      );
-    }
+    // The sealed bottle: a circle with a small stopper notch — read as
+    // "given away, not for you to open again".
+    canvas.drawCircle(center, radius, paint);
+    // The stopper: a short line crossing the top of the circle,
+    // rotating slowly (the bottle drifts).
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(rotation);
+    canvas.drawLine(
+      Offset(-radius * 0.45, -radius),
+      Offset(radius * 0.45, -radius),
+      paint..strokeWidth = 1.6,
+    );
+    canvas.drawLine(
+      Offset(0, -radius - 3),
+      Offset(0, -radius + 3),
+      paint..strokeWidth = 1.2,
+    );
+    canvas.restore();
   }
 
   @override

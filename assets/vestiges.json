@@ -1,0 +1,16 @@
+{
+  "vestiges": [
+    {"id": "v001", "kind": "quote", "text": "Tu es fait pour te vider, comme le ciel se vide de ses nuages.", "source": "après Rilke", "x": 0.42, "y": 0.28},
+    {"id": "v002", "kind": "etymology", "text": "KÉNOSE — du grec kenôsis, « vidange, dépouillement ». S'empty de soi-même pour faire place.", "source": "grec ancien", "x": 0.65, "y": 0.18},
+    {"id": "v003", "kind": "quote", "text": "Le silence est un ami qui ne trahit jamais.", "source": "Confucius", "x": 0.22, "y": 0.52},
+    {"id": "v004", "kind": "etymology", "text": "DÉRIVE — du latin derivare, « détourner de sa source ». Perdre sa source pour trouver son cours.", "source": "latin", "x": 0.78, "y": 0.42},
+    {"id": "v005", "kind": "quote", "text": "Ce que nous appelons le vide est plein de ce que nous ne savons pas nommer.", "source": "après Bachelard", "x": 0.55, "y": 0.65},
+    {"id": "v006", "kind": "haiku", "text": "dans le grand silence\nune pensée confiée —\nla neige tombe seule", "source": "haïku", "x": 0.35, "y": 0.78},
+    {"id": "v007", "kind": "etymology", "text": "VACANCE — du latin vacare, « être vide ». Le vide comme disponibilité, pas comme manque.", "source": "latin", "x": 0.68, "y": 0.82},
+    {"id": "v008", "kind": "quote", "text": "Personne n'a jamais noyé ses soucis en les gardant pour soi.", "source": "proverbe", "x": 0.15, "y": 0.35},
+    {"id": "v009", "kind": "history", "text": "Les bouteilles à la mer existent depuis le VIe siècle. Le plus long voyage connu : 92 ans avant d'être trouvé.", "source": "histoire", "x": 0.48, "y": 0.88},
+    {"id": "v010", "kind": "quote", "text": "On ne se libère pas de ce qu'on garde. On se libère de ce qu'on donne.", "source": "anonyme", "x": 0.82, "y": 0.62},
+    {"id": "v011", "kind": "etymology", "text": "SILENCE — du latin silere, « se taire ». Ce qui reste quand le bruit a dit tout ce qu'il savait.", "source": "latin", "x": 0.12, "y": 0.72},
+    {"id": "v012", "kind": "haiku", "text": "le vide respire\nentre deux confidences —\nl'étoile attend son heure", "source": "haïku", "x": 0.60, "y": 0.35}
+  ]
+}

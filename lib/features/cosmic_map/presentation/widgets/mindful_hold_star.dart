@@ -236,9 +236,12 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   @override
   Widget build(BuildContext context) {
     final z = widget.z;
-    final diameter = ParallaxMath.starDiameter(z);
-    final coreRadius = ParallaxMath.coreRadius(z);
-    final color = _echo.isMine ? AppColors.teal : _echo.theme.core;
+    // One's own echoes recede: smaller, quieter — the readable ETHER
+    // is the show, your sealed memories sit deeper in the dark.
+    final scale = _echo.isMine ? 0.68 : 1.0;
+    final diameter = ParallaxMath.starDiameter(z) * scale;
+    final coreRadius = ParallaxMath.coreRadius(z) * scale;
+    final color = _echo.isMine ? AppColors.fade(AppColors.teal, 0.55) : _echo.theme.core;
     final hasUnreadSignal =
         _echo.isMine && _hasUnreadReception();
 

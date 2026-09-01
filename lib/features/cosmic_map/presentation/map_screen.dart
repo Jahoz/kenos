@@ -23,6 +23,7 @@ import 'widgets/background_painters.dart';
 import 'widgets/mindful_hold_star.dart';
 import 'widgets/origin_node.dart';
 import 'widgets/system_painter.dart';
+import 'widgets/vestige.dart';
 
 /// The stellar map: KENOS public space.
 /// No lists, no scrolling — a three-dimensional Stack where the void dominates.
@@ -42,6 +43,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// receptions sync — never again (silence is the default state).
   static bool _aubeSpokenThisSession = false;
 
+  /// The Vestiges: curated culture drifting in the void (V3.9).
+  List<Vestige> _vestiges = const [];
+
   /// V3.7a — Le Voyage: the traveller's eye. Fixed zoom, the void
   /// follows the finger, drift accumulates in Années-Lumière.
   final TravelCamera _camera = TravelCamera();
@@ -58,9 +62,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void initState() {
     super.initState();
+    _loadVestiges();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(ref.read(audioControllerProvider).ensureStarted());
     });
+  }
+
+  Future<void> _loadVestiges() async {
+    final vestiges = await loadVestiges();
+    if (mounted) setState(() => _vestiges = vestiges);
   }
 
   void _maybeSpeakAube() {
@@ -198,7 +208,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final echoes = ref.watch(mapControllerProvider);
     final reduced = context.wantsReducedMotion;
     final boot = ref.watch(bootstrapProvider);
-    final count = echoes.valueOrNull?.length ?? 0;
+    final all = echoes.valueOrNull ?? const <Echo>[];
+    final readable = all.where((e) => !e.isMine).length;
+    final sealed = all.where((e) => e.isMine).length;
     final signals =
         ref.watch(receptionControllerProvider).valueOrNull?.length ?? 0;
 
@@ -261,6 +273,54 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           ),
                         ),
                       ),
+                      // The Vestiges: carved shards of culture, static
+                      // in the void, tappable for a re-readable reveal.
+                      if (_vestiges.isNotEmpty)
+                        LayoutBuilder(
+                          builder: (context, c) => Stack(
+                            children: [
+                              for (final v in _vestiges)
+                                Builder(
+                                  builder: (context) {
+                                    final sp = _camera.worldToScreen(
+                                      Offset(v.offsetX, v.offsetY),
+                                      Size(c.maxWidth, c.maxHeight),
+                                    );
+                                    if (sp.dx < -30 ||
+                                        sp.dx > c.maxWidth + 30 ||
+                                        sp.dy < -30 ||
+                                        sp.dy > c.maxHeight + 30) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return Positioned(
+                                      left: sp.dx - 16,
+                                      top: sp.dy - 16,
+                                      width: 32,
+                                      height: 32,
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: () =>
+                                            showVestigeSheet(context, vestige: v),
+                                        child: CustomPaint(
+                                          painter: VestigePainter(
+                                            rotation:
+                                                VestigeMath.rotationAt(
+                                              v.id,
+                                              context.wantsReducedMotion
+                                                  ? epoch
+                                                  : DateTime.now(),
+                                            ),
+                                            color: AppColors.pureLight,
+                                            pulse: 0,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                            ],
+                          ),
+                        ),
                       echoes.when(
                     data: (list) => list.isEmpty
                         ? const _CalmEther()
@@ -305,14 +365,26 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '$count ÉCHOS EN ORBITE',
+                      '$readable ÉCHOS À LIRE',
                       style: TextStyle(
                         fontFamily: AppFonts.mono,
                         fontSize: 9,
                         letterSpacing: 3,
-                        color: AppColors.fade(AppColors.pureLight, 0.4),
+                        color: AppColors.fade(AppColors.pureLight, 0.55),
                       ),
                     ),
+                    if (sealed > 0) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '$sealed SCELLÉES PAR TOI',
+                        style: TextStyle(
+                          fontFamily: AppFonts.mono,
+                          fontSize: 8,
+                          letterSpacing: 3,
+                          color: AppColors.fade(AppColors.teal, 0.35),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 6),
                     Text(
                       'DÉRIVE — ${_camera.driftLabel}',

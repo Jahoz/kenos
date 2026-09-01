@@ -46,7 +46,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 700)); // transition fondu
 
     expect(find.textContaining('MODE DÉMO LOCAL'), findsOneWidget);
-    expect(find.textContaining('ÉCHOS EN ORBITE'), findsOneWidget);
+    expect(find.textContaining('À LIRE'), findsOneWidget,
+      reason: 'le HUD compte les lisibles, pas les scellées');
 
     // Let I/O safety nets (keychain timeouts) settle.
     await tester.pump(const Duration(milliseconds: 2600));
