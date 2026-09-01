@@ -130,11 +130,15 @@ charte (règle du registre : ne jamais importer un design d'ailleurs).
 - DoD atteint : ouvrir l'app raconte l'absence, jamais une
   notification — 77 tests, analyze 0, déployé et vérifié.
 
-### V3.5 — Médias : finir le dé-bruitage
-- Finaliser shaders photo (constellation de points, dé-brouillage au
-  hold) et voix inversée/distordue (déjà amorcé par la session
-  médias), en respectant Ether Seal (chiffré au repos, one-shot).
-- **DoD** : aucune image nette ni voix claire avant 100 % du hold.
+### V3.5 — Médias : le dé-bruitage ✅ (livré 2026-09-01)
+- Le fragment révélé arrive VOILÉ et se développe sur ~3,5 s de la
+  fenêtre de lecture : image derrière un flou qui s'amincit et une
+  constellation de points déterministe qui se disperse ; son gardé
+  « SIGNAL BROUILLÉ… » sans bouton d'écoute tant que le voile tient.
+  Rien de net avant que l'œil ait tenu — fidèle au manifeste, adapté
+  au moment où le média existe réellement (après le hold atomique).
+- **DoD** atteint : 2 tests widget épinglent voile→développement
+  (image et son).
 
 ### V3.6 — Spatialisation (flutter_soloud, rayon réel)
 - Évaluer le poids natif, puis remplacer les assets par des
