@@ -1,10 +1,12 @@
-import 'dart:async';
-import 'dart:ui';
 
+
+
+import 'dart:async';
+import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
-
 import '../../../../core/audio/audio_controller.dart';
 import '../../../../core/audio/audio_providers.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -19,7 +21,6 @@ import '../../../echo/data/echo_repository.dart';
 import '../../../echo/domain/echo.dart';
 import '../../../echo/domain/echo_media.dart';
 import '../../application/map_controller.dart';
-
 /// Reveal modal: glassmorphism, visual decryption, a 10-second reading
 /// window, then dissolution — and the bottle-in-the-sea echo: the reader
 /// may leave ONE trace for the stranger who launched the echo.
@@ -62,6 +63,14 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     duration: AppDurations.dissolve,
   );
 
+  /// V3.5 — progressive de-noising: the fragment arrives veiled (a
+  /// constellation of points over a blur) and develops over ~3.5 s of
+  /// the reading window. Nothing clear before the eye has held.
+  late final AnimationController _clarity = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 3500),
+  );
+
   final TextEditingController _traceInput = TextEditingController();
   final AudioPlayer _mediaPlayer = AudioPlayer();
 
@@ -81,6 +90,8 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     _burn.addStatusListener((status) {
       if (status == AnimationStatus.completed) _startDissolve();
     });
+    _clarity.addListener(() => setState(() {}));
+    _clarity.forward();
     // Let the decryption breathe before arming the countdown.
     Future.delayed(const Duration(milliseconds: 700), () {
       if (mounted) _burn.forward();
@@ -89,6 +100,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
 
   @override
   void dispose() {
+    _clarity.dispose();
     _burn.dispose();
     _dissolve.dispose();
     _traceInput.dispose();
@@ -407,24 +419,30 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         ),
         if (widget.echo.media?.kind == EchoMediaKind.image) ...[
           const SizedBox(height: 20),
-          ClipRect(
-            child: Image.memory(
-              widget.echo.media!.bytes,
-              height: 180,
-              fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => const SizedBox.shrink(),
-            ),
+          _VeiledImage(
+            bytes: widget.echo.media!.bytes,
+            clarity: _clarity.value,
           ),
         ],
         if (widget.echo.media?.kind == EchoMediaKind.audio) ...[
           const SizedBox(height: 16),
           Center(
-            child: IconButton(
-              tooltip: 'Écouter le fragment',
-              onPressed: _playMedia,
-              icon: const Icon(Icons.play_arrow),
-              color: AppColors.teal,
-            ),
+            child: _clarity.value < 1.0
+                ? Text(
+                    'SIGNAL BROUILLÉ…',
+                    style: TextStyle(
+                      fontFamily: AppFonts.mono,
+                      fontSize: 9,
+                      letterSpacing: 3,
+                      color: AppColors.fade(AppColors.pureLight, 0.4),
+                    ),
+                  )
+                : IconButton(
+                    tooltip: 'Écouter le fragment',
+                    onPressed: _playMedia,
+                    icon: const Icon(Icons.play_arrow),
+                    color: AppColors.teal,
+                  ),
           ),
         ],
         const SizedBox(height: 40),
@@ -618,3 +636,84 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
 }
 
 
+
+
+/// V3.5 — the image arrives veiled: a blur that thins and a
+/// constellation of points that disperses, over [clarity] 0→1. Only a
+/// held eye gets a clear view; the veil is the price of the reveal.
+class _VeiledImage extends StatelessWidget {
+  const _VeiledImage({required this.bytes, required this.clarity});
+
+  final Uint8List bytes;
+  final double clarity;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = Image.memory(
+      bytes,
+      height: 180,
+      fit: BoxFit.contain,
+      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+    );
+    final veiled = clarity < 0.999
+        ? Stack(
+            alignment: Alignment.center,
+            children: [
+              ImageFiltered(
+                imageFilter: ImageFilter.blur(
+                  sigmaX: 18 * (1 - clarity) + 0.1,
+                  sigmaY: 18 * (1 - clarity) + 0.1,
+                  tileMode: TileMode.decal,
+                ),
+                child: image,
+              ),
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _PointVeilPainter(veil: 1 - clarity),
+                ),
+              ),
+            ],
+          )
+        : image;
+    return ClipRect(child: veiled);
+  }
+}
+
+/// The constellation of points: a sparse grid of motes that hides the
+/// image beneath and disperses as clarity rises.
+class _PointVeilPainter extends CustomPainter {
+  _PointVeilPainter({required this.veil});
+
+  final double veil;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (veil <= 0.02) return;
+    final paint = Paint()..color = AppColors.fade(AppColors.voidBlack, 0.85 * veil);
+    const step = 14.0;
+    final rng = _StableHash(7919);
+    for (var x = 0.0; x < size.width; x += step) {
+      for (var y = 0.0; y < size.height; y += step) {
+        final jx = x + (rng.next() - 0.5) * 10;
+        final jy = y + (rng.next() - 0.5) * 10;
+        final r = 1.2 + rng.next() * 2.2;
+        canvas.drawCircle(Offset(jx, jy), r, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_PointVeilPainter old) => old.veil != veil;
+}
+
+/// Deterministic pseudo-random for the veil (no animation jitter —
+/// the constellation is still while it disperses).
+class _StableHash {
+  _StableHash(int seed) : _state = seed % 2147483647;
+  int _state;
+
+  double next() {
+    _state = (_state * 48271) % 2147483647;
+    return _state / 2147483647;
+  }
+}

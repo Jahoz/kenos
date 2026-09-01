@@ -38,6 +38,55 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- KENOS install invitation: browsers rarely surface the PWA prompt
+       (Chrome shows its banner once; iOS Safari never does). We offer
+       it ourselves — beforeinstallprompt where it exists, the honest
+       iOS path (Partager → Sur l'écran d'accueil) where it doesn't.
+       Dismissed once, remembered in localStorage. -->
+  <div id="kenos-install" style="display:none; position:fixed; left:0; right:0; bottom:0; z-index:9999; padding:12px 18px calc(12px + env(safe-area-inset-bottom)); background:#030508f2; border-top:1px solid #1ffffff; font-family:'Courier New',monospace;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="flex:1; color:#f4f4f6cc; font-size:11px; letter-spacing:1px; line-height:1.5;">
+        KENOS peut vivre sur ton écran.<br>
+        <span id="kenos-install-hint" style="color:#14b8a6b3; font-size:9px;"></span>
+      </div>
+      <button id="kenos-install-go" style="background:none; border:1px solid #14b8a6; color:#14b8a6; font-family:inherit; font-size:10px; letter-spacing:2px; padding:9px 14px; border-radius:6px; cursor:pointer;">INSTALLER</button>
+      <button id="kenos-install-no" aria-label="Fermer" style="background:none; border:none; color:#f4f4f666; font-size:14px; cursor:pointer; padding:6px;">✕</button>
+    </div>
+  </div>
+  <script>
+    (function () {
+      if (localStorage.getItem('kenos.install.dismissed') === '1') return;
+      var bar = document.getElementById('kenos-install');
+      var hint = document.getElementById('kenos-install-hint');
+      var go = document.getElementById('kenos-install-go');
+      var deferred = null;
+
+      function show() { setTimeout(function () { bar.style.display = 'block'; }, 2500); }
+      function dismiss() { bar.style.display = 'none'; localStorage.setItem('kenos.install.dismissed', '1'); }
+      document.getElementById('kenos-install-no').addEventListener('click', dismiss);
+
+      var ua = navigator.userAgent.toLowerCase();
+      var isIOS = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (isIOS) {
+        if (!window.matchMedia('(display-mode: standalone)').matches && !navigator.standalone) {
+          hint.textContent = 'iPHONE : PARTAGER → « SUR L\'ÉCRAN D\'ACCUEIL »';
+          go.textContent = 'COMPRIS';
+          go.addEventListener('click', dismiss);
+          show();
+        }
+        return;
+      }
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferred = e;
+        hint.textContent = 'HORS LIGNE, PLEIN ÉCRAN, SANS NAVIGATEUR';
+        go.addEventListener('click', function () {
+          if (deferred) { deferred.prompt(); dismiss(); }
+        });
+        show();
+      });
+    })();
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
