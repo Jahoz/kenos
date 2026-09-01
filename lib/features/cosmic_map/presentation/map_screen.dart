@@ -489,6 +489,11 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
   DateTime _breathAt = DateTime.now();
   Timer? _breath;
 
+  /// When a star is caught, its orbit time freezes HERE: the layer
+  /// keeps computing its position from this instant until release.
+  DateTime? _frozenAt;
+  String? _frozenFor;
+
   @override
   void dispose() {
     _breath?.cancel();
@@ -510,6 +515,16 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
       });
     }
 
+    // A caught star holds still: snapshot the instant the hold began,
+    // compute ITS position from that frozen clock until release.
+    final heldId = ref.watch(heldEchoIdProvider);
+    if (heldId != _frozenFor) {
+      _frozenFor = heldId;
+      _frozenAt = heldId != null ? DateTime.now() : null;
+    }
+    final frozenFor = _frozenFor;
+    final frozenAt = _frozenAt;
+
     final sorted = widget.echoes.toList()
       ..sort((a, b) => a.resolveZ(now).compareTo(b.resolveZ(now)));
 
@@ -526,8 +541,13 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
             if (z < _bucketEdges[b] || z >= _bucketEdges[b + 1]) continue;
             // V3.7b: an echo orbits the planet of its intent — the
             // server's raw launch point was only its birth place.
+            // A CAUGHT echo (under a finger) computes from its frozen
+            // instant: catching a moving light is not a chase.
+            final echoNow = (frozenFor == echo.id && frozenAt != null)
+                ? frozenAt
+                : now;
             final sp = widget.camera.worldToScreen(
-              KenosSystem.echoPosition(echo, now),
+              KenosSystem.echoPosition(echo, echoNow),
               Size(w, h),
             );
             // Travel culling: only the visible sky carries widgets.

@@ -76,8 +76,20 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     }
   }
 
+  // The Riverpod container, captured at mount: `ref` is dead when
+  // dispose runs, but a disposed star must not leave the sky frozen.
+  late final ProviderContainer _container =
+      ProviderScope.containerOf(context, listen: false);
+
   @override
   void dispose() {
+    try {
+      if (_container.read(heldEchoIdProvider) == _echo.id) {
+        _container.read(heldEchoIdProvider.notifier).state = null;
+      }
+    } catch (_) {
+      // Container already closed: nothing to thaw.
+    }
     _beatTimer?.cancel();
     _controller.dispose();
     super.dispose();
@@ -178,6 +190,9 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
       return;
     }
     _downPosition = event.position;
+    // Caught: the star holds still under the finger — its orbit
+    // freezes, the sky keeps breathing around it.
+    ref.read(heldEchoIdProvider.notifier).state = _echo.id;
     KenosHaptics.pulse(KenosPulse.holdStart);
     _startBeats();
     _controller.forward();
@@ -207,6 +222,9 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
 
   void _onPointerUp() {
     _downPosition = null;
+    if (ref.read(heldEchoIdProvider) == _echo.id) {
+      ref.read(heldEchoIdProvider.notifier).state = null;
+    }
     _stopBeats();
     if (_echo.isMine) return;
     // Released before 100%: the ring rolls back, the drone returns to rest.

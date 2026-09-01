@@ -222,3 +222,9 @@ class MapController extends AsyncNotifier<List<Echo>> {
 
 final mapControllerProvider =
     AsyncNotifierProvider<MapController, List<Echo>>(MapController.new);
+
+
+/// The echo currently under a finger: its orbit FREEZES while held
+/// (catching a moving light must not be a chase) and resumes on
+/// release. Null = the whole sky drifts freely.
+final heldEchoIdProvider = StateProvider<String?>((ref) => null);
