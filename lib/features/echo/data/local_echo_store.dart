@@ -24,6 +24,7 @@ class LocalEchoStore {
   static const _kUid = 'kenos.uid';
   static const _kSealed = 'kenos.sealed_echoes';
   static const _kReceptions = 'kenos.receptions';
+  static const _kFreqGuide = 'kenos.freq_guide';
   static const _kStats = 'kenos.user_stats';
   static const _maxSealed = 50;
 
@@ -89,6 +90,13 @@ class LocalEchoStore {
     if (next.length > _maxSealed) next.removeRange(_maxSealed, next.length);
     await _write(_kSealed, jsonEncode(next.map((e) => e.toJson()).toList()));
   }
+
+  /// Frequencies guide seen (one-time veil).
+  Future<bool> hasFrequenciesGuideSeen() async =>
+      await _read(_kFreqGuide) == '1';
+
+  Future<void> markFrequenciesGuideSeen() async =>
+      _write(_kFreqGuide, '1');
 
   /// Demo-mode persistence for the bottle-in-the-sea loop.
   Future<List<Reception>> readReceptions() async {

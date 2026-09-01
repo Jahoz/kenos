@@ -11,6 +11,7 @@ import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/utils/motion_preferences.dart';
 import '../../../core/widgets/hud.dart';
 import '../../cosmic_map/application/travel_camera.dart';
+import '../../echo/data/echo_providers.dart';
 import '../application/wave_controller.dart';
 import '../domain/kenos_wave.dart';
 import 'widgets/wave_nebula_painter.dart';
@@ -37,6 +38,10 @@ class _FrequenciesScreenState extends ConsumerState<FrequenciesScreen> {
   Timer? _ticker;
   StreamSubscription<KenosWave>? _heard;
 
+  /// First visit: a veil explains the symphony (one time, stored).
+  bool _showingGuide = true;
+  DateTime? _lastIncomingAt;
+
   // Captured in initState: `ref` is already dead when dispose runs.
   late final WaveController _controller =
       ref.read(waveControllerProvider.notifier);
@@ -48,6 +53,7 @@ class _FrequenciesScreenState extends ConsumerState<FrequenciesScreen> {
     // the camera's resting point is the listening center.
     final position = ref.read(travelPositionProvider);
     _controller.setListenCenter(position.dx, position.dy);
+    _readGuideSeen();
     // Start hearing the ether (V3.2): a 2 s poll feeds incoming waves.
     _controller.activate();
     _heard = _controller.incomingWaves.listen(_soundIncoming);
@@ -64,6 +70,12 @@ class _FrequenciesScreenState extends ConsumerState<FrequenciesScreen> {
   /// A stranger's wave just landed: sound it, softer the further it
   /// was born from our listening point. The wave keeps aging from its
   /// server birth, so late arrivals may already be fading.
+  Future<void> _readGuideSeen() async {
+    final store = ref.read(localEchoStoreProvider);
+    final seen = await store.hasFrequenciesGuideSeen();
+    if (mounted) setState(() => _showingGuide = !seen);
+  }
+
   void _soundIncoming(KenosWave wave) {
     // Softer the further it was born from our listening point.
     final d = ref
@@ -77,6 +89,7 @@ class _FrequenciesScreenState extends ConsumerState<FrequenciesScreen> {
           .read(audioControllerProvider)
           .playAsset(WaveMath.assetForNote(wave.noteIndex), volume: volume),
     );
+    setState(() => _lastIncomingAt = DateTime.now());
     _startTickerIfNeeded();
   }
 
@@ -119,9 +132,12 @@ class _FrequenciesScreenState extends ConsumerState<FrequenciesScreen> {
     return Scaffold(
       backgroundColor: AppColors.voidBlack,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Stack(
           children: [
+            Positioned.fill(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
               child: Row(
@@ -164,14 +180,15 @@ class _FrequenciesScreenState extends ConsumerState<FrequenciesScreen> {
                     now: _now,
                     reducedMotion: reduced,
                     onEmit: _emit,
+                    lastIncomingAt: _lastIncomingAt,
                   ),
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
               child: Text(
-                'UNE GAMME PENTATONIQUE — TOUTES LES ONDES SONT HARMONIEUSES',
+                'TOUCHE = ÉMETTRE · HAUT = CLAIR · BAS = GRAVE · LES ONDES DES INCONNUS ARRIVENT SEULES',
                 textAlign: TextAlign.center,
                 style: hudLabel(
                   fontSize: 8,
@@ -180,10 +197,22 @@ class _FrequenciesScreenState extends ConsumerState<FrequenciesScreen> {
                 ),
               ),
             ),
+            ],
+              ),
+            ),
+            if (_showingGuide)
+              Positioned.fill(
+                child: _FrequenciesGuide(onUnderstood: _dismissGuide),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _dismissGuide() async {
+    setState(() => _showingGuide = false);
+    await ref.read(localEchoStoreProvider).markFrequenciesGuideSeen();
   }
 }
 
@@ -194,12 +223,17 @@ class _ResonanceField extends StatelessWidget {
     required this.now,
     required this.reducedMotion,
     required this.onEmit,
+    this.lastIncomingAt,
   });
 
   final List<KenosWave> waves;
   final DateTime now;
   final bool reducedMotion;
   final void Function(Offset local, Size size) onEmit;
+
+  /// When the last foreign wave landed — draws a brief arrival ring
+  /// so 'joining a symphony' is something you SEE, not guess.
+  final DateTime? lastIncomingAt;
 
   @override
   Widget build(BuildContext context) {
@@ -213,6 +247,12 @@ class _ResonanceField extends StatelessWidget {
               size: size,
               painter: WaveNebulaPainter(
                 waves: waves,
+                now: now,
+                reducedMotion: reducedMotion,
+              ),
+              foregroundPainter: _ArrivalRingPainter(
+                waves: waves,
+                lastIncomingAt: lastIncomingAt,
                 now: now,
                 reducedMotion: reducedMotion,
               ),
@@ -258,4 +298,133 @@ class _Hint extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// First-visit veil: three lines that make the symphony legible.
+class _FrequenciesGuide extends StatelessWidget {
+  const _FrequenciesGuide({required this.onUnderstood});
+
+  final VoidCallback onUnderstood;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onUnderstood,
+      child: Container(
+        color: AppColors.fade(AppColors.voidBlack, 0.88),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 38),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'LA SYMPHONIE COLLECTIVE',
+                  style: hudLabel(
+                    fontSize: 10,
+                    letterSpacing: 5,
+                    color: AppColors.fade(AppColors.teal, 0.85),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                Text(
+                  'Touche le vide : ton onde naît.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.serifItalic,
+                    fontSize: 18,
+                    height: 1.7,
+                    color: AppColors.fade(AppColors.pureLight, 0.92),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Le haut de l\'écran chante clair, le bas chante grave.\n'
+                  'La couleur suit la gauche ou la droite du vide.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.serifItalic,
+                    fontSize: 15,
+                    height: 1.8,
+                    color: AppColors.fade(AppColors.pureLight, 0.6),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Les inconnus qui touchent le vide près de toi\n'
+                  'y laissent des ondes — elles arrivent seules,\n'
+                  'tu les entendras et les verras naître.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.serifItalic,
+                    fontSize: 15,
+                    height: 1.8,
+                    color: AppColors.fade(AppColors.teal, 0.75),
+                  ),
+                ),
+                const SizedBox(height: 34),
+                Text(
+                  'TOUCHE POUR COMMENCER',
+                  style: hudLabel(
+                    fontSize: 9,
+                    letterSpacing: 4,
+                    color: AppColors.fade(AppColors.pureLight, 0.45),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+/// A brief expanding ring on the freshest foreign wave — the visible
+/// sign that the symphony reached you.
+class _ArrivalRingPainter extends CustomPainter {
+  _ArrivalRingPainter({
+    required this.waves,
+    required this.lastIncomingAt,
+    required this.now,
+    required this.reducedMotion,
+  });
+
+  final List<KenosWave> waves;
+  final DateTime? lastIncomingAt;
+  final DateTime now;
+  final bool reducedMotion;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final at = lastIncomingAt;
+    if (at == null || reducedMotion) return;
+    final ageMs = now.difference(at).inMilliseconds;
+    if (ageMs < 0 || ageMs > 1200) return;
+    final t = ageMs / 1200;
+
+    // The freshest wave that is not ours (foreign waves have server
+    // ids, ours carry the 'w' prefix).
+    final foreign = waves.where((w) => !w.id.startsWith('w')).toList();
+    if (foreign.isEmpty) return;
+    foreign.sort((a, b) => b.bornAt.compareTo(a.bornAt));
+    final wave = foreign.first;
+
+    final center = Offset(
+      wave.offsetX * size.width,
+      wave.offsetY * size.height,
+    );
+    final radius = 20 + 120 * t;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2 * (1 - t)
+      ..color = AppColors.fade(AppColors.teal, 0.55 * (1 - t));
+    canvas.drawCircle(center, radius, paint);
+  }
+
+  @override
+  bool shouldRepaint(_ArrivalRingPainter oldDelegate) => true;
 }

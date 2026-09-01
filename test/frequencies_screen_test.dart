@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kenos/features/echo/data/echo_providers.dart';
+import 'package:kenos/features/echo/data/local_echo_store.dart';
 import 'package:kenos/features/frequencies/application/wave_controller.dart';
 import 'package:kenos/features/frequencies/data/frequency_repository.dart';
 import 'package:kenos/features/frequencies/presentation/frequencies_screen.dart';
+class _GuideSeenStore extends LocalEchoStore {
+  @override
+  Future<bool> hasFrequenciesGuideSeen() async => true;
+}
 
 /// Silent ether (see frequencies_test.dart).
 class FakeFrequencyRepository implements FrequencyRepository {
@@ -34,6 +40,7 @@ void main() {
 
     final container = ProviderContainer(overrides: [
       frequencyRepositoryProvider.overrideWithValue(FakeFrequencyRepository()),
+      localEchoStoreProvider.overrideWithValue(_GuideSeenStore()),
     ]);
     addTearDown(container.dispose);
 
