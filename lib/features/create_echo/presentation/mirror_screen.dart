@@ -156,8 +156,29 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
   /// V3.10 — the cultural door: paste a Spotify or YouTube link. The
   /// reference travels sealed under the echo's ephemeral key; only the
   /// single reader will be able to open it.
+  ///
+  /// v3.10b — the web platform has ONE editing host: leaving the
+  /// Mirror's connection open while the dialog opens interleaves the
+  /// two fields, and parsing before the composition is committed read
+  /// stale state — doors were silently dropped on send. The fix: tear
+  /// down the Mirror's connection first, and commit the dialog's
+  /// editing state BEFORE parsing it.
   Future<void> _pasteExcerptLink() async {
+    _focus.unfocus();
     final controller = TextEditingController();
+    final dialogFocus = FocusNode();
+    var sealing = false;
+    Future<void> sealTheDoor(BuildContext dialogContext) async {
+      if (sealing) return;
+      sealing = true;
+      // Closing the editing connection flushes any pending composition
+      // into the controller — only a committed value may be parsed.
+      dialogFocus.unfocus();
+      await WidgetsBinding.instance.endOfFrame;
+      if (!dialogContext.mounted) return;
+      Navigator.of(dialogContext).pop(EchoExcerpt.parseLink(controller.text));
+    }
+
     final excerpt = await showDialog<EchoExcerpt?>(
       context: context,
       builder: (dialogContext) => Dialog(
@@ -200,6 +221,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                 const SizedBox(height: 18),
                 TextField(
                   controller: controller,
+                  focusNode: dialogFocus,
                   autofocus: true,
                   cursorColor: AppColors.teal,
                   style: TextStyle(
@@ -219,8 +241,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () => Navigator.of(dialogContext)
-                      .pop(EchoExcerpt.parseLink(controller.text)),
+                  onPressed: () => sealTheDoor(dialogContext),
                   child: const Text('SCELLER LA PORTE'),
                 ),
                 TextButton(
@@ -235,6 +256,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     );
     final pasted = controller.text.trim();
     controller.dispose();
+    dialogFocus.dispose();
     if (!mounted) return;
     if (excerpt == null) {
       // Only scold when something was actually pasted: cancelling an

@@ -327,6 +327,17 @@ porte (media_kind NULL en base) après manipulation du clavier ; le
 correctif candidat : défocaliser avant d'ouvrir le dialogue +
 réinitialiser proprement l'état d'édition à la fermeture.
 
+**Correctif livré (v3.10b, 2026-09-01)** : le Miroir défocalise son
+champ AVANT d'ouvrir le dialogue (un seul hôte d'édition vivant), le
+champ du dialogue a son FocusNode dédié, et « SCELLER LA PORTE »
+ferme la connexion d'édition puis attend une frame AVANT de parser —
+seul un état committé peut devenir une porte (garde anti double-tap
+incluse). Trois tests épinglent le contrat : cession de l'hôte
+d'édition, texte du Miroir intact + porte attachée, lien invalide
+sans porte. Reste documenté (non corrigé) : la dérive du viewport en
+mode clavier sur desktop web — famille navigateur (scroll-into-view
+de l'input HTML), à traiter séparément si elle gêne encore.
+
 ## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — en attente de Design Readiness Gate)
 
 Créer une mini-galaxie invitable (amis, collègues), vivant en parallèle
