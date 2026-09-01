@@ -91,6 +91,16 @@ class LocalEchoStore {
     await _write(_kSealed, jsonEncode(next.map((e) => e.toJson()).toList()));
   }
 
+  /// V3.8: a line was given to a constellation (the Awakening may
+  /// whisper when one closes — the only signal, never a push).
+  Future<void> recordConstellationTouched() async {
+    final stats = await readStats();
+    final updated = stats.copyWith(
+      constellationsTouched: stats.constellationsTouched + 1,
+    );
+    await _write(_kStats, jsonEncode(updated.toJson()));
+  }
+
   /// Frequencies guide seen (one-time veil).
   Future<bool> hasFrequenciesGuideSeen() async =>
       await _read(_kFreqGuide) == '1';

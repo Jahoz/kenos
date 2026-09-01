@@ -155,6 +155,9 @@ class FakeLocalEchoStore implements LocalEchoStore {
   Future<bool> hasFrequenciesGuideSeen() async => true;
 
   @override
+  Future<void> recordConstellationTouched() async {}
+
+  @override
   Future<void> markFrequenciesGuideSeen() async {}
 
   @override

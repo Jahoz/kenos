@@ -51,7 +51,20 @@ void main() {
       expect(stats.awakeningLines().single, contains('Commence doucement'));
     });
 
-    test('le sas ne se rouvre pas pour ce qui a déjà été vu', () {
+    test('une constellation touchée fait parler l\'Aube (une fois)', () {
+    final stats = _stats(sent: 2, receptions: 2, seen: 2).copyWith(
+      constellationsTouched: 1,
+      lastVisitAt: DateTime.now(),
+    );
+    expect(stats.hasAwakeningToTell, isTrue,
+        reason: 'le murmure constellation est un signal d\'aube');
+    final lines = stats.awakeningLines();
+    expect(lines.first, contains('constellation'));
+    expect(lines.first, contains('refermée'));
+    expect(lines.last, contains('quelqu\'un d\'autre'));
+  });
+
+  test('le sas ne se rouvre pas pour ce qui a déjà été vu', () {
       final fresh = _stats(sent: 2, receptions: 3, seen: 3, lastVisit: DateTime.now());
       expect(fresh.receptionsSinceLastVisit, 0);
       // Stardust accumulée + revisite : le seuil hasAwakeningToTell exige

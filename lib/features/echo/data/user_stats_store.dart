@@ -9,6 +9,7 @@ class UserStats {
     this.readCount = 0,
     this.stardust = 0,
     this.seenReceptions = 0,
+    this.constellationsTouched = 0,
     this.lastVisitAt,
   });
 
@@ -26,6 +27,10 @@ class UserStats {
   /// what happened during the absence (the sas speaks of it, and only
   /// of it — never a notification afterwards).
   final int seenReceptions;
+
+  /// Constellations the user contributed a line to (the Awakening may
+  /// whisper when one closes — the only check-back signal, by design).
+  final int constellationsTouched;
 
   final DateTime? lastVisitAt;
 
@@ -61,6 +66,7 @@ class UserStats {
   bool get hasAwakeningToTell =>
       receptionsSinceLastVisit > 0 ||
       (lastVisitAt != null && stardust >= 3) ||
+      constellationsTouched > 0 ||
       (lastVisitAt == null && totalEchosSent > 0);
 
   /// The sas's poetic lines, in order. Pure: the widget test pins them.
@@ -76,6 +82,12 @@ class UserStats {
       return [
         'Pendant ton absence, $waiting de tes échos ont touché un inconnu.',
         'Le silence a porté tes mots plus loin que tu ne sais.',
+      ];
+    }
+    if (constellationsTouched > 0) {
+      return [
+        'Une constellation que tu as touchée s\'est refermée.',
+        'Tu ne la liras jamais — quelqu\'un d\'autre l\'a eue entière.',
       ];
     }
     if (totalEchosSent > 0) {
@@ -95,6 +107,7 @@ class UserStats {
     int? readCount,
     int? stardust,
     int? seenReceptions,
+    int? constellationsTouched,
     DateTime? lastVisitAt,
   }) =>
       UserStats(
@@ -106,6 +119,8 @@ class UserStats {
         readCount: readCount ?? this.readCount,
         stardust: stardust ?? this.stardust,
         seenReceptions: seenReceptions ?? this.seenReceptions,
+        constellationsTouched:
+            constellationsTouched ?? this.constellationsTouched,
         lastVisitAt: lastVisitAt ?? this.lastVisitAt,
       );
 
@@ -117,6 +132,7 @@ class UserStats {
     'readCount': readCount,
     'stardust': stardust,
     'seenReceptions': seenReceptions,
+    'constellationsTouched': constellationsTouched,
     'lastVisitAt': lastVisitAt?.toIso8601String(),
   };
 
@@ -130,6 +146,7 @@ class UserStats {
     readCount: json['readCount'] as int? ?? 0,
     stardust: json['stardust'] as int? ?? 0,
     seenReceptions: json['seenReceptions'] as int? ?? 0,
+    constellationsTouched: json['constellationsTouched'] as int? ?? 0,
     lastVisitAt: json['lastVisitAt'] != null
         ? DateTime.parse(json['lastVisitAt'] as String)
         : null,

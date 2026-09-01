@@ -1,11 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_fonts.dart';
 import '../../../../core/haptics/kenos_haptics.dart';
+import '../../echo/data/echo_providers.dart';
 import '../data/constellation_repository.dart';
-
 /// The Exquisite Corpse panels: contribute a blind line to an OPEN
 /// constellation, or read a CLOSED one whole — once, never again.
 /// The contributor NEVER sees the whole they helped write.
@@ -84,6 +84,9 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
           .read(constellationRepositoryProvider)
           .contribute(constellationId: widget.constellation.id, text: text);
       if (!mounted) return;
+      unawaited(
+        ref.read(localEchoStoreProvider).recordConstellationTouched(),
+      );
       KenosHaptics.pulse(KenosPulse.seal);
       Navigator.of(context, rootNavigator: true).pop();
       _acknowledge(context, count);
