@@ -313,6 +313,20 @@ lecteur unique.
   incluse) ; mode hors-ligne honnête (la porte peut être fermée, le HUD
   le dit doucement).
 
+**Livré et vérifié** (2026-09-01) : HUD allégé en prod ; dialogue de
+porte, parse strict (queue de tracking Spotify dépouillée, horodatage
+YouTube `1:30` affiché) et chip en navigateur réel ; le chemin serveur
+SONG/EXCERPT prouvé bout-en-bout par appel PostgREST authentifié
+(ligne scellée en base, ref 84 chars). **Limitation web constatée
+(v3.10b)** : la couche d'édition web croise les sessions du champ du
+Miroir et du champ de dialogue (l'hôte d'édition unique peut
+entrelacer les deux textes — famille du bug « lettres se mélangent »
+déjà signalée), et le mode clavier dérive le viewport (clics bas peu
+fiables sur desktop). Deux envois réels depuis l'app ont perdu la
+porte (media_kind NULL en base) après manipulation du clavier ; le
+correctif candidat : défocaliser avant d'ouvrir le dialogue +
+réinitialiser proprement l'état d'édition à la fermeture.
+
 ## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — en attente de Design Readiness Gate)
 
 Créer une mini-galaxie invitable (amis, collègues), vivant en parallèle
