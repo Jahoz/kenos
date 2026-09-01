@@ -41,6 +41,7 @@ dependencies:
   record: ^6.2.1
   sensors_plus: ^7.1.0
   supabase_flutter: ^2.17.2
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   # The lint set is activated in the analysis_options.yaml file at the
@@ -48,6 +49,9 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
+  # Widget tests fake the door's URL launch through the platform
+  # interface (the federated plugins never register in a test VM).
+  url_launcher_platform_interface: ^2.3.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

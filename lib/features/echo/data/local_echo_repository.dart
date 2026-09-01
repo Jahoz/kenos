@@ -1,16 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
-
+import 'dart:typed_data';
 import '../../../core/utils/parallax_math.dart';
 import '../domain/echo.dart';
 import '../domain/echo_cipher.dart';
 import '../domain/echo_color_theme.dart';
+import '../domain/echo_excerpt.dart';
 import '../domain/echo_media.dart';
 import '../domain/reception.dart';
 import 'echo_repository.dart';
 import 'local_echo_store.dart';
 import 'sector_grid.dart';
-
 /// Offline demo mode: simulates the ether locally with the same semantics
 /// as the backend (atomic single read, texts never on the map) — plus the
 /// bottle-in-the-sea loop: echoes you launch get intercepted after a while,
@@ -71,41 +72,63 @@ class LocalEchoRepository implements EchoRepository {
 
   /// Demo parity with the backend: the seeded ether holds only ciphertext.
   /// Each seed is sealed under its own ephemeral key, exactly as a real
-  /// author's device would before launching.
+  /// author's device would before launching. Excerpt-carrying seeds seal
+  /// their door reference under the same key — a door opens exactly like
+  /// the text: for the single winner, never on the map.
   Future<void> _seed() async {
     const seeds = [
-      ('Je souris toute la journée puis je pleure dans le métro.', 'INDIGO'),
-      ('Je n\'ai jamais osé dire que ce travail m\'épuisait.', 'TEAL'),
+      ('Je souris toute la journée puis je pleure dans le métro.', 'INDIGO', null),
+      ('Je n\'ai jamais osé dire que ce travail m\'épuisait.', 'TEAL', null),
       (
         'J\'ai peur du silence, parce que j\'y entends tout ce que je fuis.',
         'LUMEN',
+        null,
       ),
       (
         'Je fais semblant depuis si longtemps que je ne sais plus qui je suis.',
         'INDIGO',
+        null,
       ),
       (
         'Je voudrais disparaître quelques semaines, sans prévenir personne.',
         'TEAL',
+        null,
       ),
       (
         'Je n\'ai jamais dit à mon père à quel point j\'étais fier de lui.',
         'LUMEN',
+        null,
       ),
       (
         'Parfois je regarde les inconnus et je me demande qui les serre dans ses bras.',
         'INDIGO',
+        null,
       ),
-      ('Je répète mes conversations du soir avant de m\'endormir.', 'TEAL'),
-      ('J\'ai l\'impression de réussir ma vie et de rater la mienne.', 'LUMEN'),
-      ('Le vide me terrifie, et pourtant c\'est là que je respire.', 'INDIGO'),
-      ('Je porte un secret si lourd que mon dos en courbe.', 'TEAL'),
+      ('Je répète mes conversations du soir avant de m\'endormir.', 'TEAL', null),
+      ('J\'ai l\'impression de réussir ma vie et de rater la mienne.', 'LUMEN', null),
+      ('Le vide me terrifie, et pourtant c\'est là que je respire.', 'INDIGO', null),
+      ('Je porte un secret si lourd que mon dos en courbe.', 'TEAL', null),
       (
         'Personne ne sait que j\'ai failli tout arrêter, l\'an dernier.',
         'LUMEN',
+        null,
+      ),
+      (
+        'Cette chanson, je ne l\'écoute jamais devant personne.',
+        'INDIGO',
+        EchoExcerpt(kind: EchoExcerptKind.song, id: '4cOdK2wGLETKBW3PvgPWqT'),
+      ),
+      (
+        'Quand le vide crie trop fort, je laisse la machine murmurer.',
+        'TEAL',
+        EchoExcerpt(
+          kind: EchoExcerptKind.video,
+          id: 'jfKfPfyJRdk',
+          startSeconds: 0,
+        ),
       ),
     ];
-    for (final (text, theme) in seeds) {
+    for (final (text, theme, excerpt) in seeds) {
       final id = _uuid();
       final sealed = await EchoCipher.seal(text);
       _echoes[id] = _DemoEcho(
@@ -118,8 +141,17 @@ class LocalEchoRepository implements EchoRepository {
           createdAt: DateTime.now().subtract(
             Duration(minutes: _random.nextInt(60 * 48)),
           ),
+          // Map metadata only: the door's KIND travels, the door itself
+          // lives sealed (below) until the single winner opens it.
+          mediaKind: excerpt?.kind.mediaKind,
         ),
         sealed: sealed,
+        sealedRef: excerpt == null
+            ? null
+            : await EchoCipher.sealBytesWithKey(
+                Uint8List.fromList(utf8.encode(excerpt.ref)),
+                sealed.keyB64,
+              ),
       );
     }
   }
@@ -222,12 +254,24 @@ class LocalEchoRepository implements EchoRepository {
     // 10-minute phoenix window (momentum + inherited theme).
     final text =
         await EchoCipher.open(demo.sealed.keyB64, demo.sealed.payloadB64);
+    EchoExcerpt? excerpt;
+    if (demo.sealedRef != null) {
+      final refBytes = await EchoCipher.openBytes(
+        demo.sealed.keyB64,
+        demo.sealedRef!,
+      );
+      excerpt = EchoExcerpt.fromRef(utf8.decode(refBytes));
+    }
     _lineages[id] = _DemoLineage(
       momentum: demo.echo.momentum,
       theme: demo.echo.theme,
       text: text,
     );
-    return ConsumedEcho(text: text, momentum: demo.echo.momentum);
+    return ConsumedEcho(
+      text: text,
+      excerpt: excerpt,
+      momentum: demo.echo.momentum,
+    );
   }
 
   @override
@@ -238,8 +282,12 @@ class LocalEchoRepository implements EchoRepository {
     required double coordZ,
     required EchoColorTheme theme,
     EchoMediaDraft? media,
+    EchoExcerpt? excerpt,
   }) async {
     await Future<void>.delayed(latency);
+    if (media != null && excerpt != null) {
+      throw const KenosException(KenosErrorCode.invalid);
+    }
     final id = _uuid();
     final echo = Echo(
       id: id,
@@ -249,7 +297,9 @@ class LocalEchoRepository implements EchoRepository {
       theme: theme,
       createdAt: DateTime.now(),
       isMine: true,
-      mediaKind: media?.kind,
+      // The sealed echo carries the door's KIND (metadata for the
+      // map) but never the door itself — the author loses it too.
+      mediaKind: media?.kind ?? excerpt?.kind.mediaKind,
     );
     _scheduleReception(id);
     return echo;
@@ -351,10 +401,14 @@ class _DemoLineage {
 }
 
 class _DemoEcho {
-  _DemoEcho({required this.echo, required this.sealed});
+  _DemoEcho({required this.echo, required this.sealed, this.sealedRef});
   final Echo echo;
 
   /// What the demo "ether" holds: ciphertext + the sealed key escrow.
   /// The plaintext exists nowhere — not even here.
   final SealedEchoContent sealed;
+
+  /// A sealed cultural door reference (V3.10 parity): opaque until the
+  /// single winner unseals it at interception.
+  final Uint8List? sealedRef;
 }

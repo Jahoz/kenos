@@ -10,6 +10,7 @@ import 'package:kenos/features/echo/data/local_echo_store.dart';
 import 'package:kenos/features/echo/data/user_stats_store.dart';
 import 'package:kenos/features/echo/domain/echo.dart';
 import 'package:kenos/features/echo/domain/echo_color_theme.dart';
+import 'package:kenos/features/echo/domain/echo_excerpt.dart';
 import 'package:kenos/features/echo/domain/echo_media.dart';
 import 'package:kenos/features/echo/domain/reception.dart';
 
@@ -62,6 +63,7 @@ class FakeEchoRepository implements EchoRepository {
     required double coordZ,
     required EchoColorTheme theme,
     EchoMediaDraft? media,
+    EchoExcerpt? excerpt,
   }) async =>
       Echo(
         id: 'new-${_ether.length + 1}',

@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/echo.dart';
 import '../domain/echo_color_theme.dart';
+import '../domain/echo_excerpt.dart';
 import '../domain/echo_media.dart';
 import '../domain/reception.dart';
 
@@ -30,6 +31,8 @@ abstract class EchoRepository {
 
   /// Seals and launches an echo into the ether.
   /// Returns the created echo (without text — sealing philosophy).
+  /// At most ONE attachment: a binary [media] fragment OR a cultural
+  /// [excerpt] door — the ether's media slot is single.
   Future<Echo> sendEcho({
     required String text,
     required double coordX,
@@ -37,6 +40,7 @@ abstract class EchoRepository {
     required double coordZ,
     required EchoColorTheme theme,
     EchoMediaDraft? media,
+    EchoExcerpt? excerpt,
   });
 
   /// Reader side: leave the one-line trace after consuming an echo.

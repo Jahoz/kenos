@@ -45,7 +45,18 @@ export default {
       delete bundle.media_path;
       return Response.json(bundle);
     }
-    if (typeof kind !== "string" || !(kind in maxMediaBytesByKind)) {
+    if (typeof kind !== "string") {
+      return Response.json({ error: "invalid media metadata" }, { status: 410 });
+    }
+    // External doors (V3.10) carry a sealed reference, not a storage
+    // object: pass it through untouched — only the winner's device,
+    // holding the echo key, can unseal which song or video it is.
+    if (kind === "SONG" || kind === "EXCERPT") {
+      const ref = path;
+      delete bundle.media_path;
+      return Response.json({ ...bundle, media_ref: ref });
+    }
+    if (!(kind in maxMediaBytesByKind)) {
       return Response.json({ error: "invalid media metadata" }, { status: 410 });
     }
 

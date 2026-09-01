@@ -275,6 +275,70 @@ fabriquée tuerait la confiance en tout ce qu'on lit).
   lentement, panneau serif sourcé re-lisible (« CECI NE BRÛLE PAS —
   IL REVIENDRA »), 3 tests, déployé.
 
+## V3.10 — Les Extraits : portes culturelles ✅ (idée Hugo, livré 2026-09-01)
+
+Un écho peut être habité par la voix d'un autre : l'auteur colle un lien
+**Spotify** (titre) ou **YouTube** (extrait horodaté) dans le Miroir. Ce
+n'est pas du contenu qu'on stocke — c'est une **porte**, ouverte dans la
+fenêtre de révélation, qui mène hors du vide. Distinct des Vestiges
+(culture curatée par l'app, re-lisible) : ici c'est l'auteur qui prête
+une voix extérieure à sa confidence, et la porte ne s'ouvre que pour le
+lecteur unique.
+
+- **Rien ne se stocke** : pas de bucket, pas d'octets — une référence
+  compacte (`spotify:track:<id>` / `youtube:<id>:<secondes>`), **scellée
+  sous la clé éphémère de l'écho** comme le texte (Ether Seal jusque
+  dans le goût musical : un dump de la base ne révèle ni l'un ni
+  l'autre). Le serveur borne le scellé (≤ 512) sans jamais voir l'ID —
+  prix assumé identique à la ligne de 280 caractères.
+- **Anti-injection par construction** : le client ne lance JAMAIS la
+  chaîne brute — il parse strictement la référence et construit l'URL
+  canonique (`open.spotify.com/track/<id>`,
+  `youtube.com/watch?v=<id>&t=<s>s`). Une référence forgée ne peut pas
+  devenir une URL arbitraire.
+- **La fenêtre reste 10 s** : l'éphémérité absolue n'est pas négociable.
+  La porte apparaît derrière le même voile de dé-bruitage V3.5
+  (« SIGNAL BROUILLÉ… » tant que l'œil n'a pas tenu), survit à la
+  dissolution du texte (jusqu'à la fin du panneau — trace incluse), puis
+  disparaît : rien ne persiste localement. Ce qui a été ouvert *dehors*
+  demeure — c'est le monde extérieur, pas KENOS.
+- **Hors du vide, littéralement** : V3.10 = deep-links (sortie assumée
+  vers l'app/browser). Lire *dans* le vide (embed YouTube, preview 30 s
+  Spotify) exige webview/clés API — reporté à V3.10b via Edge Function
+  si le besoin se confirme (Roadmap+).
+- **Un seul attachement par écho** (fragment OU extrait) : l'invariant
+  « un fragment optionnel borné » reste vrai, le Miroir les rend
+  exclusifs.
+- Démo : l'éther semé compte des échos à extrait (parité scellement
+  incluse) ; mode hors-ligne honnête (la porte peut être fermée, le HUD
+  le dit doucement).
+
+## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — en attente de Design Readiness Gate)
+
+Créer une mini-galaxie invitable (amis, collègues), vivant en parallèle
+de l'univers complet. **La plus grosse tension philosophique depuis le
+Sling-Shot** : la kénose est de se vider vers des *inconnus* — dans un
+cercle connu, l'anonymat devient un leurre (on devine qui a écrit →
+autocensure, ou « c'était sur moi ? »), et les mécaniques sacrées
+(lecture unique, burn) risquent de devenir des effets de soirée. C'est
+la mort de Secret et Yik Yak ; KENOS n'assume pas les cercles clos.
+
+- **Fausse piste écartée** : le multi-tenant in-app (`galaxy_id` sur
+  `echoes`, memberships, invitations, RLS par galaxie) touche *tous*
+  les RPC, chaque invariant pgTAP, la purge, l'Aube et les vestiges —
+  coût maximal pour un risque d'âme maximal. Refusé pour l'instant.
+- **Alternative quasi gratuite, à valider par l'usage** : une galaxie
+  privée = **un déploiement Supabase séparé** (mêmes migrations), une
+  build PWA/APK pointant dessus (`--dart-define=SUPABASE_URL`), le lien
+  de partage EST l'invitation. Zéro code, sémantique sacrée intacte,
+  l'échelle reste « un éther entier ». Si des équipes l'utilisent
+  vraiment, le multi-tenant redevient une question — avec ses garde-fous
+  (cold start : les vestiges dérivent-ils dans les clusters ? une
+  galaxie meurt-elle ? qui paie ?).
+- **Gate avant tout code** : l'anonymat petit-cercle est-il croyable ?
+  Qui est le garant d'une galaxie (modération) ? Répondre avant d'écrire
+  une ligne de SQL.
+
 ## 4. Règles inchangées (rappel)
 
 - Single-read atomique, Ether Seal, RPC-only, ROSE destructif,

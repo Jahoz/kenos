@@ -1,5 +1,6 @@
 import '../../../core/utils/parallax_math.dart';
 import 'echo_color_theme.dart';
+import 'echo_excerpt.dart';
 import 'echo_media.dart';
 
 /// An echo: a sealed thought, suspended in the ether.
@@ -17,6 +18,7 @@ class Echo {
     this.text,
     this.media,
     this.mediaKind,
+    this.excerpt,
     this.isMine = false,
     this.momentum = 0,
     this.parentId,
@@ -44,6 +46,9 @@ class Echo {
 
   /// Map-safe metadata: there is a sealed fragment, never its path or bytes.
   final EchoMediaKind? mediaKind;
+
+  /// The cultural door, present only after a winning atomic consumption.
+  final EchoExcerpt? excerpt;
 
   /// The local user's echo: sealed, untouchable, drifting.
   final bool isMine;
@@ -76,6 +81,7 @@ class Echo {
     text: text ?? this.text,
     media: media ?? this.media,
     mediaKind: mediaKind,
+    excerpt: excerpt,
     isMine: isMine,
     momentum: momentum ?? this.momentum,
   );
@@ -93,6 +99,8 @@ class Echo {
         mediaKind: switch (json['media_kind'] as String?) {
           'IMAGE' => EchoMediaKind.image,
           'AUDIO' => EchoMediaKind.audio,
+          'SONG' => EchoMediaKind.song,
+          'EXCERPT' => EchoMediaKind.video,
           _ => null,
         },
         isMine: isMine,

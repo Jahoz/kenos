@@ -7,6 +7,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/audio/audio_controller.dart';
 import '../../../../core/audio/audio_providers.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -19,6 +20,7 @@ import '../../../../core/widgets/hud.dart';
 import '../../../../core/widgets/scramble_text.dart';
 import '../../../echo/data/echo_repository.dart';
 import '../../../echo/domain/echo.dart';
+import '../../../echo/domain/echo_excerpt.dart';
 import '../../../echo/domain/echo_media.dart';
 import '../../application/map_controller.dart';
 /// Reveal modal: glassmorphism, visual decryption, a 10-second reading
@@ -123,6 +125,20 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
       unawaited(_mediaPlayer.play());
     } catch (_) {
       if (mounted) showHud(context, 'LE FRAGMENT SONORE S\'EST DISSOUT.');
+    }
+  }
+
+  /// The cultural door (V3.10): the echo's text burns, but the door it
+  /// carried may still be opened — OUTSIDE the void, by the winner
+  /// alone. Fire-and-forget: a closed door never blocks the window.
+  Future<void> _openDoor() async {
+    final url = widget.echo.excerpt?.doorUrl;
+    if (url == null) return;
+    try {
+      final opened = await launchUrl(url, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) showHud(context, 'LA PORTE EST FERMÉE.');
+    } catch (_) {
+      if (mounted) showHud(context, 'LA PORTE EST FERMÉE.');
     }
   }
 
@@ -455,6 +471,25 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
                   ),
           ),
         ],
+        if (widget.echo.excerpt != null) ...[
+          const SizedBox(height: 16),
+          _clarity.value < 1.0
+              ? Center(
+                  child: Text(
+                    'SIGNAL BROUILLÉ…',
+                    style: TextStyle(
+                      fontFamily: AppFonts.mono,
+                      fontSize: 9,
+                      letterSpacing: 3,
+                      color: AppColors.fade(AppColors.pureLight, 0.4),
+                    ),
+                  ),
+                )
+              : _ExcerptDoor(
+                  excerpt: widget.echo.excerpt!,
+                  onOpened: _openDoor,
+                ),
+        ],
         const SizedBox(height: 40),
         Text(
           'DESTRUCTION IMMINENTE',
@@ -575,6 +610,12 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
             color: AppColors.fade(AppColors.pureLight, 0.45),
           ),
         ),
+        // The text burned; the door it carried still stands until this
+        // panel closes — what was opened outside the void stays outside.
+        if (widget.echo.excerpt != null) ...[
+          const SizedBox(height: 18),
+          _ExcerptDoor(excerpt: widget.echo.excerpt!, onOpened: _openDoor),
+        ],
         const SizedBox(height: 26),
         TextField(
           controller: _traceInput,
@@ -771,3 +812,80 @@ class _SlingRail extends StatelessWidget {
     );
   }
 }
+
+/// V3.10 — the cultural door: a quiet panel saying what the stranger
+/// lent with their confidence, and one button that leaves the void.
+/// The URL is always canonical (built from strictly parsed parts) —
+/// never the raw reference.
+class _ExcerptDoor extends StatelessWidget {
+  const _ExcerptDoor({required this.excerpt, required this.onOpened});
+
+  final EchoExcerpt excerpt;
+  final VoidCallback onOpened;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSong = excerpt.kind == EchoExcerptKind.song;
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isSong ? Icons.music_note_outlined : Icons.smart_display_outlined,
+              size: 14,
+              color: AppColors.fade(AppColors.teal, 0.8),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              excerpt.kind.label,
+              style: TextStyle(
+                fontFamily: AppFonts.mono,
+                fontSize: 9,
+                letterSpacing: 3,
+                color: AppColors.fade(AppColors.pureLight, 0.6),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'La porte s\'ouvre hors du vide — elle ne reviendra pas.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: AppFonts.serifItalic,
+            fontSize: 12,
+            color: AppColors.fade(AppColors.pureLight, 0.45),
+          ),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: onOpened,
+          icon: Icon(
+            Icons.open_in_new,
+            size: 13,
+            color: AppColors.teal,
+          ),
+          label: const Text(
+            'OUVRIR LA PORTE',
+            style: TextStyle(
+              fontFamily: AppFonts.mono,
+              fontSize: 9,
+              letterSpacing: 2,
+            ),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.teal,
+            side: BorderSide(color: AppColors.fade(AppColors.teal, 0.4)),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+/// The cultural door, winner's side: one quiet button that opens the
+/// excerpt OUTSIDE the void (browser/app). The URL is built
+/// canonically from strictly parsed parts — never the raw string.

@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(71);
+select plan(79);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -746,6 +746,75 @@ select is(
   (select count(*) from public.kenos_constellations),
   0::bigint,
   'kenos_purge sweeps stale open corpses'
+);
+
+-- ── V3.10 — the Excerpts: sealed cultural doors ─────────────────────────
+-- e7 seals a door; e8 verifies the map metadata and the winner bundle.
+reset role;
+insert into auth.users (id, email, aud, role) values
+  ('00000000-0000-4000-8000-0000000000e7', 'e7@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000e8', 'e8@t.kenos', 'authenticated', 'authenticated');
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000e7","role":"authenticated"}', true);
+
+-- 72 — a SONG door launches: sealed reference, bounded, opaque.
+select is(
+  (select count(*) from public.launch_echo(
+     'porte scellée de e7', '', 0.3, 0.3, 0.9, 'TEAL', 'SONG', repeat('QUJD', 16)) l),
+  1::bigint,
+  'launch_echo accepts a sealed SONG door (bounded opaque reference)'
+);
+reset role;
+update public.echoes set created_at = now() - interval '30 seconds';
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000e7","role":"authenticated"}', true);
+
+-- 73
+select throws_ok(
+  $$select * from public.launch_echo('trop longue', '', 0.3, 0.3, 0.9, 'TEAL', 'EXCERPT', repeat('QUJD', 129))$$,
+  'P0001', 'KENOS_INVALID_MEDIA',
+  'a door reference beyond 512 sealed chars is refused'
+);
+-- 74
+select throws_ok(
+  $$select * from public.launch_echo('trop courte', '', 0.3, 0.3, 0.9, 'TEAL', 'EXCERPT', repeat('Q', 31))$$,
+  'P0001', 'KENOS_INVALID_MEDIA',
+  'a door reference under 32 sealed chars is refused'
+);
+-- 75 — the sealed blob is base64-shaped: no arbitrary payloads ride along.
+select throws_ok(
+  $$select * from public.launch_echo('pas du base64', '', 0.3, 0.3, 0.9, 'TEAL', 'SONG', repeat('a b!', 16))$$,
+  'P0001', 'KENOS_INVALID_MEDIA',
+  'a non-base64 door reference is refused'
+);
+-- 76
+select throws_ok(
+  $$select * from public.launch_echo('genre inconnu', '', 0.3, 0.3, 0.9, 'TEAL', 'PODCAST', repeat('QUJD', 16))$$,
+  'P0001', 'KENOS_INVALID_MEDIA',
+  'an unknown door kind is refused'
+);
+-- 77 — the XOR rule holds for doors as for fragments.
+select throws_ok(
+  $$select * from public.launch_echo('porte sans référence', '', 0.3, 0.3, 0.9, 'TEAL', 'SONG', null)$$,
+  'P0001', 'KENOS_INVALID_MEDIA',
+  'a door kind without a reference is refused'
+);
+
+-- 78 — the map carries the door's KIND only, never the reference.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000e8","role":"authenticated"}', true);
+select is(
+  (select count(*) from public.fetch_map_sector() where media_kind = 'SONG'),
+  1::bigint,
+  'the map exposes the door kind, nothing else'
+);
+
+-- 79 — the single winner receives the sealed reference with the key.
+select is(
+  (select (bundle ? 'media_path' and bundle ->> 'media_kind' = 'SONG')
+   from (select public.consume_echo(tests.echo_by_text('porte scellée de e7')) as bundle) q),
+  true,
+  'the winner gets the sealed door reference and its kind'
 );
 
 select * from finish();

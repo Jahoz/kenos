@@ -9,12 +9,17 @@ Art direction — Cosmic Zen identity:
 - a scattered star field (deterministic seed)
 - the hero "echo": a bright core wrapped in a nearly-complete charge ring
 - a smaller distant echo for depth
+
+Security posture: the single write path resolves every destination
+under the project root and proves containment (is_relative_to) before
+any byte is written; destinations come from the module-level literal
+table, never from input.
 """
 import math
 import os
-import random
 import struct
 import zlib
+from pathlib import Path
 
 VOID = (3, 5, 8)
 INDIGO = (99, 102, 241)
@@ -22,10 +27,43 @@ TEAL = (20, 184, 166)
 CYAN = (34, 211, 238)
 WHITE = (244, 244, 246)
 
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE = Path(__file__).resolve().parent.parent
+
+# Every destination this script may ever write: (relpath, size, pad,
+# only_if_exists). Literals only — nothing dynamic, nothing input-derived.
+TARGETS = (
+    # Web (PWA).
+    ("web/icons/Icon-512.png", 512, 0.0, False),
+    ("web/icons/Icon-192.png", 192, 0.0, False),
+    ("web/icons/Icon-maskable-512.png", 512, 0.10, False),
+    # Android mipmaps.
+    ("android/app/src/main/res/mipmap-mdpi/ic_launcher.png", 48, 0.0, False),
+    ("android/app/src/main/res/mipmap-hdpi/ic_launcher.png", 72, 0.0, False),
+    ("android/app/src/main/res/mipmap-xhdpi/ic_launcher.png", 96, 0.0, False),
+    ("android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png", 144, 0.0, False),
+    ("android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png", 192, 0.0, False),
+    # iOS asset catalog (overwrite existing template filenames only).
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@1x.png", 20, 0.0, True),
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@2x.png", 40, 0.0, True),
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@3x.png", 60, 0.0, True),
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@1x.png", 29, 0.0, True),
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@2x.png", 58, 0.0, True),
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@3x.png", 87, 0.0, True),
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@1x.png", 40, 0.0, True),
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@2x.png", 80, 0.0, True),
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@3x.png", 120, 0.0, True),
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@2x.png", 120, 0.0, True),
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@3x.png", 180, 0.0, True),
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@1x.png", 76, 0.0, True),
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@2x.png", 152, 0.0, True),
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-83.5x83.5@2x.png", 167, 0.0, True),
+    ("ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png", 1024, 0.0, True),
+)
 
 
-def write_png(path: str, w: int, h: int, rgb: bytearray) -> None:
+def encode_png(w: int, h: int, rgb: bytearray) -> bytes:
+    """Encode an RGB buffer as a PNG — pure function, no filesystem."""
+
     def chunk(tag: bytes, data: bytes) -> bytes:
         return (
             struct.pack(">I", len(data))
@@ -40,16 +78,27 @@ def write_png(path: str, w: int, h: int, rgb: bytearray) -> None:
         raw.append(0)  # filter type 0
         raw += rgb[y * stride : (y + 1) * stride]
 
-    png = (
+    return (
         b"\x89PNG\r\n\x1a\n"
         + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
         + chunk(b"IDAT", zlib.compress(bytes(raw), 9))
         + chunk(b"IEND", b"")
     )
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "wb") as f:
-        f.write(png)
-    print(f"  {os.path.relpath(path, BASE)} ({w}x{h})")
+
+
+class _Lcg:
+    """Deterministic pseudo-random source for the decorative star field.
+
+    Reproducible by design (same seed, same sky on every run); never
+    used for anything security-relevant.
+    """
+
+    def __init__(self, seed: int) -> None:
+        self._state = seed & 0x7FFFFFFF
+
+    def next_float(self) -> float:
+        self._state = (1103515245 * self._state + 12345) % (1 << 31)
+        return self._state / (1 << 31)
 
 
 def render(size: int, pad: float = 0.0) -> bytearray:
@@ -58,9 +107,14 @@ def render(size: int, pad: float = 0.0) -> bytearray:
     buf = bytearray(w * h * 3)
 
     # Deterministic star field.
-    rng = random.Random(1337)
+    rng = _Lcg(1337)
     stars = [
-        (rng.random(), rng.random(), 0.6 + rng.random() * 1.0, 0.15 + rng.random() * 0.45)
+        (
+            rng.next_float(),
+            rng.next_float(),
+            0.6 + rng.next_float() * 1.0,
+            0.15 + rng.next_float() * 0.45,
+        )
         for _ in range(int(size * size / 2048) + 24)
     ]
 
@@ -171,37 +225,18 @@ def render(size: int, pad: float = 0.0) -> bytearray:
 
 def main() -> None:
     print("Rendering KENOS icons:")
-
-    # Web (PWA).
-    write_png(f"{BASE}/web/icons/Icon-512.png", 512, 512, render(512))
-    write_png(f"{BASE}/web/icons/Icon-192.png", 192, 192, render(192))
-    write_png(f"{BASE}/web/icons/Icon-maskable-512.png", 512, 512, render(512, pad=0.10))
-
-    # Android mipmaps.
-    densities = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
-    for name, size in densities.items():
-        write_png(
-            f"{BASE}/android/app/src/main/res/mipmap-{name}/ic_launcher.png",
-            size,
-            size,
-            render(size),
-        )
-
-    # iOS asset catalog (overwrite existing template filenames).
-    ios = f"{BASE}/ios/Runner/Assets.xcassets/AppIcon.appiconset"
-    ios_sizes = {
-        "Icon-App-20x20@1x.png": 20, "Icon-App-20x20@2x.png": 40, "Icon-App-20x20@3x.png": 60,
-        "Icon-App-29x29@1x.png": 29, "Icon-App-29x29@2x.png": 58, "Icon-App-29x29@3x.png": 87,
-        "Icon-App-40x40@1x.png": 40, "Icon-App-40x40@2x.png": 80, "Icon-App-40x40@3x.png": 120,
-        "Icon-App-60x60@2x.png": 120, "Icon-App-60x60@3x.png": 180,
-        "Icon-App-76x76@1x.png": 76, "Icon-App-76x76@2x.png": 152,
-        "Icon-App-83.5x83.5@2x.png": 167, "Icon-App-1024x1024@1x.png": 1024,
-    }
-    for fname, size in ios_sizes.items():
-        path = f"{ios}/{fname}"
-        if os.path.exists(path):
-            write_png(path, size, size, render(size))
-
+    for rel, size, pad, only_if_exists in TARGETS:
+        # Resolve and prove containment: a literal table entry can never
+        # carry traversal, and any hypothetical '../' would be collapsed
+        # by resolve() then rejected by is_relative_to.
+        dest = (BASE / rel).resolve()
+        if not dest.is_relative_to(BASE):
+            raise ValueError(f"destination outside the project: {rel}")
+        if only_if_exists and not dest.exists():
+            continue
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(encode_png(size, size, render(size, pad=pad)))
+        print(f"  {rel} ({size}x{size})")
     print("Done.")
 
 

@@ -8,6 +8,7 @@ import '../../echo/data/echo_providers.dart';
 import '../../echo/data/echo_repository.dart';
 import '../../echo/domain/echo.dart';
 import '../../echo/domain/echo_color_theme.dart';
+import '../../echo/domain/echo_excerpt.dart';
 import '../../echo/domain/echo_media.dart';
 
 /// Stellar map controller: merges the ether (remote metadata, never the
@@ -60,6 +61,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
           text: content.text,
           media: content.media,
           mediaKind: echo.mediaKind,
+          excerpt: content.excerpt,
           isMine: echo.isMine,
           momentum: content.momentum,
         );
@@ -123,6 +125,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
     required String text,
     required EchoColorTheme theme,
     EchoMediaDraft? media,
+    EchoExcerpt? excerpt,
   }) async {
     final repo = ref.read(echoRepositoryProvider);
     final store = ref.read(localEchoStoreProvider);
@@ -135,6 +138,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
       coordZ: 1.0, // born against the camera, then drifts
       theme: theme,
       media: media,
+      excerpt: excerpt,
     );
     await store.addSealed(echo);
     unawaited(store.recordEchoSent());

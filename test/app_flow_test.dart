@@ -45,8 +45,9 @@ void main() {
     await tester.tap(find.text('ENTRER'));
     await tester.pump(const Duration(milliseconds: 700)); // transition fondu
 
-    expect(find.textContaining('MODE DÉMO LOCAL'), findsOneWidget);
-    expect(find.textContaining('À LIRE'), findsOneWidget,
+    expect(find.textContaining('DÉMO'), findsOneWidget,
+      reason: 'le HUD compact dit le mode en un mot');
+    expect(find.textContaining('ÉCHOS'), findsOneWidget,
       reason: 'le HUD compte les lisibles, pas les scellées');
 
     // Let I/O safety nets (keychain timeouts) settle.

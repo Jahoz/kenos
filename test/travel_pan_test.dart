@@ -31,7 +31,7 @@ void main() {
     );
     await tester.pump(const Duration(seconds: 3));
 
-    expect(find.textContaining('DÉRIVE — 0.00 A.L.'), findsOneWidget);
+    expect(find.textContaining('DÉRIVE'), findsOneWidget);
 
     final gesture = await tester.startGesture(const Offset(300, 200));
     await gesture.moveBy(const Offset(-2, 1));

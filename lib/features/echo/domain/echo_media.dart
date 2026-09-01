@@ -1,14 +1,27 @@
 import 'dart:typed_data';
 
+import 'echo_excerpt.dart';
+
+/// Map-safe metadata of a door-carrying echo: which KIND of attachment
+/// travelled, never the door itself.
+extension EchoExcerptMediaKind on EchoExcerptKind {
+  EchoMediaKind get mediaKind =>
+      this == EchoExcerptKind.song ? EchoMediaKind.song : EchoMediaKind.video;
+}
+
 /// One optional, bounded fragment travelling with an echo.
 ///
 /// Limits are deliberately conservative so the ether remains light enough for
 /// a standard upload and no media turns KENOS into a file-sharing service.
+/// [song] and [video] are doors, not fragments: they carry a sealed
+/// reference (no bytes — see `EchoExcerpt`), so their byte bound is zero.
 enum EchoMediaKind {
   image('IMAGE', 'image/jpeg', 1024 * 1024),
-  audio('AUDIO', 'audio/mp4', 512 * 1024);
+  audio('AUDIO', 'audio/mp4', 512 * 1024),
+  song('SONG'),
+  video('EXCERPT');
 
-  const EchoMediaKind(this.wire, this.mimeType, this.maxBytes);
+  const EchoMediaKind(this.wire, [this.mimeType = 'text/uri-list', this.maxBytes = 0]);
 
   final String wire;
   final String mimeType;
@@ -44,12 +57,14 @@ class EchoMedia {
 
 /// Result of an atomic interception. Neither value appears on the map.
 /// [momentum] is the lineage's rebound count: the reader may re-seal
-/// the text as a phoenix carrying momentum + 1.
+/// the text as a phoenix carrying momentum + 1. [excerpt] is the
+/// cultural door, unsealed only for the winner.
 class ConsumedEcho {
-  const ConsumedEcho({required this.text, this.media, this.momentum = 0});
+  const ConsumedEcho({required this.text, this.media, this.excerpt, this.momentum = 0});
 
   final String text;
   final EchoMedia? media;
+  final EchoExcerpt? excerpt;
   final int momentum;
 }
 /// Actual audio container of decrypted bytes: web recordings arrive as

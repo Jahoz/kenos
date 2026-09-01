@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -6,6 +7,7 @@ import '../../../core/utils/parallax_math.dart';
 import '../domain/echo.dart';
 import '../domain/echo_cipher.dart';
 import '../domain/echo_color_theme.dart';
+import '../domain/echo_excerpt.dart';
 import '../domain/echo_media.dart';
 import '../domain/reception.dart';
 import 'echo_repository.dart';
@@ -80,7 +82,23 @@ class SupabaseEchoRepository implements EchoRepository {
           bytes: await EchoCipher.openBytes(key, base64Decode(mediaB64)),
         );
       }
-      return ConsumedEcho(text: text, media: media, momentum: momentum);
+      // The cultural door: a reference sealed under the same echo key,
+      // handed only to the winner. Unparsable (forged by a modified
+      // client) simply means no door — never an error, never a raw URL.
+      final excerptRefB64 = bundle['media_ref'] as String?;
+      EchoExcerpt? excerpt;
+      if (excerptRefB64 != null && mediaKind != null) {
+        final ref = utf8.decode(
+          await EchoCipher.openBytes(key, base64Decode(excerptRefB64)),
+        );
+        excerpt = EchoExcerpt.fromRef(ref);
+      }
+      return ConsumedEcho(
+        text: text,
+        media: media,
+        excerpt: excerpt,
+        momentum: momentum,
+      );
     } catch (e) {
       throw KenosException.from(e);
     }
@@ -94,12 +112,18 @@ class SupabaseEchoRepository implements EchoRepository {
     required double coordZ,
     required EchoColorTheme theme,
     EchoMediaDraft? media,
+    EchoExcerpt? excerpt,
   }) async {
     try {
+      // The ether's media slot is single: fragment XOR door.
+      if (media != null && excerpt != null) {
+        throw const KenosException(KenosErrorCode.invalid);
+      }
       // Ether Seal: the text is encrypted on-device, under a fresh
       // ephemeral key, before it ever leaves for the ether.
       final sealed = await EchoCipher.seal(text);
       String? mediaPath;
+      String? mediaKindWire;
       if (media != null) {
         if (!media.isWithinLimit) {
           throw const KenosException(KenosErrorCode.invalid);
@@ -110,12 +134,22 @@ class SupabaseEchoRepository implements EchoRepository {
           media.bytes,
           sealed.keyB64,
         );
+        mediaKindWire = media.kind.wire;
         mediaPath = '$userId/${DateTime.now().microsecondsSinceEpoch}-${media.kind.wire}.bin';
         await _client.storage.from('echo-media').uploadBinary(
           mediaPath,
           sealedMedia,
           fileOptions: const FileOptions(upsert: false),
         );
+      } else if (excerpt != null) {
+        // The door travels sealed under the same ephemeral key as the
+        // text: a dump reveals neither the confidence nor the taste.
+        mediaKindWire = excerpt.kind.wire;
+        final sealedRef = await EchoCipher.sealBytesWithKey(
+          Uint8List.fromList(utf8.encode(excerpt.ref)),
+          sealed.keyB64,
+        );
+        mediaPath = base64Encode(sealedRef);
       }
       final rows = await _client.rpc(
         'launch_echo',
@@ -126,7 +160,7 @@ class SupabaseEchoRepository implements EchoRepository {
           'p_y': ParallaxMath.clamp(coordY, 0, 1),
           'p_z': ParallaxMath.clamp(coordZ, 0.05, 1),
           'p_theme': theme.wire,
-          'p_media_kind': media?.kind.wire,
+          'p_media_kind': mediaKindWire,
           'p_media_path': mediaPath,
         },
       );
@@ -141,7 +175,9 @@ class SupabaseEchoRepository implements EchoRepository {
             DateTime.tryParse(row['created_at'] as String? ?? '') ??
             DateTime.now(),
         isMine: true,
-        mediaKind: media?.kind,
+        // Kind metadata only — the author loses the door with the
+        // text: it exists solely for the future single reader.
+        mediaKind: media?.kind ?? excerpt?.kind.mediaKind,
       );
     } catch (e) {
       throw KenosException.from(e);

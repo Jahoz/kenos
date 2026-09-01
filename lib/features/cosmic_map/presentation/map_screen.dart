@@ -48,6 +48,34 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// The Vestiges: curated culture drifting in the void (V3.9).
   List<Vestige> _vestiges = const [];
 
+  /// The one line that matters: signals first (they pulse), then the
+  /// readable ether, then the mode.
+  String _hudHeadline({required int readable, required int signals}) {
+    if (signals > 0) {
+      return signals == 1
+          ? '1 SIGNAL — KENOS'
+          : '$signals SIGNAUX — KENOS';
+    }
+    return '$readable ÉCHOS — $_bootLabel';
+  }
+
+  String get _bootLabel =>
+      ref.read(bootstrapProvider).supabaseConfigured ? 'LIAISON' : 'DÉMO';
+
+  /// The quiet second line: drift + sealed + vestiges, joined by
+  /// breath marks — presence, never urgency.
+  String get _readableSilent {
+    final parts = <String>['DÉRIVE ${_camera.driftLabel}'];
+    final sealedCount =
+        (ref.read(mapControllerProvider).valueOrNull ?? const <Echo>[])
+            .where((e) => e.isMine)
+            .length;
+    if (sealedCount > 0) parts.add('$sealedCount SCELLÉES');
+    final unreadVestiges = _vestiges.where((v) => !v.isRead).length;
+    if (unreadVestiges > 0) parts.add('$unreadVestiges VESTIGES');
+    return parts.join(' · ');
+  }
+
   /// The Constellations: exquisite corpses drifting in the void (V3.8).
   List<ConstellationMeta> _constellations = const [];
 
@@ -248,10 +276,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Widget build(BuildContext context) {
     final echoes = ref.watch(mapControllerProvider);
     final reduced = context.wantsReducedMotion;
-    final boot = ref.watch(bootstrapProvider);
     final all = echoes.valueOrNull ?? const <Echo>[];
     final readable = all.where((e) => !e.isMine).length;
-    final sealed = all.where((e) => e.isMine).length;
     final signals =
         ref.watch(receptionControllerProvider).valueOrNull?.length ?? 0;
 
@@ -437,96 +463,54 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 );
               },
             ),
-            // Top HUD — machine typography. On narrow portraits the
-            // controls wrap to their own row under the telemetry:
-            // nothing ever overlaps, nothing ever overflows.
+            // Top HUD — one thin line of machine whisper, one row of
+            // quiet controls. The void dominates; the numbers breathe.
             SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 16, 0),
+                padding: const EdgeInsets.fromLTRB(20, 10, 16, 0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ONE line: the state that matters now.
                     Text(
-                      'KENOS // ${boot.supabaseConfigured ? 'LIAISON ÉTABIE' : 'MODE DÉMO LOCAL'}',
+                      _hudHeadline(
+                        readable: readable,
+                        signals: signals,
+                      ),
                       style: TextStyle(
                         fontFamily: AppFonts.mono,
                         fontSize: 9,
                         letterSpacing: 3,
-                        color: AppColors.fade(AppColors.cyan, 0.55),
+                        color: signals > 0
+                            ? AppColors.teal
+                            : AppColors.fade(AppColors.cyan, 0.55),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
+                    // The quiet second line — presence, not urgency.
                     Text(
-                      '$readable ÉCHOS À LIRE',
+                      _readableSilent,
                       style: TextStyle(
                         fontFamily: AppFonts.mono,
-                        fontSize: 9,
+                        fontSize: 8,
                         letterSpacing: 3,
-                        color: AppColors.fade(AppColors.pureLight, 0.55),
+                        color: AppColors.fade(AppColors.pureLight, 0.28),
                       ),
                     ),
-                    if (sealed > 0) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '$sealed SCELLÉES PAR TOI',
-                        style: TextStyle(
-                          fontFamily: AppFonts.mono,
-                          fontSize: 8,
-                          letterSpacing: 3,
-                          color: AppColors.fade(AppColors.teal, 0.35),
-                        ),
-                      ),
-                    ],
-                    if (_vestiges.any((v) => !v.isRead)) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '${_vestiges.where((v) => !v.isRead).length} VESTIGES À DÉCOUVRIR',
-                        style: TextStyle(
-                          fontFamily: AppFonts.mono,
-                          fontSize: 8,
-                          letterSpacing: 3,
-                          color: AppColors.fade(AppColors.pureLight, 0.30),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 6),
-                    Text(
-                      'DÉRIVE — ${_camera.driftLabel}',
-                      style: TextStyle(
-                        fontFamily: AppFonts.mono,
-                        fontSize: 9,
-                        letterSpacing: 3,
-                        color: AppColors.fade(AppColors.cyan, 0.45),
-                      ),
-                    ),
-                    if (signals > 0) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        signals == 1
-                            ? '1 SIGNAL REÇU — TOUCHE TON ÉTOILE'
-                            : '$signals SIGNAUX REÇUS — TOUCHE TES ÉTOILES',
-                        style: TextStyle(
-                          fontFamily: AppFonts.mono,
-                          fontSize: 9,
-                          letterSpacing: 3,
-                          color: AppColors.teal,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Wrap(
-                      spacing: 2,
+                      spacing: 0,
                       runSpacing: 0,
                       children: [
                         const _SoundToggle(),
                         TextButton(
                           onPressed: () => context.push('/frequencies'),
-                          child: const Text('FRÉQUENCES'),
+                          child: const Text('ONDES'),
                         ),
                         TextButton(
                           onPressed: () => context.push('/impact'),
-                          child: const Text('TON IMPACT'),
+                          child: const Text('IMPACT'),
                         ),
                         TextButton(
                           onPressed: () {

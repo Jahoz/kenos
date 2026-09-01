@@ -17,6 +17,7 @@ import '../../../core/widgets/scramble_text.dart';
 import '../../cosmic_map/application/map_controller.dart';
 import '../../echo/data/echo_repository.dart';
 import '../../echo/domain/echo_color_theme.dart';
+import '../../echo/domain/echo_excerpt.dart';
 import '../../echo/domain/echo_media.dart';
 import 'widgets/media_draft_preview.dart';
 
@@ -39,6 +40,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
   final ImagePicker _picker = ImagePicker();
   final AudioRecorder _recorder = AudioRecorder();
   EchoMediaDraft? _media;
+  EchoExcerpt? _excerpt;
   bool _recording = false;
   Timer? _recordingLimit;
 
@@ -55,7 +57,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
 
   bool get _canSend =>
       !_sealing &&
-      (_input.text.trim().isNotEmpty || _media != null) &&
+      (_input.text.trim().isNotEmpty || _media != null || _excerpt != null) &&
       _input.text.length <= _maxLength;
 
   Future<void> _pickImage() async {
@@ -76,7 +78,11 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
         showHud(context, 'CE FRAGMENT VISUEL EST TROP LOURD.');
         return;
       }
-      setState(() => _media = draft);
+      // One attachment per echo: a fragment replaces the door.
+      setState(() {
+        _media = draft;
+        _excerpt = null;
+      });
     } catch (e) {
       debugPrint('[kenos.mirror] image pick failed: $e');
       if (mounted) showHud(context, 'LE FRAGMENT VISUEL REFUSE DE VENIR.');
@@ -113,6 +119,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
       setState(() {
         _recording = false;
         _media = draft;
+        _excerpt = null;
       });
       return;
     }
@@ -146,6 +153,103 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     return _recorder.stop();
   }
 
+  /// V3.10 — the cultural door: paste a Spotify or YouTube link. The
+  /// reference travels sealed under the echo's ephemeral key; only the
+  /// single reader will be able to open it.
+  Future<void> _pasteExcerptLink() async {
+    final controller = TextEditingController();
+    final excerpt = await showDialog<EchoExcerpt?>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: AppColors.voidBlack,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: AppColors.fade(AppColors.pureLight, 0.18)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'UNE PORTE CULTURELLE',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 10,
+                    letterSpacing: 3,
+                    color: AppColors.pureLight,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Colle un lien Spotify ou YouTube.\n'
+                  'Il voyagera scellé avec ton écho — seul le lecteur '
+                  'unique pourra l\'ouvrir.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.serifItalic,
+                    fontSize: 14,
+                    height: 1.7,
+                    color: AppColors.fade(AppColors.pureLight, 0.55),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  cursorColor: AppColors.teal,
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 12,
+                    color: AppColors.pureLight,
+                  ),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'https://…',
+                    hintStyle: TextStyle(
+                      fontFamily: AppFonts.mono,
+                      fontSize: 12,
+                      color: Color(0x40F4F4F6),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext)
+                      .pop(EchoExcerpt.parseLink(controller.text)),
+                  child: const Text('SCELLER LA PORTE'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('ANNULER'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    final pasted = controller.text.trim();
+    controller.dispose();
+    if (!mounted) return;
+    if (excerpt == null) {
+      // Only scold when something was actually pasted: cancelling an
+      // empty dialog is renouncing, not failing.
+      if (pasted.isNotEmpty) {
+        showHud(context, 'CE LIEN N\'EST NI SPOTIFY NI YOUTUBE.');
+      }
+      return;
+    }
+    setState(() {
+      _excerpt = excerpt;
+      _media = null; // one attachment per echo
+    });
+  }
+
   Future<void> _sealAndLaunch() async {
     if (!_canSend) return;
     setState(() => _sealing = true);
@@ -163,7 +267,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     try {
       await ref
           .read(mapControllerProvider.notifier)
-          .sendEcho(text: text, theme: _theme, media: _media);
+          .sendEcho(text: text, theme: _theme, media: _media, excerpt: _excerpt);
       unawaited(audio.playBell(KenosBell.send));
       KenosHaptics.pulse(KenosPulse.launch);
       if (!mounted) return;
@@ -296,6 +400,11 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                         icon: Icon(_recording ? Icons.stop : Icons.mic_none),
                         color: _recording ? AppColors.rose : AppColors.teal,
                       ),
+                      IconButton(
+                        tooltip: 'Sceller une porte culturelle',
+                        onPressed: _recording ? null : _pasteExcerptLink,
+                        icon: const Icon(Icons.link),
+                      ),
                     ],
                   ),
                 // The attached fragment, made visible: thumbnail or
@@ -304,6 +413,15 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                   MediaDraftPreview(
                     media: _media!,
                     onRemoved: () => setState(() => _media = null),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                // The sealed door, made visible: what the reader will
+                // be able to open, once, outside the void.
+                if (_excerpt != null) ...[
+                  _ExcerptDraftChip(
+                    excerpt: _excerpt!,
+                    onRemoved: () => setState(() => _excerpt = null),
                   ),
                   const SizedBox(height: 10),
                 ],
@@ -398,3 +516,107 @@ class _ThemePicker extends StatelessWidget {
     );
   }
 }
+
+/// The sealed door, made visible before launch: what it is, where it
+/// leads, one-tap removal. The author sees the door they give — the
+/// reader will have to hold for it.
+class _ExcerptDraftChip extends StatelessWidget {
+  const _ExcerptDraftChip({required this.excerpt, required this.onRemoved});
+
+  final EchoExcerpt excerpt;
+  final VoidCallback onRemoved;
+
+  String get _origin => switch (excerpt.kind) {
+    EchoExcerptKind.song => 'open.spotify.com',
+    EchoExcerptKind.video => excerpt.startSeconds > 0
+        ? 'youtube.com · ${_format(excerpt.startSeconds)}'
+        : 'youtube.com',
+  };
+
+  static String _format(int seconds) {
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isSong = excerpt.kind == EchoExcerptKind.song;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.hairlineStrong),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 72,
+            height: 72,
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.voidBlackDeep,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                isSong ? Icons.music_note_outlined : Icons.smart_display_outlined,
+                size: 26,
+                color: AppColors.fade(AppColors.teal, 0.8),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  excerpt.kind.label,
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 9,
+                    letterSpacing: 3,
+                    color: AppColors.fade(AppColors.pureLight, 0.75),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _origin,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 8,
+                    letterSpacing: 1,
+                    color: AppColors.fade(AppColors.pureLight, 0.45),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'SCELLÉE AVEC L\'ÉCHO — LE LECTEUR SEUL L\'OUVRIRA',
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 7.5,
+                    letterSpacing: 1.5,
+                    color: AppColors.fade(AppColors.pureLight, 0.3),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Retirer la porte',
+            onPressed: onRemoved,
+            icon: const Icon(Icons.close, size: 18),
+            color: AppColors.fade(AppColors.pureLight, 0.6),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// The attached excerpt, made visible: which song or video travels
+/// with the echo — a door for the single winner to open.
