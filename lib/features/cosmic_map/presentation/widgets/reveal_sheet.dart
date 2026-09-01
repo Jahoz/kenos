@@ -134,13 +134,20 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     final dy = details.velocity.pixelsPerSecond.dy;
     final total = _slingDy;
     _slingDy = 0;
-    if (_slinging || _phase != _Phase.reading) return;
+    if (_slinging || !_slingable) return;
     if (total < -90 || dy < -650) {
       _rebound();
     } else if (total > 90 || dy > 650) {
       _ashes();
     }
   }
+
+  /// The sling lives while the echo's fate is still in the reader's
+  /// hands: during the reading window AND the trace offer (the ether's
+  /// rebound window is 10 minutes — the gesture must not vanish after
+  /// 10 seconds of reading).
+  bool get _slingable =>
+      _phase == _Phase.reading || _phase == _Phase.trace;
 
   Future<void> _rebound() async {
     if (_slinging) return;
@@ -166,7 +173,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
   }
 
   void _ashes() {
-    if (_slinging || _phase != _Phase.reading) return;
+    if (_slinging || !_slingable) return;
     KenosHaptics.pulse(KenosPulse.burn,
         reduceMotion: platformDisablesAnimations());
     // The rite of ashes: the burn simply does not wait.
@@ -318,9 +325,8 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         content = _buildSlingFeedback(false);
     }
 
-    // The Sling-Shot lives on the reading panel itself: one vertical
-    // gesture decides the echo's fate once its text has touched you.
-    final reading = _phase == _Phase.reading;
+    // The Sling-Shot lives on the panel while the echo's fate is in
+    // the reader's hands (reading + trace offer).
     final panel = AnimatedBuilder(
       animation: _dissolve,
       builder: (context, child) {
@@ -372,7 +378,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
       ),
     );
 
-    if (!reading) return panel;
+    if (!_slingable) return panel;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onVerticalDragUpdate: (d) => setState(() => _slingDy = d.delta.dy * 0.9),
@@ -386,10 +392,14 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         constraints: const BoxConstraints(maxWidth: 460),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 30),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: children,
+          // Scrollable: the sling rail + a fragment + telemetry can
+          // exceed a small portrait viewport — nothing may overflow.
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
+            ),
           ),
         ),
       );
@@ -496,17 +506,8 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
           ),
         ),
         const SizedBox(height: 12),
-        Text(
-          widget.echo.momentum > 0
-              ? 'COMÈTE PORTÉE PAR ${widget.echo.momentum} INCONNUS — GLISSE VERS LE HAUT POUR LA RELANCER'
-              : 'GLISSE VERS LE HAUT POUR LA RELANCER — VERS LE BAS POUR LES CENDRES',
-          textAlign: TextAlign.center,
-          style: hudLabel(
-            fontSize: 8,
-            letterSpacing: 2,
-            color: AppColors.fade(AppColors.pureLight, 0.35),
-          ),
-        ),
+        const SizedBox(height: 14),
+        _SlingRail(onRebound: _rebound, onAshes: _ashes),
         const SizedBox(height: 10),
       ],
     );
@@ -715,5 +716,58 @@ class _StableHash {
   double next() {
     _state = (_state * 48271) % 2147483647;
     return _state / 2147483647;
+  }
+}
+
+
+/// The Sling-Shot made visible: two quiet buttons for what the swipe
+/// already does (up = the phoenix, down = the ashes). A gesture nobody
+/// knows about is an invisible feature; the rail speaks it.
+class _SlingRail extends StatelessWidget {
+  const _SlingRail({required this.onRebound, required this.onAshes});
+
+  final VoidCallback onRebound;
+  final VoidCallback onAshes;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        OutlinedButton.icon(
+          onPressed: onRebound,
+          icon: const Icon(Icons.north_east, size: 14, color: AppColors.teal),
+          label: const Text(
+            'RELANCER — UN AUTRE LA LIRA',
+            style: TextStyle(
+              fontFamily: AppFonts.mono,
+              fontSize: 9,
+              letterSpacing: 2,
+            ),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.teal,
+            side: BorderSide(color: AppColors.fade(AppColors.teal, 0.4)),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: onAshes,
+          icon: const Icon(Icons.south, size: 12, color: AppColors.roseText),
+          label: const Text(
+            'CENDRES — FINIR MAINTENANT',
+            style: TextStyle(
+              fontFamily: AppFonts.mono,
+              fontSize: 8,
+              letterSpacing: 2,
+            ),
+          ),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.fade(AppColors.roseText, 0.6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          ),
+        ),
+      ],
+    );
   }
 }
