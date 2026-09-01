@@ -363,6 +363,15 @@ class LocalEchoRepository implements EchoRepository {
   }
 
   @override
+  Future<String?> excerptPreviewUrl(String trackId) async {
+    // Demo parity: the voice inside the void is a best-effort
+    // server-side resolution — offline, it always declines and the
+    // door alone remains.
+    await Future<void>.delayed(latency);
+    return null;
+  }
+
+  @override
   Future<List<Reception>> fetchReceptions() async {
     await _ensureLoaded();
     await Future<void>.delayed(latency);

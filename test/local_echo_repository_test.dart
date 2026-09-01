@@ -158,5 +158,14 @@ void main() {
         throwsA(isA<KenosException>()),
       );
     });
+
+    test("V3.10b' — démo : la voix dans le vide décline toujours", () async {
+      final repo = newRepo();
+      expect(
+        await repo.excerptPreviewUrl('4cOdK2wGLETKBW3PvgPWqT'),
+        isNull,
+        reason: 'hors-ligne, seule la porte demeure',
+      );
+    });
   });
 }

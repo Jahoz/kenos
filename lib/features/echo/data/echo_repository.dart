@@ -63,6 +63,12 @@ abstract class EchoRepository {
   /// Reader side: records one contentless moderation report for an echo.
   Future<bool> reportEcho(String echoId, EchoReportReason reason);
 
+  /// V3.10b' — resolves a Spotify 30-second preview for a door the
+  /// winner unsealed. Best-effort by contract: null means the voice
+  /// stays outside the void (unconfigured, offline, no preview) and
+  /// the door alone remains. Demo mode always declines.
+  Future<String?> excerptPreviewUrl(String trackId);
+
   /// Author side: unseen receptions (view = burn).
   Future<List<Reception>> fetchReceptions();
 

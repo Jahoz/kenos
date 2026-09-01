@@ -18,6 +18,7 @@ import '../../../../core/utils/motion_preferences.dart';
 import '../../../../core/widgets/ether_dissolve.dart';
 import '../../../../core/widgets/hud.dart';
 import '../../../../core/widgets/scramble_text.dart';
+import '../../../echo/data/echo_providers.dart';
 import '../../../echo/data/echo_repository.dart';
 import '../../../echo/domain/echo.dart';
 import '../../../echo/domain/echo_excerpt.dart';
@@ -82,6 +83,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
   bool _slinging = false;
   double _slingDy = 0;
   bool _reporting = false;
+  bool _previewPlaying = false;
 
   static const _maxTrace = 140;
 
@@ -126,6 +128,51 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     } catch (_) {
       if (mounted) showHud(context, 'LE FRAGMENT SONORE S\'EST DISSOUT.');
     }
+  }
+
+  /// V3.10b' — the voice inside the void: a Spotify 30-second preview,
+  /// streamed through the reader's door. Best-effort by contract — a
+  /// null resolution (unconfigured, offline, no preview in catalog)
+  /// leaves the door alone, never blocks, never errors loudly. The
+  /// borrowed voice burns with the echo: it stops at the burn.
+  Future<void> _togglePreview() async {
+    if (_previewPlaying) {
+      try {
+        await _mediaPlayer.stop();
+      } catch (_) {
+        // Already gone: the silence is the same.
+      }
+      if (mounted) setState(() => _previewPlaying = false);
+      return;
+    }
+    final excerpt = widget.echo.excerpt;
+    if (excerpt == null || excerpt.kind != EchoExcerptKind.song) return;
+    final url = await ref
+        .read(echoRepositoryProvider)
+        .excerptPreviewUrl(excerpt.id);
+    if (!mounted) return;
+    if (url == null) {
+      showHud(context, 'LA VOIX RESTE HORS DU VIDE.');
+      return;
+    }
+    try {
+      await _mediaPlayer.setUrl(url);
+      unawaited(_mediaPlayer.play());
+      setState(() => _previewPlaying = true);
+    } catch (_) {
+      if (mounted) showHud(context, 'LA VOIX S\'EST DISSOUTE.');
+    }
+  }
+
+  /// The borrowed voice never outlives the echo it travelled with.
+  void _silencePreview() {
+    if (!_previewPlaying) return;
+    _previewPlaying = false;
+    unawaited(
+      _mediaPlayer.stop().catchError((Object _) {
+        // Stopping twice is silence all the same.
+      }),
+    );
   }
 
   /// The cultural door (V3.10): the echo's text burns, but the door it
@@ -206,6 +253,8 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         KenosPulse.burn,
         reduceMotion: platformDisablesAnimations(),
       );
+      // The borrowed voice burns with the echo it travelled with.
+      _silencePreview();
     }
     // Particle dissolution, then the trace offer — nothing else remains.
     _dissolve.forward(from: 0).whenComplete(() {
@@ -485,9 +534,20 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
                     ),
                   ),
                 )
-              : _ExcerptDoor(
-                  excerpt: widget.echo.excerpt!,
-                  onOpened: _openDoor,
+              : Column(
+                  children: [
+                    // V3.10b' — a borrowed voice, heard inside the void
+                    // (songs only; videos keep their door outside).
+                    if (widget.echo.excerpt!.kind == EchoExcerptKind.song)
+                      _PreviewListen(
+                        playing: _previewPlaying,
+                        onToggled: _togglePreview,
+                      ),
+                    _ExcerptDoor(
+                      excerpt: widget.echo.excerpt!,
+                      onOpened: _openDoor,
+                    ),
+                  ],
                 ),
         ],
         const SizedBox(height: 40),
@@ -889,3 +949,51 @@ class _ExcerptDoor extends StatelessWidget {
 /// The cultural door, winner's side: one quiet button that opens the
 /// excerpt OUTSIDE the void (browser/app). The URL is built
 /// canonically from strictly parsed parts — never the raw string.
+
+/// V3.10b' — the borrowed voice, offered inside the void: a quiet
+/// toggle (30 s Spotify preview) that lives only while the echo lives.
+/// It never auto-plays: the ear asks, like the eye holds.
+class _PreviewListen extends StatelessWidget {
+  const _PreviewListen({required this.playing, required this.onToggled});
+
+  final bool playing;
+  final VoidCallback onToggled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        TextButton.icon(
+          onPressed: onToggled,
+          icon: Icon(
+            playing ? Icons.stop : Icons.play_arrow,
+            size: 13,
+            color: AppColors.teal,
+          ),
+          label: Text(
+            playing ? 'TAIRE LA VOIX' : 'ÉCOUTER UN FRAGMENT',
+            style: const TextStyle(
+              fontFamily: AppFonts.mono,
+              fontSize: 8.5,
+              letterSpacing: 2,
+            ),
+          ),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.teal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'LA VOIX EMPRUNTÉE BRÛLE AVEC L\'ÉCHO',
+          style: TextStyle(
+            fontFamily: AppFonts.mono,
+            fontSize: 7.5,
+            letterSpacing: 1.5,
+            color: AppColors.fade(AppColors.pureLight, 0.3),
+          ),
+        ),
+      ],
+    );
+  }
+}

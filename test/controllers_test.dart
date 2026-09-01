@@ -107,6 +107,9 @@ class FakeEchoRepository implements EchoRepository {
   Future<bool> reportEcho(String echoId, EchoReportReason reason) async => true;
 
   @override
+  Future<String?> excerptPreviewUrl(String trackId) async => null;
+
+  @override
   Future<List<Reception>> fetchReceptions() async => [..._receptions];
 
   @override

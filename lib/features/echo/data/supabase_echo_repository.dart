@@ -251,6 +251,23 @@ class SupabaseEchoRepository implements EchoRepository {
   }
 
   @override
+  Future<String?> excerptPreviewUrl(String trackId) async {
+    // Best-effort by contract: any failure simply keeps the voice out
+    // of the void — never an error surface, never a blocked window.
+    try {
+      final response = await _client.functions.invoke(
+        'door-preview',
+        body: {'trackId': trackId},
+      );
+      final data = response.data;
+      if (data is Map && data['url'] is String) return data['url'] as String;
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
   Future<List<Reception>> fetchReceptions() async {
     try {
       final rows = await _client.rpc('fetch_receptions');

@@ -62,6 +62,18 @@ unique atomique incluse). Idéal pour découvrir l'expérience.
 3. (Optionnel, purge des échos dérivants) activer l'extension `pg_cron`
    puis décommenter le bloc cron livré **prêt à l'emploi** en fin de
    migration 0004 (`kenos-purge`, quotidien à 03:17 UTC).
+3bis. (Optionnel, la voix dans le vide — V3.10b') pour que les portes
+   musicales proposent un extrait Spotify de 30 s dans la fenêtre de
+   lecture : créer une app sur [developer.spotify.com](https://developer.spotify.com)
+   (client credentials) puis
+
+```bash
+supabase secrets set SPOTIFY_CLIENT_ID=xxx SPOTIFY_CLIENT_SECRET=yyy
+supabase functions deploy door-preview
+```
+
+   Sans ces secrets, tout continue de fonctionner : la porte seule
+   demeure (deep-link vers Spotify/YouTube).
 4. Lancer l'app avec les identifiants (Project Settings → API) :
 
 ```bash

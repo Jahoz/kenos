@@ -338,6 +338,19 @@ sans porte. Reste documenté (non corrigé) : la dérive du viewport en
 mode clavier sur desktop web — famille navigateur (scroll-into-view
 de l'input HTML), à traiter séparément si elle gêne encore.
 
+**V3.10b' — la voix dans le vide (livrée 2026-09-01)** : les portes
+musicales proposent « ÉCOUTER UN FRAGMENT » (preview Spotify 30 s)
+DANS la fenêtre de révélation, après le voile — jamais en auto-play
+(l'oreille demande, comme l'œil tient). Edge Function `door-preview`
+(client credentials, token caché au warm scope, id de piste strictement
+validé) ; dégradation honnête à tous les étages (pas de secrets, hors
+ligne, piste sans preview → `{url: null}`) : la porte seule demeure,
+aucune erreur, aucun blocage. **La voix empruntée brûle avec l'écho** :
+elle se tait au burn (stop explicite), la porte survit jusqu'à la fermeture
+du panneau. Les vidéos gardent leur porte extérieure (l'embed exige une
+webview — refus de complexité maintenu). Démo : décline toujours (test
+épinglé). 4 tests (song vs vidéo, HUD de dégradation, parité démo).
+
 ## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — en attente de Design Readiness Gate)
 
 Créer une mini-galaxie invitable (amis, collègues), vivant en parallèle
