@@ -241,7 +241,7 @@ l'œuvre collective à l'aveugle :
    refermée ») — jamais de push, jamais de compteur vivant, zéro
    stardust, zéro signature.
 
-## V3.9 — Germination : les Vestiges (idée Hugo, 2026-09-01)
+## V3.9 — Les Vestiges ✅ (livrée 2026-09-01)
 
 Le cold start : un éther vide n'offre rien à découvrir. La réponse est
 de la culture réelle, curatée — JAMAIS de faux échos (le contrat
@@ -262,6 +262,10 @@ fabriquée tuerait la confiance en tout ce qu'on lit).
   honnête hors-ligne.
 - **Répartition** : clairsemés (3-4 par secteur), trouvés en voyageant
   — une bibliothèque du vide, jamais un fil.
+- **Livré** : 12 vestiges (citations, étymologies, haïku, histoire des
+  bouteilles à la mer), JSON embarqué, éclats gravés tournant
+  lentement, panneau serif sourcé re-lisible (« CECI NE BRÛLE PAS —
+  IL REVIENDRA »), 3 tests, déployé.
 
 ## 4. Règles inchangées (rappel)
 
