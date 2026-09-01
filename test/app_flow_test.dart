@@ -79,18 +79,27 @@ void main() {
       for (var i = 0; i < stars.evaluate().length; i++)
         tester.getRect(stars.at(i)),
     ];
+    final screen = Offset(
+      tester.view.physicalSize.width / tester.view.devicePixelRatio,
+      tester.view.physicalSize.height / tester.view.devicePixelRatio,
+    );
     int pick = -1;
     for (var i = 0; i < rects.length; i++) {
-      final center = rects[i].center;
+      final r = rects[i];
+      final center = r.center;
+      final onScreen = r.left >= 0 &&
+          r.right <= screen.dx &&
+          r.top >= 0 &&
+          r.bottom <= screen.dy;
       final covered = rects.asMap().entries.any(
         (e) => e.key != i && e.value.contains(center),
       );
-      if (!covered) {
+      if (onScreen && !covered) {
         pick = i;
         break;
       }
     }
-    expect(pick, greaterThanOrEqualTo(0), reason: 'aucune étoile dégagée');
+    expect(pick, greaterThanOrEqualTo(0), reason: 'aucune étoile dégagée et visible');
     final star = stars.at(pick);
     final heldId = (tester.widget(star) as MindfulHoldStar).echo.id;
     expect(heldId, isNotEmpty);
@@ -168,18 +177,27 @@ void main() {
       for (var i = 0; i < stars.evaluate().length; i++)
         tester.getRect(stars.at(i)),
     ];
+    final screen = Offset(
+      tester.view.physicalSize.width / tester.view.devicePixelRatio,
+      tester.view.physicalSize.height / tester.view.devicePixelRatio,
+    );
     int pick = -1;
     for (var i = 0; i < rects.length; i++) {
-      final center = rects[i].center;
+      final r = rects[i];
+      final center = r.center;
+      final onScreen = r.left >= 0 &&
+          r.right <= screen.dx &&
+          r.top >= 0 &&
+          r.bottom <= screen.dy;
       final covered = rects.asMap().entries.any(
         (e) => e.key != i && e.value.contains(center),
       );
-      if (!covered) {
+      if (onScreen && !covered) {
         pick = i;
         break;
       }
     }
-    expect(pick, greaterThanOrEqualTo(0), reason: 'aucune étoile dégagée');
+    expect(pick, greaterThanOrEqualTo(0), reason: 'aucune étoile dégagée et visible');
     final star = stars.at(pick);
     final heldId = (tester.widget(star) as MindfulHoldStar).echo.id;
     expect(heldId, isNotEmpty);
