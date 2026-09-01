@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(58);
+select plan(71);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -596,6 +596,156 @@ select is(
     where consumed_at < now() - interval '10 minutes'),
   0::bigint,
   'kenos_purge sweeps lineages past the decision window'
+);
+
+-- ── The Exquisite Corpse: blind constellations (V3.8) ─────────────────
+reset role;
+insert into auth.users (id, email, aud, role) values
+  ('00000000-0000-4000-8000-0000000000d1', 'd1@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000d2', 'd2@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000d3', 'd3@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000d4', 'd4@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000d5', 'd5@t.kenos', 'authenticated', 'authenticated');
+
+create or replace function tests.constellation_seed_by(t text) returns uuid
+language sql security definer set search_path = public as $f$
+  select id from public.kenos_constellations
+  where seed_y = (select case when t = 'first' then 0.11 else 0.22 end)
+  order by created_at desc limit 1
+$f$;
+create or replace function tests.constellation_target(t text) returns int
+language sql security definer set search_path = public as $f$
+  select target_lines from public.kenos_constellations
+  where seed_y = (select case when t = 'first' then 0.11 else 0.22 end)
+  order by created_at desc limit 1
+$f$;
+create or replace function tests.constellation_exists(t text) returns bigint
+language sql security definer set search_path = public as $f$
+  select count(*) from public.kenos_constellations
+  where seed_y = (select case when t = 'first' then 0.11 else 0.22 end)
+$f$;
+grant execute on all functions in schema tests to authenticated;
+
+-- d1 seeds.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d1","role":"authenticated"}', true);
+select is(
+  (select count(*) from public.seed_constellation(0.5::float8, 0.11::float8)),
+  1::bigint,
+  'seed_constellation creates an open corpse'
+);
+-- The target is between 4 and 7.
+select is(
+  tests.constellation_target('first') between 4 and 7,
+  true,
+  'the target lines are 4-7'
+);
+
+-- Pin to 4 so the auto-close is deterministic in this test.
+reset role;
+update public.kenos_constellations set target_lines = 4
+  where id = tests.constellation_seed_by('first');
+
+-- d2 contributes line 1: sees the COUNT, never the fragments.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d2","role":"authenticated"}', true);
+select is(
+  public.contribute_line(tests.constellation_seed_by('first'), 'première ligne aveugle', ''),
+  1,
+  'contribution 1 returns the count (not the lines)'
+);
+-- Blind: the map never exposes text.
+select is(
+  (select line_count from public.fetch_constellations(0, 0, 1, 1)
+    where id = tests.constellation_seed_by('first')),
+  1,
+  'the map sees the count, zero text columns'
+);
+
+-- d2 cannot contribute twice to the same corpse.
+select throws_ok(
+  $$select public.contribute_line(tests.constellation_seed_by('first'), 'deuxième', '')$$,
+  'P0001', 'KENOS_ALREADY_CONTRIBUTED',
+  'one line per stranger'
+);
+
+-- d3, d4, d5 contribute — the corpse auto-closes at its target.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d3","role":"authenticated"}', true);
+select public.contribute_line(tests.constellation_seed_by('first'), 'troisième', '');
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d4","role":"authenticated"}', true);
+select is(
+  (select state from public.fetch_constellations(0, 0, 1, 1)
+    where id = tests.constellation_seed_by('first')),
+  'OPEN',
+  'still open before the target'
+);
+select public.contribute_line(tests.constellation_seed_by('first'), 'quatrième', '');
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d5","role":"authenticated"}', true);
+select public.contribute_line(tests.constellation_seed_by('first'), 'cinquième', '');
+
+select is(
+  (select state from public.fetch_constellations(0, 0, 1, 1)
+    where id = tests.constellation_seed_by('first')),
+  'CLOSED',
+  'the corpse auto-closes at its target'
+);
+
+-- THE SOUL: the contributor never reads the whole.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d2","role":"authenticated"}', true);
+select throws_ok(
+  $$select public.consume_constellation(tests.constellation_seed_by('first'))$$,
+  'P0001', 'KENOS_CONTRIBUTOR_BARRED',
+  'a contributor NEVER reads the whole they helped write'
+);
+
+-- A stranger reads it whole, once — then it is gone.
+reset role;
+insert into auth.users (id, email, aud, role) values
+  ('00000000-0000-4000-8000-0000000000d6', 'd6@t.kenos', 'authenticated', 'authenticated');
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d6","role":"authenticated"}', true);
+select is(
+  (select jsonb_array_length(result -> 'lines') from (
+    select public.consume_constellation(tests.constellation_seed_by('first')) as result
+  ) q),
+  4,
+  'the single reader gets all 4 lines, assembled'
+);
+select is(
+  tests.constellation_exists('first'),
+  0::bigint,
+  'the read corpse is destroyed — it never returns'
+);
+
+-- An OPEN corpse cannot be read.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d1","role":"authenticated"}', true);
+select is(
+  (select count(*) from public.seed_constellation(0.5::float8, 0.22::float8)),
+  1::bigint,
+  'a second corpse is seeded'
+);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d6","role":"authenticated"}', true);
+select throws_ok(
+  $$select public.consume_constellation(tests.constellation_seed_by('second'))$$,
+  'P0001', 'KENOS_STILL_OPEN',
+  'an open corpse cannot be read whole'
+);
+
+-- Purge: open corpses older than 7 days go back to the void.
+reset role;
+update public.kenos_constellations set created_at = now() - interval '8 days'
+  where id = tests.constellation_seed_by('second');
+select public.kenos_purge();
+select is(
+  (select count(*) from public.kenos_constellations),
+  0::bigint,
+  'kenos_purge sweeps stale open corpses'
 );
 
 select * from finish();

@@ -11,6 +11,8 @@ import '../../../core/constants/app_fonts.dart';
 import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/utils/motion_preferences.dart';
 import '../../../core/utils/parallax_math.dart';
+import '../../constellations/data/constellation_repository.dart';
+import '../../constellations/presentation/constellation_sheets.dart';
 import '../../echo/data/echo_providers.dart';
 import '../../echo/domain/echo.dart';
 import '../application/kenos_system.dart';
@@ -46,6 +48,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// The Vestiges: curated culture drifting in the void (V3.9).
   List<Vestige> _vestiges = const [];
 
+  /// The Constellations: exquisite corpses drifting in the void (V3.8).
+  List<ConstellationMeta> _constellations = const [];
+
   /// V3.7a — Le Voyage: the traveller's eye. Fixed zoom, the void
   /// follows the finger, drift accumulates in Années-Lumière.
   final TravelCamera _camera = TravelCamera();
@@ -63,6 +68,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void initState() {
     super.initState();
     _loadVestiges();
+    _loadConstellations();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(ref.read(audioControllerProvider).ensureStarted());
     });
@@ -71,6 +77,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Future<void> _loadVestiges() async {
     final vestiges = await loadVestiges();
     if (mounted) setState(() => _vestiges = vestiges);
+  }
+
+  Future<void> _loadConstellations() async {
+    try {
+      final repo = ref.read(constellationRepositoryProvider);
+      final visible = await repo.fetchVisible();
+      if (mounted) setState(() => _constellations = visible);
+    } catch (e) {
+      debugPrint('[kenos.constellations] unreachable: $e');
+    }
   }
 
   void _maybeSpeakAube() {
@@ -194,6 +210,31 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       _camera.panByWorld(target - _camera.center);
     });
     _refreshAfterTravel();
+  }
+
+  /// An OPEN corpse takes a blind line; a CLOSED one is read whole,
+  /// once. The server enforces the soul: contributors never read.
+  Future<void> _onConstellationTap(ConstellationMeta cst) async {
+    KenosHaptics.pulse(KenosPulse.themePick);
+    if (cst.isClosed) {
+      final lines = await ref
+          .read(constellationRepositoryProvider)
+          .consume(cst.id);
+      if (!mounted) return;
+      if (lines == null || lines.isEmpty) {
+        unawaited(_loadConstellations());
+        return;
+      }
+      unawaited(showConstellationReading(context, lines: lines)
+          .then((_) {
+        if (mounted) _loadConstellations();
+      }));
+    } else {
+      unawaited(showContributeSheet(context, ref: ref, constellation: cst)
+          .then((_) {
+        if (mounted) _loadConstellations();
+      }));
+    }
   }
 
   /// RECALIBRER, travelled: return the eye to the heart of the ether.
@@ -320,6 +361,50 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                             color: AppColors.pureLight,
                                             pulse: 0,
                                             read: v.isRead,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                            ],
+                          ),
+                        ),
+                      // The Constellations: exquisite corpses. OPEN =
+                      //    contribute a blind line; CLOSED = read it
+                      //    whole, once. Never both for the same person.
+                      if (_constellations.isNotEmpty)
+                        LayoutBuilder(
+                          builder: (context, c) => Stack(
+                            children: [
+                              for (final cst in _constellations)
+                                Builder(
+                                  builder: (context) {
+                                    final sp = _camera.worldToScreen(
+                                      Offset(cst.seedX, cst.seedY),
+                                      Size(c.maxWidth, c.maxHeight),
+                                    );
+                                    if (sp.dx < -40 ||
+                                        sp.dx > c.maxWidth + 40 ||
+                                        sp.dy < -40 ||
+                                        sp.dy > c.maxHeight + 40) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return Positioned(
+                                      left: sp.dx - 20,
+                                      top: sp.dy - 20,
+                                      width: 40,
+                                      height: 40,
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: () => _onConstellationTap(cst),
+                                        child: CustomPaint(
+                                          painter: _ConstellationPainter(
+                                            closed: cst.isClosed,
+                                            progress: cst.lineCount / cst.target,
+                                            color: cst.isClosed
+                                                ? AppColors.indigo
+                                                : AppColors.pureLight,
                                           ),
                                         ),
                                       ),
@@ -940,4 +1025,62 @@ class _SoundToggleState extends ConsumerState<_SoundToggle> {
       child: Text(audio.isMuted ? 'SON ─ OFF' : 'SON ─ ON'),
     );
   }
+}
+
+
+/// A constellation glyph: a dotted circle of K dots — filling as
+/// strangers contribute. CLOSED = the full ring glows indigo (readable
+/// whole, once); OPEN = pale dots (you may add your line).
+class _ConstellationPainter extends CustomPainter {
+  _ConstellationPainter({
+    required this.closed,
+    required this.progress,
+    required this.color,
+  });
+
+  final bool closed;
+  final double progress;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.shortestSide / 2 - 3;
+    const dots = 7;
+    final filled = (dots * progress).ceil().clamp(0, dots);
+
+    for (var i = 0; i < dots; i++) {
+      final angle = 2 * 3.141592653589793 * i / dots - 1.5707963267948966;
+      final pos = Offset(
+        center.dx + radius * _cos(angle),
+        center.dy + radius * _sin(angle),
+      );
+      final isFilled = i < filled;
+      final paint = Paint()
+        ..color = closed
+            ? AppColors.fade(color, isFilled ? 0.85 : 0.25)
+            : AppColors.fade(color, isFilled ? 0.6 : 0.18);
+      canvas.drawCircle(pos, isFilled ? 2.2 : 1.4, paint);
+    }
+  }
+
+  // Avoid importing dart:math for two trig calls.
+  static double _cos(double rad) =>
+      rad == 0 ? 1 : (rad == 3.141592653589793 ? -1 : _polyCos(rad));
+  static double _polyCos(double x) {
+    // Taylor 6 terms — precise enough for 7 dots.
+    var term = 1.0;
+    var sum = 1.0;
+    for (var n = 1; n <= 6; n++) {
+      term *= -x * x / ((2 * n - 1) * (2 * n));
+      sum += term;
+    }
+    return sum;
+  }
+
+  static double _sin(double rad) => _polyCos(rad - 1.5707963267948966);
+
+  @override
+  bool shouldRepaint(_ConstellationPainter old) =>
+      old.closed != closed || old.progress != progress;
 }
