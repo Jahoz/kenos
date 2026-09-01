@@ -39,6 +39,45 @@ void main() {
       expect(c.dy, lessThanOrEqualTo(1.1 - 0.5 / 1.75 + 1e-9));
     });
 
+    test('pincement : le zoom s\'ancre sous les doigts', () {
+      final camera = TravelCamera();
+      const viewport = Size(400, 800);
+      const focalWorld = Offset(0.44, 0.5); // the point under the fingers
+      final before =
+          camera.worldToScreen(focalWorld, viewport);
+
+      camera.zoomBy(1.8, focalWorld);
+
+      expect(camera.zoom, closeTo(1.75 * 1.8, 1e-6));
+      final after = camera.worldToScreen(focalWorld, viewport);
+      // The anchored point barely moved on screen (clamping may shift
+      // it a little — it must NOT fly away).
+      expect((after - before).distance, lessThan(24));
+    });
+
+    test('bornes du pincement : jamais carte, jamais microscope', () {
+      final camera = TravelCamera();
+      const focal = Offset(0.5, 0.5);
+      camera.zoomBy(100, focal);
+      expect(camera.zoom, TravelCamera.maxZoom);
+      camera.zoomBy(0.001, focal);
+      expect(camera.zoom, TravelCamera.minZoom);
+    });
+
+    test('zoomer sépare : l\'écart écran entre deux points proches grandit', () {
+      final camera = TravelCamera();
+      const viewport = Size(400, 800);
+      final a = const Offset(0.50, 0.50);
+      final b = const Offset(0.505, 0.50); // ~2 px apart at rest
+      final before =
+          (camera.worldToScreen(b, viewport) - camera.worldToScreen(a, viewport)).distance;
+      camera.zoomBy(3.0, a);
+      final after =
+          (camera.worldToScreen(b, viewport) - camera.worldToScreen(a, viewport)).distance;
+      expect(after, greaterThan(before * 1.9),
+          reason: 'les étoiles trop proches deviennent tenables');
+    });
+
     test('RECALIBRER : retour au cœur, dérive conservée', () {
       final camera = TravelCamera();
       const viewport = Size(400, 800);

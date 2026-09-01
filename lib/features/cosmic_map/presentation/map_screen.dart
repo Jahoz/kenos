@@ -48,10 +48,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Timer? _glide;
   Size _viewport = Size.zero;
 
-  /// Gesture bookkeeping: where it began, how far it carried. A
-  /// release under the tap threshold is an intention, not a travel.
+  /// Gesture bookkeeping: where it began, how far it carried, how
+  /// much it pinched. A release with neither travel nor zoom is an
+  /// intention (a tap); a pinch that stays put still zooms.
   Offset _lastPointerDown = Offset.zero;
   Offset _dragTotal = Offset.zero;
+  double _pinchFactor = 1.0;
 
   @override
   void initState() {
@@ -76,41 +78,42 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     super.dispose();
   }
 
-  /// The sky follows the finger: pan the void, travel the ether.
-  void _onPanUpdate(DragUpdateDetails details) {
+  /// The sky follows the fingers: one finger travels, two fingers
+  /// also zoom (the point between them stays anchored under the
+  /// pinch — clustered stars can be separated to be held).
+  void _onScaleStart(ScaleStartDetails details) {
     _glide?.cancel();
-    _dragTotal += details.delta;
+    _lastPointerDown = details.focalPoint;
+    _dragTotal = Offset.zero;
+    _pinchFactor = 1.0;
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
     setState(() {
-      _camera.panByScreen(details.delta, _viewport);
+      if (details.pointerCount >= 2 && details.scale != 1.0) {
+        _camera.zoomBy(
+          details.scale / _pinchFactor,
+          _screenToWorld(details.focalPoint),
+        );
+        _pinchFactor = details.scale;
+      }
+      _dragTotal += details.focalPointDelta;
+      _camera.panByScreen(details.focalPointDelta, _viewport);
     });
-    _publishPosition();
   }
 
-  /// Where the eye rests, the ear listens (music of the spheres).
-  void _publishPosition() {
-    ref.read(travelPositionProvider.notifier).state = _camera.center;
-  }
-
-  /// Release: the void keeps a soft inertia (skipped under
-  /// reduce-motion — the eye simply stops).
-  void _onPanEnd(DragEndDetails details) {
-    // A gesture that barely moved is an intention: tapping a planet
-    // glides the eye toward its gravity. (A separate tap recognizer
-    // would steal the pan arena — one detector, one grammar.)
-    if (_dragTotal.distance < 8) {
-      _dragTotal = Offset.zero;
+  void _onScaleEnd(ScaleEndDetails details) {
+    // Neither travelled nor zoomed: an intention — a planet glides the
+    // eye toward its gravity. (One detector, one grammar.)
+    if (_dragTotal.distance < 8 && ( _pinchFactor - 1.0 ).abs() < 0.03) {
       _onVoidTap();
       return;
     }
-    _dragTotal = Offset.zero;
     if (context.wantsReducedMotion) {
       _refreshAfterTravel();
       return;
     }
-    final velocity = Offset(
-      details.velocity.pixelsPerSecond.dx,
-      details.velocity.pixelsPerSecond.dy,
-    );
+    final velocity = details.velocity.pixelsPerSecond;
     final worldPerSecond = Offset(
       velocity.dx / (_viewport.width) * _camera.viewExtent,
       velocity.dy / (_viewport.height) * _camera.viewExtent,
@@ -131,6 +134,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       }
       setState(() => _camera.panByWorld(path[i++]));
     });
+  }
+
+  /// Screen point → world point (for anchoring the pinch).
+  Offset _screenToWorld(Offset screen) => Offset(
+        (screen.dx - _viewport.width / 2) /
+            _viewport.width *
+            _camera.viewExtent +
+            _camera.center.dx,
+        (screen.dy - _viewport.height / 2) /
+            _viewport.height *
+            _camera.viewExtent +
+            _camera.center.dy,
+      );
+
+  /// Publish where the eye rests (music of the spheres listens there).
+  void _publishPosition() {
+    ref.read(travelPositionProvider.notifier).state = _camera.center;
   }
 
   /// What the eye sees changed: ask the ether for this window.
@@ -222,9 +242,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   // its own friction (a >28px drift cancels the hold
                   // and hands the gesture to the void). Tapping a
                   // planet glides the eye toward its gravity.
-                  onPanDown: (d) => _lastPointerDown = d.globalPosition,
-                  onPanUpdate: _onPanUpdate,
-                  onPanEnd: _onPanEnd,
+                  onScaleStart: _onScaleStart,
+                  onScaleUpdate: _onScaleUpdate,
+                  onScaleEnd: _onScaleEnd,
                   behavior: HitTestBehavior.translucent,
                   child: Stack(
                     fit: StackFit.expand,

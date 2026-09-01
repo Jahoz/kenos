@@ -12,13 +12,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// into emptiness, and emptiness is the point.
 class TravelCamera {
   TravelCamera({
-    this.zoom = 1.75,
+    double zoom = 1.75,
     this.margin = 0.1,
     Offset center = const Offset(0.5, 0.5),
-  }) : _center = center;
+  })  : _zoom = zoom.clamp(minZoom, maxZoom),
+        _center = center;
 
   /// How much of the world fills the screen at once (1.75 → ~57%).
-  final double zoom;
+  double _zoom;
+  double get zoom => _zoom;
+
+  /// Pinch bounds: far enough apart to separate clustered stars,
+  /// never so close the void feels like a map.
+  static const double minZoom = 1.2;
+  static const double maxZoom = 3.5;
 
   /// How far past the known ether the void still carries the eye.
   final double margin;
@@ -66,6 +73,21 @@ class TravelCamera {
     _center = next;
     _drift += applied.distance;
     return applied;
+  }
+
+  /// Pinch: zoom by [factor], keeping the world point under the
+  /// fingers where it is (the focal point anchors the zoom).
+  void zoomBy(double factor, Offset focalWorldPoint) {
+    final previousZoom = _zoom;
+    _zoom = (_zoom * factor).clamp(minZoom, maxZoom);
+    final applied = _zoom / previousZoom;
+    if (applied == 1.0) return;
+    // Keep the focal world point at the same screen position:
+    // (f - c') / ve' = (f - c) / ve  and  ve' = ve / applied, so
+    // center' = focal - (focal - center) / applied.
+    final target = focalWorldPoint -
+        (focalWorldPoint - _center) / applied;
+    _center = _clamped(target);
   }
 
   /// Recentre on the heart of the ether (RECALIBRER).

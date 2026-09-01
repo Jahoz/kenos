@@ -18,6 +18,7 @@ import '../../cosmic_map/application/map_controller.dart';
 import '../../echo/data/echo_repository.dart';
 import '../../echo/domain/echo_color_theme.dart';
 import '../../echo/domain/echo_media.dart';
+import 'widgets/media_draft_preview.dart';
 
 /// The Mirror: shaping the void, visual sealing, launch into the ether.
 class MirrorScreen extends ConsumerStatefulWidget {
@@ -295,25 +296,17 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                         icon: Icon(_recording ? Icons.stop : Icons.mic_none),
                         color: _recording ? AppColors.rose : AppColors.teal,
                       ),
-                      if (_media != null)
-                        IconButton(
-                          tooltip: 'Retirer le fragment',
-                          onPressed: () => setState(() => _media = null),
-                          icon: const Icon(Icons.close),
-                        ),
                     ],
                   ),
-                if (_media != null)
-                  Text(
-                    '${_media!.kind == EchoMediaKind.image ? 'IMAGE' : 'SON'} · ${_media!.sizeLabel}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: AppFonts.mono,
-                      fontSize: 8,
-                      letterSpacing: 2,
-                      color: AppColors.fade(AppColors.pureLight, 0.48),
-                    ),
+                // The attached fragment, made visible: thumbnail or
+                // waveform, private listen, one-tap removal.
+                if (_media != null) ...[
+                  MediaDraftPreview(
+                    media: _media!,
+                    onRemoved: () => setState(() => _media = null),
                   ),
+                  const SizedBox(height: 10),
+                ],
                 const SizedBox(height: 8),
                 _ThemePicker(
                   selected: _theme,
