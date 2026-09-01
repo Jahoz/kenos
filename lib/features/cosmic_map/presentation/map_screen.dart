@@ -427,7 +427,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                         child: CustomPaint(
                                           painter: _ConstellationPainter(
                                             closed: cst.isClosed,
-                                            progress: cst.lineCount / cst.target,
+                                            lineCount: cst.lineCount,
+                                            target: cst.target,
                                             color: cst.isClosed
                                                 ? AppColors.indigo
                                                 : AppColors.pureLight,
@@ -1012,47 +1013,89 @@ class _SoundToggleState extends ConsumerState<_SoundToggle> {
 }
 
 
-/// A constellation glyph: a dotted circle of K dots — filling as
-/// strangers contribute. CLOSED = the full ring glows indigo (readable
-/// whole, once); OPEN = pale dots (you may add your line).
+/// V3.11b — the emergent figure: each contributed line is a star at the
+/// next golden-angle station around the seed — the constellation draws
+/// itself as strangers write. Drawn stars are bright and linked by
+/// faint segments (what they wrote); the stations still hollow wait.
+/// CLOSED = the figure complete, glowing indigo (readable whole, once).
 class _ConstellationPainter extends CustomPainter {
   _ConstellationPainter({
     required this.closed,
-    required this.progress,
+    required this.lineCount,
+    required this.target,
     required this.color,
   });
 
   final bool closed;
-  final double progress;
+  final int lineCount;
+  final int target;
   final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.shortestSide / 2 - 3;
-    const dots = 7;
-    final filled = (dots * progress).ceil().clamp(0, dots);
+    final t = target.clamp(2, 7);
 
-    for (var i = 0; i < dots; i++) {
-      final angle = 2 * 3.141592653589793 * i / dots - 1.5707963267948966;
-      final pos = Offset(
-        center.dx + radius * _cos(angle),
-        center.dy + radius * _sin(angle),
-      );
-      final isFilled = i < filled;
-      final paint = Paint()
-        ..color = closed
-            ? AppColors.fade(color, isFilled ? 0.85 : 0.25)
-            : AppColors.fade(color, isFilled ? 0.6 : 0.18);
-      canvas.drawCircle(pos, isFilled ? 2.2 : 1.4, paint);
+    Offset station(int k) => Offset(
+          center.dx + radius * _fx(k, t).$1,
+          center.dy + radius * _fx(k, t).$2,
+        );
+
+    // The seed: where the first stranger planted the corpse.
+    canvas.drawCircle(
+      center,
+      1.1,
+      Paint()..color = AppColors.fade(color, closed ? 0.9 : 0.55),
+    );
+
+    // The strangers' segments: what has been drawn so far.
+    final drawn = lineCount.clamp(0, t);
+    if (drawn >= 2) {
+      final link = Paint()
+        ..color = AppColors.fade(color, closed ? 0.5 : 0.28)
+        ..strokeWidth = 0.8
+        ..strokeCap = StrokeCap.round;
+      for (var k = 1; k < drawn; k++) {
+        canvas.drawLine(station(k - 1), station(k), link);
+      }
     }
+
+    // The stations: filled stars for written lines, hollow for the rest.
+    for (var k = 0; k < t; k++) {
+      final isFilled = k < drawn;
+      final pos = station(k);
+      final paint = Paint()
+        ..color = AppColors.fade(color, isFilled ? (closed ? 0.9 : 0.6) : 0.18);
+      if (isFilled) {
+        canvas.drawCircle(pos, closed ? 2.0 : 1.8, paint);
+      } else {
+        canvas.drawCircle(
+          pos,
+          1.4,
+          Paint()
+            ..color = AppColors.fade(color, 0.16)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.7,
+        );
+      }
+    }
+  }
+
+  // Golden-angle placement (unit space), mirrored from the figure
+  // domain — the map avoids importing feature domains in painters.
+  static (double, double) _fx(int k, int t) {
+    const golden = 2 * 3.141592653589793 * 0.38196601125010515;
+    final r = 0.42 + 0.58 * k / (t - 1);
+    final a = k * golden - 3.141592653589793 / 2;
+    return (r * _cos(a), r * _sin(a));
   }
 
   // Avoid importing dart:math for two trig calls.
   static double _cos(double rad) =>
       rad == 0 ? 1 : (rad == 3.141592653589793 ? -1 : _polyCos(rad));
   static double _polyCos(double x) {
-    // Taylor 6 terms — precise enough for 7 dots.
+    // Taylor 6 terms — precise enough for 7 stations.
     var term = 1.0;
     var sum = 1.0;
     for (var n = 1; n <= 6; n++) {
@@ -1066,5 +1109,7 @@ class _ConstellationPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ConstellationPainter old) =>
-      old.closed != closed || old.progress != progress;
+      old.closed != closed ||
+      old.lineCount != lineCount ||
+      old.target != target;
 }

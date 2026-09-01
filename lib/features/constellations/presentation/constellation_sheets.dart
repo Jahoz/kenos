@@ -6,6 +6,7 @@ import '../../../../core/constants/app_fonts.dart';
 import '../../../../core/haptics/kenos_haptics.dart';
 import '../../echo/data/echo_providers.dart';
 import '../data/constellation_repository.dart';
+import '../domain/constellation_figure.dart';
 /// The Exquisite Corpse panels: contribute a blind line to an OPEN
 /// constellation, or read a CLOSED one whole — once, never again.
 /// The contributor NEVER sees the whole they helped write.
@@ -234,7 +235,11 @@ class _ReadingPanelState extends State<_ReadingPanel>
                     color: AppColors.fade(AppColors.teal, 0.75),
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 18),
+                // The figure the strangers drew, complete for one breath:
+                // every star a line, every segment a hand that passed.
+                _CompletedFigure(starCount: widget.lines.length),
+                const SizedBox(height: 24),
                 for (final line in widget.lines) ...[
                   Opacity(
                     opacity:
@@ -285,4 +290,72 @@ class _ReadingPanelState extends State<_ReadingPanel>
       ),
     );
   }
+}
+
+/// V3.11b — the completed figure, shown once above the poem it guards:
+/// golden-angle stars (one per line) linked by the strangers' segments.
+class _CompletedFigure extends StatelessWidget {
+  const _CompletedFigure({required this.starCount});
+
+  final int starCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 104,
+      height: 104,
+      child: CustomPaint(
+        painter: _CompletedFigurePainter(starCount: starCount),
+      ),
+    );
+  }
+}
+
+class _CompletedFigurePainter extends CustomPainter {
+  _CompletedFigurePainter({required this.starCount});
+
+  final int starCount;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.shortestSide / 2 - 4;
+    final color = AppColors.indigo;
+    final stars = [
+      for (var k = 0; k < starCount; k++)
+        ConstellationFigure.starAt(k, target: starCount),
+    ];
+
+    Offset at(Offset unit) => Offset(
+          center.dx + radius * unit.dx,
+          center.dy + radius * unit.dy,
+        );
+
+    // The strangers' path, complete.
+    if (stars.length >= 2) {
+      final link = Paint()
+        ..color = AppColors.fade(color, 0.45)
+        ..strokeWidth = 0.9
+        ..strokeCap = StrokeCap.round;
+      for (var k = 1; k < stars.length; k++) {
+        canvas.drawLine(at(stars[k - 1]), at(stars[k]), link);
+      }
+    }
+    canvas.drawCircle(
+      center,
+      1.2,
+      Paint()..color = AppColors.fade(color, 0.8),
+    );
+    for (final unit in stars) {
+      canvas.drawCircle(
+        at(unit),
+        1.9,
+        Paint()..color = AppColors.fade(color, 0.85),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CompletedFigurePainter old) =>
+      old.starCount != starCount;
 }
