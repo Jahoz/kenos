@@ -140,11 +140,21 @@ charte (règle du registre : ne jamais importer un design d'ailleurs).
 - **DoD** atteint : 2 tests widget épinglent voile→développement
   (image et son).
 
-### V3.6 — Spatialisation (flutter_soloud, rayon réel)
-- Évaluer le poids natif, puis remplacer les assets par des
-  oscillateurs spatialisés, volume/pan par distance.
-- **DoD** : les ondes lointaines s'entendent moins, sans engorger le
-  thread principal.
+### V3.6 — Spatialisation ✅ (livrée 2026-09-02, V3.11c du flux)
+- `flutter_soloud` (T2 tenu : il arrive avec la spatialisation, là où
+  il apporte de la valeur) : 20 AudioSources oscillateur (sinus pur),
+  une par note pentatonique — pitch miroir exact de `gen_audio.py`
+  (testé). Chaque onde est placée dans le champ stéréo par son écart
+  horizontal au point d'écoute (`panFor`), atténuée par la distance
+  (`gainFor`), enveloppe nébuleuse reconstruite en temps réel
+  (1,2 s de montée / 2,4 s de présence / 2,4 s d'expiration,
+  `scheduleStop` à 6 s — comme l'asset qu'elle remplace).
+- **Dégradation honnête** : sans moteur (web sans WASM, VM de test,
+  plateforme exotique), `playNote` rend false et l'écran retombe sur
+  les assets cuits — la symphonie ne se tait jamais pour un moteur,
+  ne bloque jamais l'UI (testé en VM).
+- **DoD atteint** : les ondes lointaines s'entendent moins ET du bon
+  côté ; build web compile (chargeur WASM embarqué) ; 162 tests.
 
 ## V3.7 — Le Système (proposé 2026-09-01, en attente d'arbitrage)
 
@@ -249,6 +259,27 @@ l'œuvre collective à l'aveugle :
   numéroté, murmure de l'Aube (constellationsTouched), pgTAP 71/71,
   112 tests, déployé.
 
+**V3.11a — le cadavre scellé relit ✅ (2026-09-02)** : bug de
+production corrigé — `consume_constellation` assemblait `text` avec
+la CLÉ déchiffrée de l'escrow (pas le poème) : toute constellation
+refermée se lisait en lignes VIDES dans l'éther réel (la démo en
+clair et le pgTAP en clair masquaient le défaut). Migration 0011 : le
+bundle du gagnant porte désormais ciphertext + clé (parité
+`consume_echo`), ouvert sur l'appareil — le serveur ne voit toujours
+aucune ligne ; les clients déjà déployés sont guéris par le seul
+serveur. Chemin scellé épinglé en pgTAP (96/96), parsing client
+extrait et testé (round-trip Ether Seal réel).
+
+**V3.11b — la figure émergente ✅ (2026-09-02)** : la promesse V3.8
+tenue — chaque ligne donnée devient une étoile à la station d'angle
+d'or (~137,5°) suivante autour de la graine, spirale vers l'extérieur :
+la constellation SE DESSINE à mesure que les inconnus écrivent.
+Arithmétique pure sur l'index (déterministe : tous les clients voient
+la même figure), étoiles pleines / stations creuses, segments pâles
+pour ce qui est déjà tracé, graine au centre ; fermée = lueur indigo
+sur figure complète. Le panneau de lecture montre la figure complète,
+une fois, au-dessus du poème qu'elle garde. 8 tests.
+
 ## V3.9 — Les Vestiges ✅ (livrée 2026-09-01)
 
 Le cold start : un éther vide n'offre rien à découvrir. La réponse est
@@ -351,7 +382,7 @@ du panneau. Les vidéos gardent leur porte extérieure (l'embed exige une
 webview — refus de complexité maintenu). Démo : décline toujours (test
 épinglé). 4 tests (song vs vidéo, HUD de dégradation, parité démo).
 
-## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — en attente de Design Readiness Gate)
+## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — **GELÉ, arbitrage Hugo 2026-09-02** : on va au bout du Cadavre Exquis et des Symphonies d'abord)
 
 Créer une mini-galaxie invitable (amis, collègues), vivant en parallèle
 de l'univers complet. **La plus grosse tension philosophique depuis le

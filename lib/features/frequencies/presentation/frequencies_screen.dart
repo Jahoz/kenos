@@ -12,8 +12,10 @@ import '../../../core/utils/motion_preferences.dart';
 import '../../../core/widgets/hud.dart';
 import '../../cosmic_map/application/travel_camera.dart';
 import '../../echo/data/echo_providers.dart';
+import '../application/spatial_wave_audio.dart';
 import '../application/wave_controller.dart';
 import '../domain/kenos_wave.dart';
+import '../domain/spatial_wave_math.dart';
 import 'widgets/wave_nebula_painter.dart';
 
 /// The Symphonie Collective: touch the void, a pentatonic wave answers.
@@ -77,17 +79,19 @@ class _FrequenciesScreenState extends ConsumerState<FrequenciesScreen> {
   }
 
   void _soundIncoming(KenosWave wave) {
-    // Softer the further it was born from our listening point.
-    final d = ref
-        .read(waveControllerProvider.notifier)
-        .listenDistanceTo(wave.offsetX, wave.offsetY);
-    final volume = (1.0 - d / WaveController.hearingRadius)
-        .clamp(0.15, 0.85);
+    // Softer the further it was born, and to the side it was born on.
+    final controller = ref.read(waveControllerProvider.notifier);
+    final d = controller.listenDistanceTo(wave.offsetX, wave.offsetY);
     KenosHaptics.pulse(KenosPulse.waveEmit, reduceMotion: platformDisablesAnimations());
     unawaited(
-      ref
-          .read(audioControllerProvider)
-          .playAsset(WaveMath.assetForNote(wave.noteIndex), volume: volume),
+      _soundWave(
+        wave,
+        pan: SpatialWaveMath.panFor(wave.offsetX, controller.listenCenter.$1),
+        gain: SpatialWaveMath.gainFor(
+          d,
+          radius: WaveController.hearingRadius,
+        ),
+      ),
     );
     setState(() => _lastIncomingAt = DateTime.now());
     _startTickerIfNeeded();
@@ -100,13 +104,24 @@ class _FrequenciesScreenState extends ConsumerState<FrequenciesScreen> {
           local.dy / size.height,
         );
     KenosHaptics.pulse(KenosPulse.waveEmit, reduceMotion: reduced);
-    // Fire-and-forget by contract: the baked 6 s envelope plays itself.
-    unawaited(
-      ref
-          .read(audioControllerProvider)
-          .playAsset(WaveMath.assetForNote(wave.noteIndex), volume: 0.45),
-    );
+    // One's own wave is born under the finger: centered, present.
+    unawaited(_soundWave(wave));
     _startTickerIfNeeded();
+  }
+
+  /// V3.6 — sounds a wave: a real oscillator placed in the stereo field
+  /// when the engine lives, the baked asset otherwise. The symphony
+  /// never goes silent over an engine, and never blocks the UI.
+  Future<void> _soundWave(KenosWave wave, {double pan = 0, double gain = 0.45}) async {
+    final spatial = await SpatialWaveAudio.instance
+        .playNote(wave.noteIndex, pan: pan, gain: gain);
+    if (!spatial) {
+      unawaited(
+        ref
+            .read(audioControllerProvider)
+            .playAsset(WaveMath.assetForNote(wave.noteIndex), volume: gain),
+      );
+    }
   }
 
   void _startTickerIfNeeded() {

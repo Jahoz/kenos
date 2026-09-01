@@ -64,6 +64,10 @@ class WaveController extends Notifier<List<KenosWave>> {
     _listenCenter = (x.clamp(0.0, 1.0), y.clamp(0.0, 1.0));
   }
 
+  /// V3.6 — the listening point, for the stereo field (pan by
+  /// horizontal offset from here).
+  (double, double) get listenCenter => _listenCenter;
+
   /// Distance of a point to the current listening center, normalized.
   double listenDistanceTo(double x, double y) {
     final dx = x - _listenCenter.$1;
