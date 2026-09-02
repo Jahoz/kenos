@@ -424,6 +424,16 @@ distance à l'œil ne comptait pas. Tout cela est mort.
   dedans), et chaque lecture consumée laisse une **cicatrice** — un
   point creux froid, sans contenu, local à l'appareil (cap 80, fondu
   à l'horizon 30 jours de l'éther). Le voyage de lecture se peint.
+- **L'ergonomie du choix (retour utilisateur 2026-09-03)** : les modes
+  du Miroir ont des NOMS (`IMAGE · SON · PORTE · CADAVRE` — les icônes
+  muettes étaient invisibles au doigt), le thème se lit (10 px/55 %).
+  **Lancer un cadavre exquis existe enfin** : `CADAVRE` transforme le
+  Miroir, l'anneau naît près du regard, et le lanceur est invité à
+  donner la PREMIÈRE ligne (il n'est qu'un inconnu de plus). Les
+  cadavres se comptent au HUD (`N CADAVRES`), s'expliquent une fois
+  (voile une-fois, grammaire du guide des ondes), et leurs anneaux
+  gagnent en lisibilité (46 px). Zéro migration — le RPC seed n'avait
+  JAMAIS d'UI.
 - **Outillage de charge** : seed SQL reproductible (30 j de rampe,
   tous les cas de vie, scellés AES **lisibles** générés par
   `tool/gen_load_payloads.dart`, vérification e2e

@@ -77,6 +77,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             .where((e) => e.isMine)
             .length;
     if (sealedCount > 0) parts.add('$sealedCount SCELLÉES');
+    if (_constellations.isNotEmpty) {
+      parts.add('${_constellations.length} CADAVRES');
+    }
     final unreadVestiges = _vestiges.where((v) => !v.isRead).length;
     if (unreadVestiges > 0) parts.add('$unreadVestiges VESTIGES');
     return parts.join(' · ');
@@ -98,14 +101,47 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Offset _dragTotal = Offset.zero;
   double _pinchFactor = 1.0;
 
+  /// A fresh corpse comes back from the Mirror: reload the sky, then
+  /// offer the seeder to give the FIRST line — to their own poem they
+  /// are just another stranger, as blind as the rest.
+  Future<void> _corpseSeeded(String id) async {
+    await _loadConstellations();
+    if (!mounted) return;
+    ConstellationMeta? fresh;
+    for (final c in _constellations) {
+      if (c.id == id) {
+        fresh = c;
+        break;
+      }
+    }
+    if (fresh == null) return;
+    await showContributeSheet(context, ref: ref, constellation: fresh);
+    if (mounted) unawaited(_loadConstellations());
+  }
+
   @override
   void initState() {
     super.initState();
     _loadVestiges();
     _loadConstellations();
+    _readCorpseGuide();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(ref.read(audioControllerProvider).ensureStarted());
     });
+  }
+
+  /// The corpses explain themselves once (like the waves' guide) —
+  /// then the sky stays quiet about them forever.
+  Future<void> _readCorpseGuide() async {
+    final seen = await ref.read(localEchoStoreProvider).hasCorpseGuideSeen();
+    if (mounted && !seen) setState(() => _showingCorpseGuide = true);
+  }
+
+  bool _showingCorpseGuide = false;
+
+  void _dismissCorpseGuide() {
+    setState(() => _showingCorpseGuide = false);
+    unawaited(ref.read(localEchoStoreProvider).markCorpseGuideSeen());
   }
 
   Future<void> _loadVestiges() async {
@@ -440,17 +476,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                       Offset(cst.seedX, cst.seedY),
                                       Size(c.maxWidth, c.maxHeight),
                                     );
-                                    if (sp.dx < -40 ||
-                                        sp.dx > c.maxWidth + 40 ||
-                                        sp.dy < -40 ||
-                                        sp.dy > c.maxHeight + 40) {
+                                    if (sp.dx < -46 ||
+                                        sp.dx > c.maxWidth + 46 ||
+                                        sp.dy < -46 ||
+                                        sp.dy > c.maxHeight + 46) {
                                       return const SizedBox.shrink();
                                     }
                                     return Positioned(
-                                      left: sp.dx - 20,
-                                      top: sp.dy - 20,
-                                      width: 40,
-                                      height: 40,
+                                      left: sp.dx - 23,
+                                      top: sp.dy - 23,
+                                      width: 46,
+                                      height: 46,
                                       child: GestureDetector(
                                         behavior: HitTestBehavior.opaque,
                                         onTap: () => _onConstellationTap(cst),
@@ -587,10 +623,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   bottom: AppLayout.mirrorGateBottomInset,
                 ),
                 child: _AnimatedEchoButton(
-                  onPressed: () => context.push('/mirror'),
+                  // The Mirror may come back with a fresh corpse id:
+                  // the ring was dropped near the eye — offer the
+                  // seeder to give the FIRST blind line.
+                  onPressed: () async {
+                    final seeded = await context.push('/mirror');
+                    if (seeded is String && seeded.isNotEmpty) {
+                      await _corpseSeeded(seeded);
+                    }
+                  },
                 ),
               ),
             ),
+            // The corpses explain themselves, once.
+            if (_showingCorpseGuide)
+              Positioned.fill(
+                child: _CorpseGuide(onUnderstood: _dismissCorpseGuide),
+              ),
           ],
         ),
       ),
@@ -946,6 +995,83 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
 
         return Stack(fit: StackFit.expand, children: layers);
       },
+    );
+  }
+}
+
+/// The corpses explain themselves once, in the waves' guide grammar:
+/// what the pale rings are, how to give a line, how to launch one.
+class _CorpseGuide extends StatelessWidget {
+  const _CorpseGuide({required this.onUnderstood});
+
+  final VoidCallback onUnderstood;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onUnderstood,
+      child: Container(
+        color: AppColors.fade(AppColors.voidBlack, 0.88),
+        padding: const EdgeInsets.symmetric(horizontal: 34),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'LES CADAVRES EXQUIS',
+              style: TextStyle(
+                fontFamily: AppFonts.mono,
+                fontSize: 10,
+                letterSpacing: 5,
+                color: AppColors.fade(AppColors.teal, 0.85),
+              ),
+            ),
+            const SizedBox(height: 28),
+            Text(
+              'Les anneaux pâles sont des poèmes à l\'aveugle.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppFonts.serifItalic,
+                fontSize: 18,
+                color: AppColors.fade(AppColors.pureLight, 0.92),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Touche-en un pour donner une ligne — sans jamais\n'
+              'voir le tout. Refermé en indigo, un inconnu\n'
+              'le lira entier, puis il n\'existera plus.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppFonts.serifItalic,
+                fontSize: 15,
+                height: 1.9,
+                color: AppColors.fade(AppColors.pureLight, 0.6),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Pour en lancer un : MIROIR → CADAVRE.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppFonts.serifItalic,
+                fontSize: 15,
+                color: AppColors.fade(AppColors.teal, 0.75),
+              ),
+            ),
+            const SizedBox(height: 36),
+            Text(
+              'TOUCHE POUR ENTRER',
+              style: TextStyle(
+                fontFamily: AppFonts.mono,
+                fontSize: 9,
+                letterSpacing: 3,
+                color: AppColors.fade(AppColors.pureLight, 0.45),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

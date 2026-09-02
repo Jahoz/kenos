@@ -35,8 +35,8 @@ void main() {
     expect(FocusManager.instance.primaryFocus, same(mirrorNode),
         reason: 'le champ du Miroir tient le focus au repos');
 
-    await tester.ensureVisible(find.byIcon(Icons.link));
-    await tester.tap(find.byIcon(Icons.link));
+    await tester.ensureVisible(find.text('PORTE'));
+    await tester.tap(find.text('PORTE'));
     await tester.pumpAndSettle();
 
     // v3.10b: exactly ONE live editing connection — the dialog's.
@@ -53,8 +53,8 @@ void main() {
     await openMirror(tester);
 
     await tester.enterText(mirrorField, 'une confidence intime');
-    await tester.ensureVisible(find.byIcon(Icons.link));
-    await tester.tap(find.byIcon(Icons.link));
+    await tester.ensureVisible(find.text('PORTE'));
+    await tester.tap(find.text('PORTE'));
     await tester.pumpAndSettle();
 
     await tester.enterText(dialogField, spotifyLink);
@@ -77,8 +77,8 @@ void main() {
     await openMirror(tester);
 
     await tester.enterText(mirrorField, 'une confidence intime');
-    await tester.ensureVisible(find.byIcon(Icons.link));
-    await tester.tap(find.byIcon(Icons.link));
+    await tester.ensureVisible(find.text('PORTE'));
+    await tester.tap(find.text('PORTE'));
     await tester.pumpAndSettle();
 
     await tester.enterText(dialogField, 'https://example.com/track/abc');

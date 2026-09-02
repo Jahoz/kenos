@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +16,9 @@ import '../../../core/constants/app_layout.dart';
 import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/widgets/hud.dart';
 import '../../../core/widgets/scramble_text.dart';
+import '../../constellations/data/constellation_repository.dart';
 import '../../cosmic_map/application/map_controller.dart';
+import '../../cosmic_map/application/travel_camera.dart';
 import '../../echo/data/echo_repository.dart';
 import '../../echo/domain/echo_color_theme.dart';
 import '../../echo/domain/echo_excerpt.dart';
@@ -38,6 +41,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
 
   EchoColorTheme _theme = EchoColorTheme.teal;
   bool _sealing = false;
+  bool _corpseMode = false;
   final ImagePicker _picker = ImagePicker();
   final AudioRecorder _recorder = AudioRecorder();
   EchoMediaDraft? _media;
@@ -316,6 +320,33 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     }
   }
 
+  /// The exquisite corpse: drop an open ring near where the eye
+  /// rests. No text from the author — strangers will write it blind,
+  /// and the ring pops with the result so the map can offer the
+  /// seeder to give the FIRST line (they are just another stranger).
+  Future<void> _dropCorpse() async {
+    if (_sealing) return;
+    setState(() => _sealing = true);
+    _focus.unfocus();
+    KenosHaptics.pulse(KenosPulse.seal);
+    try {
+      final eye = ref.read(travelPositionProvider);
+      final rng = Random();
+      final meta = await ref.read(constellationRepositoryProvider).seed(
+            (eye.dx + (rng.nextDouble() - 0.5) * 0.12).clamp(0.05, 0.95),
+            (eye.dy + (rng.nextDouble() - 0.5) * 0.12).clamp(0.05, 0.95),
+          );
+      unawaited(ref.read(audioControllerProvider).playBell(KenosBell.send));
+      KenosHaptics.pulse(KenosPulse.launch);
+      if (!mounted) return;
+      Navigator.of(context).pop(meta.id);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _sealing = false);
+      showHud(context, 'L\'ÉTHER A REFUSÉ LE CADAVRE.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -367,13 +398,63 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'La formulation du vide',
+                            _corpseMode
+                                ? 'Un cadavre exquis'
+                                : 'La formulation du vide',
                             style: TextStyle(
                               fontFamily: AppFonts.serifItalic,
                               fontSize: 26,
                               color: AppColors.fade(AppColors.pureLight, 0.92),
                             ),
                           ),
+                          if (_corpseMode) ...[
+                            const SizedBox(height: 28),
+                            Expanded(
+                              child: Center(
+                                child: Text(
+                                  'Des inconnus y écriront une ligne chacun,\n'
+                                  'sans jamais voir le tout.\n'
+                                  'Refermé, un seul d\'entre eux le lira entier —\n'
+                                  'puis il n\'existera plus.\n\n'
+                                  'Jamais toi.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontFamily: AppFonts.serifItalic,
+                                    fontSize: 16,
+                                    height: 1.9,
+                                    color: AppColors.fade(AppColors.pureLight, 0.62),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Text(
+                              'L\'ANNEAU NAÎTRA PRÈS DE LÀ OÙ REPOSE TON REGARD',
+                              style: TextStyle(
+                                fontFamily: AppFonts.mono,
+                                fontSize: 8.5,
+                                letterSpacing: 2,
+                                color: AppColors.fade(AppColors.pureLight, 0.4),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            OutlinedButton(
+                              onPressed: _sealing ? null : _dropCorpse,
+                              child: Text(
+                                _sealing ? 'LARGUAGE…' : 'LARGUER DANS L\'ÉTHER',
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              'TU NE LIRAS JAMAIS CE POÈME',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: AppFonts.mono,
+                                fontSize: 8,
+                                letterSpacing: 2,
+                                color: AppColors.fade(AppColors.pureLight, 0.3),
+                              ),
+                            ),
+                          ] else ...[
                           const SizedBox(height: 28),
                           Expanded(
                             child: _sealing
@@ -420,34 +501,15 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                           ),
                           const SizedBox(height: 18),
                           if (!_sealing)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                IconButton(
-                                  tooltip: 'Choisir une image',
-                                  onPressed: _recording ? null : _pickImage,
-                                  icon: const Icon(Icons.photo_outlined),
-                                ),
-                                IconButton(
-                                  tooltip: _recording
-                                      ? 'Terminer l\'enregistrement'
-                                      : 'Enregistrer un son',
-                                  onPressed: _toggleRecording,
-                                  icon: Icon(
-                                    _recording ? Icons.stop : Icons.mic_none,
-                                  ),
-                                  color: _recording
-                                      ? AppColors.rose
-                                      : AppColors.teal,
-                                ),
-                                IconButton(
-                                  tooltip: 'Sceller une porte culturelle',
-                                  onPressed: _recording
-                                      ? null
-                                      : _pasteExcerptLink,
-                                  icon: const Icon(Icons.link),
-                                ),
-                              ],
+                            _ModeStrip(
+                              recording: _recording,
+                              hasFragment: _media != null,
+                              hasDoor: _excerpt != null,
+                              onImage: _recording ? null : _pickImage,
+                              onSound: _toggleRecording,
+                              onDoor: _recording ? null : _pasteExcerptLink,
+                              onCorpse: () =>
+                                  setState(() => _corpseMode = true),
                             ),
                           // The attached fragment, made visible: thumbnail or
                           // waveform, private listen, one-tap removal.
@@ -501,6 +563,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                               color: AppColors.fade(AppColors.pureLight, 0.3),
                             ),
                           ),
+                          ],
                         ],
                       ),
                     ),
@@ -510,6 +573,91 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The Mirror's modes, NAMED: icon-only buttons were invisible to the
+/// finger (tooltips never show on touch) — people launched plain text
+/// without ever knowing a fragment, a door or a corpse existed. Same
+/// grammar as the HUD: quiet mono labels, teal when alive.
+class _ModeStrip extends StatelessWidget {
+  const _ModeStrip({
+    required this.recording,
+    required this.hasFragment,
+    required this.hasDoor,
+    required this.onImage,
+    required this.onSound,
+    required this.onDoor,
+    required this.onCorpse,
+  });
+
+  final bool recording;
+  final bool hasFragment;
+  final bool hasDoor;
+  final VoidCallback? onImage;
+  final VoidCallback? onSound;
+  final VoidCallback? onDoor;
+  final VoidCallback? onCorpse;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget mode(
+      String label,
+      VoidCallback? onPressed,
+      Color? active,
+    ) =>
+        TextButton(
+          onPressed: onPressed,
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            minimumSize: const Size(0, 34),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: AppFonts.mono,
+              fontSize: 9,
+              letterSpacing: 3,
+              color: active ?? AppColors.fade(AppColors.pureLight, 0.55),
+            ),
+          ),
+        );
+    const dot = Text(
+      '·',
+      style: TextStyle(
+        fontFamily: AppFonts.mono,
+        fontSize: 9,
+        color: Color(0x33F4F4F6),
+      ),
+    );
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          mode(
+            'IMAGE',
+            onImage,
+            hasFragment ? AppColors.teal : null,
+          ),
+          dot,
+          mode(
+            recording ? 'ARRÊTER' : 'SON',
+            onSound,
+            recording ? AppColors.rose : (hasFragment ? AppColors.teal : null),
+          ),
+          dot,
+          mode(
+            'PORTE',
+            onDoor,
+            hasDoor ? AppColors.teal : null,
+          ),
+          dot,
+          mode('CADAVRE', onCorpse, AppColors.fade(AppColors.indigo, 0.9)),
+        ],
       ),
     );
   }
@@ -528,36 +676,44 @@ class _ThemePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        for (final theme in EchoColorTheme.selectable) ...[
-          Semantics(
-            button: true,
-            label: theme.emotionLabel,
-            child: TextButton(
-              onPressed: enabled
-                  ? () {
-                      KenosHaptics.pulse(KenosPulse.themePick);
-                      onChanged(theme);
-                    }
-                  : null,
-              child: Text(
-                theme.emotionLabel,
-                style: TextStyle(
-                  fontFamily: AppFonts.mono,
-                  fontSize: 8,
-                  letterSpacing: 1.5,
-                  color: selected == theme
-                      ? theme.core
-                      : AppColors.fade(AppColors.pureLight, 0.38),
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (final theme in EchoColorTheme.selectable) ...[
+            Semantics(
+              button: true,
+              label: theme.emotionLabel,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  minimumSize: const Size(0, 34),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: enabled
+                    ? () {
+                        KenosHaptics.pulse(KenosPulse.themePick);
+                        onChanged(theme);
+                      }
+                    : null,
+                child: Text(
+                  theme.emotionLabel,
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 10,
+                    letterSpacing: 1.5,
+                    color: selected == theme
+                        ? theme.core
+                        : AppColors.fade(AppColors.pureLight, 0.55),
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 18),
+            const SizedBox(width: 12),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

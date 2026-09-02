@@ -26,6 +26,7 @@ class LocalEchoStore {
   static const _kSealed = 'kenos.sealed_echoes';
   static const _kReceptions = 'kenos.receptions';
   static const _kFreqGuide = 'kenos.freq_guide';
+  static const _kCorpseGuide = 'kenos.corpse_guide';
   static const _kStats = 'kenos.user_stats';
   static const _kScars = 'kenos.read_scars';
   static const _maxSealed = 50;
@@ -110,6 +111,12 @@ class LocalEchoStore {
 
   Future<void> markFrequenciesGuideSeen() async =>
       _write(_kFreqGuide, '1');
+
+  /// Corpses guide seen (one-time veil, same grammar).
+  Future<bool> hasCorpseGuideSeen() async =>
+      await _read(_kCorpseGuide) == '1';
+
+  Future<void> markCorpseGuideSeen() async => _write(_kCorpseGuide, '1');
 
   /// Demo-mode persistence for the bottle-in-the-sea loop.
   Future<List<Reception>> readReceptions() async {    final raw = await _read(_kReceptions);

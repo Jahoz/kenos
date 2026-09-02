@@ -31,6 +31,15 @@ void main() {
     );
     await tester.pump(const Duration(seconds: 3));
 
+    // First visit: the corpses explain themselves once — enter the sky.
+    if (find.text('TOUCHE POUR ENTRER').evaluate().isNotEmpty) {
+      await tester.tap(find.text('TOUCHE POUR ENTRER'));
+      // Bounded pumps (living sky) + absorb the flag write's 2 s
+      // keychain timeout.
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 2100));
+    }
+
     expect(find.textContaining('DÉRIVE'), findsOneWidget);
 
     final gesture = await tester.startGesture(const Offset(300, 200));

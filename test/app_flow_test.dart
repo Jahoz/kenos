@@ -40,6 +40,20 @@ void main() {
     await tester.pump();
   }
 
+  /// First visit: the corpses explain themselves once — cross the veil
+  /// like a human would, so map interactions reach the sky.
+  Future<void> crossCorpseVeil(WidgetTester tester) async {
+    final prompt = find.text('TOUCHE POUR ENTRER');
+    if (prompt.evaluate().isNotEmpty) {
+      await tester.tap(prompt);
+      // Bounded pumps: the living sky never settles (orbital ticker),
+      // and the veil's flag write leaves a 2 s keychain timeout in
+      // flight — absorb it or the test ends with a pending timer.
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 2100));
+    }
+  }
+
 
   /// Picks a holdable star: fully visible, clear of the HUD strip, its
   /// center covered by nothing. The sky is a window into a 2× world —
@@ -102,6 +116,7 @@ void main() {
 
     // Let I/O safety nets (keychain timeouts) settle.
     await tester.pump(const Duration(milliseconds: 2600));
+    await crossCorpseVeil(tester);
   });
 
   testWidgets('Mindful Hold 3 s : révélation, burn, dissolution, retrait', (
@@ -113,6 +128,7 @@ void main() {
     await tester.tap(find.text('ENTRER'));
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pump(const Duration(milliseconds: 2600));
+    await crossCorpseVeil(tester);
 
     final container = ProviderScope.containerOf(
       tester.element(find.byType(KenosApp)),
@@ -237,6 +253,7 @@ void main() {
     await tester.tap(find.text('ENTRER'));
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pump(const Duration(milliseconds: 2600));
+    await crossCorpseVeil(tester);
 
     // 3-second long press on an ether star — travelling if the
     // holdable band is empty.
