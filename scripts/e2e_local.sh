@@ -54,20 +54,32 @@ KEYCHEAT=$(curl -s "$API/rest/v1/echoes?select=key_seal" \
   -H "$(auth_header)" -H "$(bearer "$TOKEN_B")")
 echo "$KEYCHEAT" | grep -qi "permission denied" && ok "key_seal illisible via REST" || ko "FUITE clé via REST: $KEYCHEAT"
 
-# ── B reads the map ──────────────────────────────────────────────────────
 # ── B reads the sector-culled viewport ───────────────────────────────────
+# Substring tests, not `grep -q` pipes: under load the sector payload
+# exceeds the 64 KiB pipe buffer, grep -q exits on the first match and
+# `echo` dies of SIGPIPE — with pipefail the check would false-negative
+# (found once the ether was seeded with volume).
 SECTOR=$(curl -s -X POST "$API/rest/v1/rpc/fetch_map_sector" \
   -H "$(auth_header)" -H "$(bearer "$TOKEN_B")" -H 'Content-Type: application/json' \
   -d '{"p_min_x":0,"p_min_y":0,"p_max_x":1,"p_max_y":1}')
-echo "$SECTOR" | grep -q "$ECHO_ID" && ok "fetch_map_sector renvoie l'écho du viewport" || ko "sector: $SECTOR"
-echo "$SECTOR" | grep -q "encrypted_text" && ko "la carte expose du texte !" || ok "aucune colonne de texte sur la carte"
-echo "$SECTOR" | grep -q "key_seal" && ko "la carte expose la clé !" || ok "aucune colonne de clé sur la carte"
+if [[ "$SECTOR" == *"$ECHO_ID"* ]]; then
+  ok "fetch_map_sector renvoie l'écho du viewport"
+else
+  ko "sector: $SECTOR"
+fi
+if [[ "$SECTOR" == *"encrypted_text"* ]]; then ko "la carte expose du texte !"; else ok "aucune colonne de texte sur la carte"; fi
+if [[ "$SECTOR" == *"key_seal"* ]]; then ko "la carte expose la clé !"; else ok "aucune colonne de clé sur la carte"; fi
 
 # ── A's own echo must NOT appear on A's own map ──────────────────────────
 OWNMAP=$(curl -s -X POST "$API/rest/v1/rpc/fetch_map_sector" \
   -H "$(auth_header)" -H "$(bearer "$TOKEN_A")" -H 'Content-Type: application/json' \
   -d '{"p_min_x":0,"p_min_y":0,"p_max_x":1,"p_max_y":1}')
-echo "$OWNMAP" | grep -q "$ECHO_ID" && ko "l'auteur voit son propre écho !" || ok "l'auteur ne voit pas son propre écho (étoile scellée only)"
+# Same SIGPIPE mask, inverted: a pipe-grep here could hide an author-leak.
+if [[ "$OWNMAP" == *"$ECHO_ID"* ]]; then
+  ko "l'auteur voit son propre écho !"
+else
+  ok "l'auteur ne voit pas son propre écho (étoile scellée only)"
+fi
 
 # ── B intercepts: single read (consume returns the sealed bundle) ────────
 TEXT=$(curl -s -X POST "$API/rest/v1/rpc/consume_echo" \
