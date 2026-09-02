@@ -42,9 +42,38 @@
        desktop web) used to drift the viewport and made bottom taps
        unreliable — the v3.10b remainder, closed here. */
     html, body { margin: 0; height: 100%; overflow: hidden; }
+    /* First paint is BRANDed, not blank: the wordmark breathes on the
+       void while the engine downloads, then fades on the first frame. */
+    @keyframes kenos-breathe { 0%, 100% { opacity: .35; } 50% { opacity: .9; } }
   </style>
 </head>
 <body>
+  <!-- Branded splash: covers the CanvasKit download window so the very
+       first pixels belong to the sanctuary, not to a white page. -->
+  <div id="kenos-splash" aria-hidden="true"
+       style="position:fixed; inset:0; z-index:9000; background:#030508;
+              display:flex; align-items:center; justify-content:center;
+              transition:opacity 600ms ease;">
+    <div style="color:#14b8a6; font-family:'Courier New',monospace;
+                font-size:13px; letter-spacing:8px;
+                animation:kenos-breathe 3.2s ease-in-out infinite;">
+      K&nbsp;E&nbsp;N&nbsp;O&nbsp;S
+    </div>
+  </div>
+  <script>
+    (function () {
+      var splash = document.getElementById('kenos-splash');
+      function fade() {
+        if (!splash) return;
+        splash.style.opacity = '0';
+        setTimeout(function () { if (splash) splash.remove(); }, 650);
+      }
+      window.addEventListener('flutter-first-frame', fade, { once: true });
+      // Safety net: if the first-frame event never comes, the first
+      // touch still clears the way.
+      window.addEventListener('pointerdown', fade, { once: true });
+    })();
+  </script>
   <!-- KENOS install invitation: browsers rarely surface the PWA prompt
        (Chrome shows its banner once; iOS Safari never does). We offer
        it ourselves — beforeinstallprompt where it exists, the honest

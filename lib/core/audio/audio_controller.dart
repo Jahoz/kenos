@@ -48,8 +48,25 @@ class AudioController {
   }
 
   /// Drone pitch: 1.0 at rest, ~1.5 at full Mindful Hold charge.
+  ///
+  /// The hold animation ticks at display rate; the platform channel
+  /// does not have to. The coupling stays audible (a leap still lands
+  /// immediately, rest always resets), the chatter does not.
+  static const _pitchMinInterval = Duration(milliseconds: 100);
+  static const _pitchLeap = 0.08;
+  double _lastPitch = 1.0;
+  DateTime _lastPitchAt = DateTime.fromMillisecondsSinceEpoch(0);
+
   Future<void> setDronePitch(double pitch) async {
     if (!_started || _muted) return;
+    final now = DateTime.now();
+    if (pitch != 1.0 &&
+        (pitch - _lastPitch).abs() < _pitchLeap &&
+        now.difference(_lastPitchAt) < _pitchMinInterval) {
+      return;
+    }
+    _lastPitch = pitch;
+    _lastPitchAt = now;
     try {
       await _drone.setPitch(pitch);
     } catch (_) {
