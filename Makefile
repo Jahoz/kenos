@@ -1,6 +1,6 @@
 # KENOS — canonical commands (see CONTRIBUTING.md for the full picture)
 .DEFAULT_GOAL := help
-.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load e2e gen-icons gen-audio coverage
+.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web deploy-site serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load e2e gen-icons gen-audio coverage
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -65,6 +65,9 @@ deploy-web: ## Build for the real ether and deploy the PWA to Vercel (prod)
 
 serve-web: build-web ## Serve the built PWA on :4308 (no-cache dev server)
 	python3 tool/serve_web.py 4308
+
+deploy-site: ## Deploy the presentation landing (separate project, kenos-site)
+	cd site && vercel deploy --prod --yes
 
 db-start: ## Start the local Supabase stack (ports 56321-56324)
 	supabase start
