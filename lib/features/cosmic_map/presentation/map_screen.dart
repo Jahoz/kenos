@@ -315,7 +315,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             LayoutBuilder(
               builder: (context, constraints) {
                 _viewport = Size(constraints.maxWidth, constraints.maxHeight);
-                final epoch = DateTime.now();
                 return GestureDetector(
                   // The sky follows the finger; holding a star keeps
                   // its own friction (a >28px drift cancels the hold
@@ -330,7 +329,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   // HUD, the gates and the scenery keep their frames.
                   child: ListenableBuilder(
                     listenable: _camera,
-                    builder: (context, _) => Stack(
+                    // epoch lives HERE, inside the camera builder: a
+                    // stale captured epoch made shouldRepaint see two
+                    // identical clocks — the heavens froze mid-gesture
+                    // and jumped at the next screen rebuild.
+                    builder: (context, _) {
+                      final epoch = DateTime.now();
+                      return Stack(
                       fit: StackFit.expand,
                       children: [
                       // The heavens: black hole + planets, behind stars.
@@ -465,9 +470,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         ),
                       ),
                     ],
+                      );
+                    },
                   ),
-                ),
-              );
+                );
             },
           ),
             // Top HUD — one thin line of machine whisper, one row of
