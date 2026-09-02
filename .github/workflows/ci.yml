@@ -52,5 +52,11 @@ jobs:
       # stack, then run the full pgTAP suite (48 invariants).
       - run: supabase start
       - run: supabase db reset
+      # F-15 — schema drift guard: the reset only proves migrations
+      # apply; this proves the resulting schema still matches what the
+      # client references (RPCs from lib/), that kenos_purge kept every
+      # retention rule (two migrations once overwrote each other by
+      # lexicographic order), and that every table keeps RLS.
+      - run: bash scripts/check-schema-drift.sh
       - run: supabase test db
       - run: bash -n scripts/e2e_local.sh
