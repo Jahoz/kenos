@@ -1,6 +1,6 @@
 # KENOS — canonical commands (see CONTRIBUTING.md for the full picture)
 .DEFAULT_GOAL := help
-.PHONY: help dev dev-cloud analyze test test-cloud test-coverage build-web deploy-web serve-web db-start db-reset db-test db-push e2e gen-icons gen-audio coverage
+.PHONY: help dev dev-cloud analyze test test-cloud test-coverage build-web deploy-web serve-web db-start db-reset db-test db-push db-seed-load db-load-report db-wipe-load e2e gen-icons gen-audio coverage
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -66,6 +66,15 @@ db-test: ## pgTAP suite: 96 SQL invariants (RPC + RLS)
 
 db-push: ## Push unapplied migrations to the linked cloud project
 	supabase db push
+
+db-seed-load: ## Seed a 30-day load ramp into the local ether (all cases, ~12k rows)
+	docker exec -i supabase_db_kenos psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/snippets/load_seed.sql
+
+db-load-report: ## Visualize the ramp: daily volumes, sector culling, case coverage
+	docker exec -i supabase_db_kenos psql -U postgres -d postgres < supabase/snippets/load_report.sql
+
+db-wipe-load: ## Clean reset: remove every seeded row (real data + KEK untouched)
+	docker exec -i supabase_db_kenos psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/snippets/load_wipe.sql
 
 e2e: ## Full bottle-in-the-sea loop over the real local PostgREST
 	bash scripts/e2e_local.sh
