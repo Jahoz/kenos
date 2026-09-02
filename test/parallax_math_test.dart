@@ -62,4 +62,61 @@ void main() {
       expect(ParallaxMath.blurSigma(0.1), greaterThan(0));
     });
   });
+
+  group('champ de réception', () {
+    const eye = Offset(0.5, 0.5);
+
+    test("à portée de l'œil : réception pleine", () {
+      expect(
+        ParallaxMath.receptionIntensity(eye: eye, star: const Offset(0.5, 0.5)),
+        1.0,
+      );
+      expect(
+        ParallaxMath.receptionIntensity(
+          eye: eye,
+          star: Offset(0.5 + ParallaxMath.receptionRadius / 2, 0.5),
+        ),
+        1.0,
+      );
+    });
+
+    test('au-delà du champ : un scintillement muet (0)', () {
+      final far = ParallaxMath.receptionRadius + ParallaxMath.receptionFade;
+      expect(
+        ParallaxMath.receptionIntensity(eye: eye, star: Offset(0.5 + far, 0.5)),
+        0.0,
+      );
+    });
+
+    test('fondu linéaire et monotone entre les deux', () {
+      double at(double d) => ParallaxMath.receptionIntensity(
+            eye: eye,
+            star: Offset(0.5 + d, 0.5),
+          );
+      final d1 = ParallaxMath.receptionRadius + 0.02;
+      final d2 = ParallaxMath.receptionRadius + 0.08;
+      expect(at(d1), inExclusiveRange(0, 1));
+      expect(at(d2), inExclusiveRange(0, 1));
+      expect(at(d2), lessThan(at(d1)));
+      // The fade is linear: midpoint lands at half intensity.
+      final mid = ParallaxMath.receptionRadius + ParallaxMath.receptionFade / 2;
+      expect(at(mid), closeTo(0.5, 0.001));
+    });
+
+    test("la distance est la même dans toutes les directions (cercle, pas carré)", () {
+      final r = ParallaxMath.receptionRadius + ParallaxMath.receptionFade / 2;
+      // A diagonal point at distance r sits at (r/√2, r/√2).
+      final c = r / 2 * 1.4142135623730951; // r/√2
+      expect(
+        ParallaxMath.receptionIntensity(eye: eye, star: Offset(0.5 + r, 0.5)),
+        closeTo(
+          ParallaxMath.receptionIntensity(
+            eye: eye,
+            star: Offset(0.5 + c, 0.5 + c),
+          ),
+          0.001,
+        ),
+      );
+    });
+  });
 }

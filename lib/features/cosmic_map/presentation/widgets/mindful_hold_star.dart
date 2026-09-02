@@ -31,6 +31,7 @@ class MindfulHoldStar extends ConsumerStatefulWidget {
     required this.echo,
     required this.z,
     this.breathAt,
+    this.reception = 1.0,
   });
 
   final Echo echo;
@@ -39,6 +40,12 @@ class MindfulHoldStar extends ConsumerStatefulWidget {
   /// The sky's breath clock (V3.7 polish): each star swells and dims
   /// on its own 6-second phase. Null = frozen (reduce-motion).
   final DateTime? breathAt;
+
+  /// Reception field (0..1): 1 = the eye drifts close enough to read
+  /// this star; 0 = a far glimmer — the hold does not arm, travelling
+  /// toward it is the only way in. One's own sealed stars ignore the
+  /// field (they are anchors, not bottles).
+  final double reception;
 
   @override
   ConsumerState<MindfulHoldStar> createState() => _MindfulHoldStarState();
@@ -186,6 +193,11 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
       // to start on one's own star.
       return;
     }
+    if (widget.reception <= 0) {
+      // Beyond the reception field: a glimmer, not a bottle. The hold
+      // does not arm — the gesture stays a travel toward it.
+      return;
+    }
     _downPosition = event.position;
     // Caught: the star holds still under the finger — its orbit
     // freezes, the sky keeps breathing around it.
@@ -313,14 +325,22 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
                         ],
                         stops: const [0, 0.45, 1],
                       ),
-                      boxShadow: glowBoost > 0.05
+                      // The glow IS the depth haze: distant stars get a
+                      // softer, wider halo (the retired bucket blur
+                      // re-rasterized the viewport every frame once the
+                      // orbits came alive — this raster is cached per
+                      // star). Soft = far, tight = near.
+                      boxShadow: glowBoost > 0.05 || z < 0.55
                           ? [
                               BoxShadow(
                                 color: AppColors.fade(
                                   color,
-                                  0.30 * glowBoost,
+                                  0.30 * glowBoost +
+                                      0.18 * (0.55 - z).clamp(0.0, 0.55),
                                 ),
-                                blurRadius: 14 + 10 * glowBoost,
+                                blurRadius: 14 +
+                                    10 * glowBoost +
+                                    22 * (0.55 - z).clamp(0.0, 0.55),
                                 spreadRadius: 1 + 3 * glowBoost,
                               ),
                             ]
@@ -348,6 +368,12 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
         final pulse = 0.5 + 0.5 * math.sin(_controller.value * 6.283 * 2);
         opacity = opacity + (1 - opacity) * 0.55 * pulse;
       }
+    }
+    // The reception field: far glimmers recede (one's own anchors
+    // never fade — they are the map's fixed hearts).
+    if (!_echo.isMine) {
+      final field = widget.reception.clamp(0.0, 1.0);
+      opacity *= 0.30 + 0.70 * field;
     }
     visual = Opacity(opacity: opacity, child: visual);
 

@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show Offset;
 
 /// KENOS space math.
 ///
@@ -37,6 +38,26 @@ class ParallaxMath {
   static double blurSigma(double z) {
     if (z > 0.55) return 0;
     return (0.55 - z) * 5.0;
+  }
+
+  /// The traveller's reception field: the eye receives what drifts
+  /// CLOSE. Within [receptionRadius] (world units) of the eye a star
+  /// is fully alive — readable, holdable; beyond it fades to a glimmer
+  /// that must be approached. Distance is the price of the bottle in
+  /// the sea. Zooming in deep shrinks viewExtent and brings the whole
+  /// screen inside the field: approaching IS zooming, too.
+  static const double receptionRadius = 0.16;
+  static const double receptionFade = 0.18;
+
+  /// 1 inside the field, 0 beyond it, a linear breath between.
+  static double receptionIntensity({
+    required Offset eye,
+    required Offset star,
+  }) {
+    final d = (star - eye).distance;
+    if (d <= receptionRadius) return 1;
+    if (d >= receptionRadius + receptionFade) return 0;
+    return 1 - (d - receptionRadius) / receptionFade;
   }
 
   /// Slow drift of one's own echoes: launched at z = 1 (against the camera),

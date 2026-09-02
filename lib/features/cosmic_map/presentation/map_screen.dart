@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -25,6 +25,7 @@ import 'widgets/awakening_sas.dart';
 import 'widgets/background_painters.dart';
 import 'widgets/mindful_hold_star.dart';
 import 'widgets/origin_node.dart';
+import 'widgets/star_shift.dart';
 import 'widgets/system_painter.dart';
 import 'widgets/vestige.dart';
 
@@ -668,54 +669,131 @@ class _ParallaxStarLayer extends ConsumerStatefulWidget {
       _ParallaxStarLayerState();
 }
 
-class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
+class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
+    with SingleTickerProviderStateMixin {
   /// Far → near. The last edge breathes past 1.0 so z = 1 lands inside.
   static const _bucketEdges = [0.05, 0.30, 0.55, 0.80, 1.001];
 
-  /// Each star breathes on its own slow phase (the sky is alive —
-  /// eternal is not motionless). ~4 fps is enough for a 6 s breath.
+  /// One metabolism, two rhythms:
+  ///  - the orbital ticker runs at frame rate and moves each star by a
+  ///    RENDER-level shift (StarShift) — pure recomposition, the star
+  ///    widgets never rebuild for drift (a 30 fps full-layer rebuild
+  ///    once wedged the tab at 0.3 fps);
+  ///  - the breath (and prop refresh) keeps the old 4 Hz metabolism,
+  ///    where rebuilding the layer is proven cheap.
+  late final Ticker _orbit = createTicker(_onOrbitTick);
+  DateTime _lastBreath = DateTime.now();
+  bool _reduced = false;
+
+  /// The sky's breath clock — each star swells on its own phase.
   DateTime _breathAt = DateTime.now();
-  Timer? _breath;
 
   /// When a star is caught, its orbit time freezes HERE: the layer
   /// keeps computing its position from this instant until release.
   DateTime? _frozenAt;
   String? _frozenFor;
 
-  /// The sky is expensive to COMPUTE and slow to CHANGE: orbits take
-  /// 25–75 s per revolution. Sort order, depths and world positions
-  /// are memoized for [_orbitEpochMs] (100 ms — an invisible lag on a
-  /// drifting star) and refreshed on every list change; only the
-  /// linear worldToScreen runs at gesture rate.
-  static const _orbitEpochMs = 100;
-  int _orbitComputedAtMs = -1;
-  List<Echo>? _orbitSource;
+  /// Sort order changes with the list (and slowly, with one's own
+  /// drifting sealed stars): memoized for [_sortEpochMs].
+  static const _sortEpochMs = 100;
+  int _sortedAtMs = -1;
+  List<Echo>? _sortSource;
   List<Echo> _sorted = const [];
-  final Map<String, double> _depths = {};
-  final Map<String, Offset> _worldPositions = {};
 
-  void _refreshOrbits(DateTime now) {
-    if (identical(_orbitSource, widget.echoes) &&
-        now.millisecondsSinceEpoch - _orbitComputedAtMs < _orbitEpochMs) {
-      return;
+  /// Live drift plumbing, keyed by echo id: the base screen position
+  /// captured at the last layer build, and the render-level shifter.
+  /// Bounded to the VISIBLE sky — the drift loop must never walk the
+  /// whole accumulated list.
+  final Map<String, Echo> _byId = {};
+  final Map<String, Offset> _baseScreen = {};
+  final Map<String, ValueNotifier<Offset>> _shifts = {};
+  final Set<String> _visibleIds = {};
+  Size? _viewportSize;
+
+  void _onOrbitTick(Duration elapsed) {
+    if (!mounted || _reduced) return;
+    final now = DateTime.now();
+    _driftSkies(now);
+    if (now.difference(_lastBreath) >= const Duration(milliseconds: 250)) {
+      _lastBreath = now;
+      _breathAt = now;
+      setState(() {});
     }
-    _orbitSource = widget.echoes;
-    _orbitComputedAtMs = now.millisecondsSinceEpoch;
+  }
+
+  /// Frame-rate orbital drift: each star's screen delta from its base
+  /// position feeds its ValueNotifier — a layout-only update. The
+  /// caught star never moves (its clock is frozen); bases refresh on
+  /// every layer rebuild (breath, tilt, camera), which resets shifts.
+  void _driftSkies(DateTime now) {
+    final viewport = _viewportSize;
+    if (viewport == null || _shifts.isEmpty) return;
+    final frozenFor = _frozenFor;
+    for (final entry in _byId.entries) {
+      final id = entry.key;
+      final base = _baseScreen[id];
+      final shift = _shifts[id];
+      if (base == null || shift == null) continue;
+      Offset delta;
+      if (id == frozenFor && _frozenAt != null) {
+        delta = Offset.zero; // caught: it holds still under the finger
+      } else {
+        final world = KenosSystem.echoPosition(entry.value, now);
+        delta = widget.camera.worldToScreen(world, viewport) - base;
+      }
+      if ((delta - shift.value).distance > 0.05) shift.value = delta;
+    }
+  }
+
+  /// Two-phase retirement: a star culled by THIS build may still be
+  /// unmounting (its render object disposes after the frame) — its
+  /// notifier gets one cycle of grace before disposal, so the orbital
+  /// ticker never writes into a dying tree. Only stars the LAST build
+  /// actually painted stay live.
+  final List<ValueNotifier<Offset>> _retired = [];
+
+  void _forgetStaleShifts() {
+    for (final notifier in _retired) {
+      notifier.dispose();
+    }
+    _retired.clear();
+    final stale = _shifts.keys.where((id) => !_visibleIds.contains(id)).toList();
+    for (final id in stale) {
+      _retired.add(_shifts.remove(id)!);
+      _baseScreen.remove(id);
+      _byId.remove(id);
+    }
+  }
+
+  List<Echo> _sortedSkies(DateTime now) {
+    if (identical(_sortSource, widget.echoes) &&
+        now.millisecondsSinceEpoch - _sortedAtMs < _sortEpochMs) {
+      return _sorted;
+    }
+    _sortSource = widget.echoes;
+    _sortedAtMs = now.millisecondsSinceEpoch;
     _sorted = widget.echoes.toList()
       ..sort((a, b) => a.resolveZ(now).compareTo(b.resolveZ(now)));
-    _depths.clear();
-    _worldPositions.clear();
-    for (final echo in _sorted) {
-      _depths[echo.id] = echo.resolveZ(now);
-      // V3.7b: an echo orbits the planet of its intent — the server's
-      // raw launch point was only its birth place.
-      _worldPositions[echo.id] = KenosSystem.echoPosition(echo, now);
-    }
+    return _sorted;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _orbit.start();
   }
 
   @override
   void dispose() {
-    _breath?.cancel();
+    _orbit.dispose();
+    for (final notifier in _shifts.values) {
+      notifier.dispose();
+    }
+    _shifts.clear();
+    for (final notifier in _retired) {
+      notifier.dispose();
+    }
+    _retired.clear();
     super.dispose();
   }
 
@@ -723,21 +801,11 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
   Widget build(BuildContext context) {
     // Ambient parallax calms down (×0.15) under reduce-motion.
     final motionScale = context.wantsReducedMotion ? 0.15 : 1.0;
+    _reduced = context.wantsReducedMotion;
     final tilt = ref.watch(tiltProvider.select(_gateTilt));
     final now = DateTime.now();
-    _refreshOrbits(now);
-
-    // The breathing: every star on its own phase (id-hash), a slow
-    // 6-second swell. Frozen under reduce-motion (a star chart). The
-    // timer dies with the sky it animates.
-    if (!context.wantsReducedMotion && widget.echoes.isNotEmpty) {
-      _breath ??= Timer.periodic(const Duration(milliseconds: 250), (_) {
-        if (mounted) setState(() => _breathAt = DateTime.now());
-      });
-    } else if (_breath != null) {
-      _breath?.cancel();
-      _breath = null;
-    }
+    final sorted = _sortedSkies(now);
+    _forgetStaleShifts();
 
     // A caught star holds still: snapshot the instant the hold began,
     // compute ITS position from that frozen clock until release.
@@ -753,14 +821,15 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
       builder: (context, constraints) {
         final w = constraints.maxWidth;
         final h = constraints.maxHeight;
-        // One pass, four buckets (far → near): the depth of each star
-        // comes from the memo, not from re-deriving it per bucket.
+        _viewportSize = Size(w, h);
+        _visibleIds.clear();
+        // One pass, four buckets (far → near).
         final buckets = List.generate(
           _bucketEdges.length - 1,
           (_) => <Widget>[],
         );
-        for (final echo in _sorted) {
-          final z = _depths[echo.id] ?? echo.resolveZ(now);
+        for (final echo in sorted) {
+          final z = echo.resolveZ(now);
           var b = 0;
           while (b < _bucketEdges.length - 2 && z >= _bucketEdges[b + 1]) {
             b++;
@@ -772,15 +841,22 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
               : null;
           final world = echoNow != null
               ? KenosSystem.echoPosition(echo, echoNow)
-              : (_worldPositions[echo.id] ??
-                  KenosSystem.echoPosition(echo, now));
+              : KenosSystem.echoPosition(echo, now);
           final sp = widget.camera.worldToScreen(world, Size(w, h));
-          // Travel culling: only the visible sky carries widgets.
+          // Travel culling: only the visible sky carries widgets. The
+          // ±60 px margin absorbs the drift between two breaths.
           if (sp.dx < -60 || sp.dx > w + 60 || sp.dy < -60 || sp.dy > h + 60) {
             continue;
           }
           final diameter = ParallaxMath.starDiameter(z);
           final hit = diameter + 26; // comfortable touch target
+          // Fresh base for this frame: the drift accumulates from HERE.
+          final shift =
+              _shifts.putIfAbsent(echo.id, () => ValueNotifier(Offset.zero));
+          shift.value = Offset.zero;
+          _baseScreen[echo.id] = sp;
+          _byId[echo.id] = echo;
+          _visibleIds.add(echo.id);
           buckets[b].add(
             Positioned(
               key: ValueKey(echo.id),
@@ -788,14 +864,24 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
               top: sp.dy - hit / 2,
               width: hit,
               height: hit,
-              // The star's raster survives the pan: moving it inside
-              // the bucket is a GPU recomposition, not a repaint.
-              child: RepaintBoundary(
-                child: MindfulHoldStar(
-                  key: ValueKey('star-${echo.id}'),
-                  echo: echo,
-                  z: z,
-                  breathAt: _breathAt,
+              // The orbital drift rides the render-level shift; the
+              // star's raster (RepaintBoundary below) survives both
+              // the pan and the drift — recomposition only.
+              child: StarShift(
+                shift: shift,
+                child: RepaintBoundary(
+                  child: MindfulHoldStar(
+                    key: ValueKey('star-${echo.id}'),
+                    echo: echo,
+                    z: z,
+                    breathAt: _reduced ? null : _breathAt,
+                    // The reception field: near = alive, far = a glimmer
+                    // to approach. Sealed anchors ignore it (widget-side).
+                    reception: ParallaxMath.receptionIntensity(
+                      eye: widget.camera.center,
+                      star: world,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -809,18 +895,12 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
 
           final bucketZ =
               (_bucketEdges[b] + _bucketEdges[b + 1].clamp(0.0, 1.0)) / 2;
-          Widget layer = Stack(children: children);
-          final sigma = ParallaxMath.blurSigma(bucketZ);
-          if (sigma > 0.05) {
-            layer = ImageFiltered(
-              imageFilter: ImageFilter.blur(
-                sigmaX: sigma,
-                sigmaY: sigma,
-                tileMode: TileMode.decal,
-              ),
-              child: layer,
-            );
-          }
+          // Depth haze now rides EACH star's cached glow (its own
+          // RepaintBoundary): a bucket-level ImageFiltered had to
+          // re-blur the whole viewport every frame once the orbits
+          // came alive — 0.3 fps. The bucket keeps only its parallax
+          // transform, isolated behind its own boundary.
+          final layer = RepaintBoundary(child: Stack(children: children));
           layers.add(
             Transform.translate(
               offset: Offset(
