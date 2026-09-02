@@ -83,7 +83,10 @@ void main() {
 
     await tester.enterText(dialogField, 'https://example.com/track/abc');
     await tester.tap(find.text('SCELLER LA PORTE'));
-    await tester.pumpAndSettle();
+    // Bounded pumps: a full pumpAndSettle can race the snackbar's own
+    // dismissal timer and flake (seen once in CI-like conditions).
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('CE LIEN N\'EST NI SPOTIFY NI YOUTUBE.'), findsOneWidget);
     expect(find.text('EXTRAIT MUSICAL'), findsNothing);

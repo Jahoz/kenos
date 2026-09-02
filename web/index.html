@@ -36,6 +36,13 @@
 
   <title>KENOS</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    /* The canvas owns the whole viewport; the document never scrolls.
+       Browser-level scrolling (the keyboard's scroll-into-view on
+       desktop web) used to drift the viewport and made bottom taps
+       unreliable — the v3.10b remainder, closed here. */
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+  </style>
 </head>
 <body>
   <!-- KENOS install invitation: browsers rarely surface the PWA prompt

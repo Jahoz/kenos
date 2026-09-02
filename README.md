@@ -54,11 +54,19 @@ unique atomique incluse). Idéal pour découvrir l'expérience.
 ## Brancher le vrai éther (Supabase)
 
 1. Créer un projet sur [supabase.com](https://supabase.com).
-2. Dans le **SQL Editor**, exécuter le contenu des migrations
-   [`supabase/migrations/0001_kenos_init.sql`](supabase/migrations/0001_kenos_init.sql),
-   [`0002_echo_receptions.sql`](supabase/migrations/0002_echo_receptions.sql),
-   [`0003_ether_seal.sql`](supabase/migrations/0003_ether_seal.sql) puis
-   [`0004_sector_culling.sql`](supabase/migrations/0004_sector_culling.sql).
+2. Lier le projet puis appliquer **toutes** les migrations (11 à ce
+   jour — échos, réceptions, Ether Seal, culling, fréquences,
+   signalements, médias, purge consolidée, sling-shot, lignage,
+   constellations, extraits) :
+
+```bash
+supabase link --project-ref <ref>
+supabase db push
+```
+
+   (Équivalent manuel : exécuter chaque fichier de
+   [`supabase/migrations/`](supabase/migrations/) dans l'ordre dans le
+   SQL Editor.)
 3. (Optionnel, purge des échos dérivants) activer l'extension `pg_cron`
    puis décommenter le bloc cron livré **prêt à l'emploi** en fin de
    migration 0004 (`kenos-purge`, quotidien à 03:17 UTC).
@@ -104,8 +112,8 @@ catalog iOS, pur stdlib).
 
 ```bash
 make analyze     # flutter analyze — 0 issue
-make test        # 51 tests Dart : chiffrement, culling, contrôleurs, parcours UI
-make db-test     # 48 invariants SQL (pgTAP) : RPC + tentatives d'effraction RLS
+make test        # 162 tests Dart : chiffrement, culling, contrôleurs, parcours UI
+make db-test     # 96 invariants SQL (pgTAP) : RPC + tentatives d'effraction RLS
 make e2e         # boucle complète sur le PostgREST local réel (18 vérifications)
 ```
 
@@ -237,5 +245,14 @@ si l'on relâche.
   vocabulaire `KenosPulse`, respect du drapeau plateforme partout.
 - ~~Widget custom shaders~~ ✅ v1.1 — dissolution en particules réelles
   (GPU + repli CPU).
-- Panorama / panning de la carte (le viewport RPC est déjà prêt).
+- ~~Panorama / panning de la carte~~ ✅ V3.7 — le Voyage (monde 2×
+  écran, trois planètes, trou noir, comètes), RPC viewport enfin servi.
+- ~~Symphonie Collective spatialisée~~ ✅ V3.1/3.2/3.6 — ondes
+  pentatoniques connectées, pan stéréo et atténuation par distance
+  (oscillateurs `flutter_soloud`, repli honnête sur assets).
+- ~~Le Cadavre Exquis~~ ✅ V3.8/3.11 — constellations à l'aveugle,
+  figure émergente à l'angle d'or, lecture unique du poème fermé.
 - Scellement côté serveur des traces de réception (même Ether Seal).
+
+La feuille de route vivante (V3+ : Vestiges, Extraits, Aube, clusters
+gelés) vit dans [`docs/ROADMAP_V3.md`](docs/ROADMAP_V3.md).

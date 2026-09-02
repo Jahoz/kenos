@@ -12,6 +12,7 @@ import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/utils/motion_preferences.dart';
 import '../../../core/utils/parallax_math.dart';
 import '../../constellations/data/constellation_repository.dart';
+import '../../constellations/domain/constellation_figure.dart';
 import '../../constellations/presentation/constellation_sheets.dart';
 import '../../echo/data/echo_providers.dart';
 import '../../echo/domain/echo.dart';
@@ -1037,10 +1038,14 @@ class _ConstellationPainter extends CustomPainter {
     final radius = size.shortestSide / 2 - 3;
     final t = target.clamp(2, 7);
 
-    Offset station(int k) => Offset(
-          center.dx + radius * _fx(k, t).$1,
-          center.dy + radius * _fx(k, t).$2,
-        );
+    // One arithmetic, one truth: the figure domain places the stations.
+    Offset station(int k) {
+      final unit = ConstellationFigure.starAt(k, target: t);
+      return Offset(
+        center.dx + radius * unit.dx,
+        center.dy + radius * unit.dy,
+      );
+    }
 
     // The seed: where the first stranger planted the corpse.
     canvas.drawCircle(
@@ -1082,30 +1087,6 @@ class _ConstellationPainter extends CustomPainter {
     }
   }
 
-  // Golden-angle placement (unit space), mirrored from the figure
-  // domain — the map avoids importing feature domains in painters.
-  static (double, double) _fx(int k, int t) {
-    const golden = 2 * 3.141592653589793 * 0.38196601125010515;
-    final r = 0.42 + 0.58 * k / (t - 1);
-    final a = k * golden - 3.141592653589793 / 2;
-    return (r * _cos(a), r * _sin(a));
-  }
-
-  // Avoid importing dart:math for two trig calls.
-  static double _cos(double rad) =>
-      rad == 0 ? 1 : (rad == 3.141592653589793 ? -1 : _polyCos(rad));
-  static double _polyCos(double x) {
-    // Taylor 6 terms — precise enough for 7 stations.
-    var term = 1.0;
-    var sum = 1.0;
-    for (var n = 1; n <= 6; n++) {
-      term *= -x * x / ((2 * n - 1) * (2 * n));
-      sum += term;
-    }
-    return sum;
-  }
-
-  static double _sin(double rad) => _polyCos(rad - 1.5707963267948966);
 
   @override
   bool shouldRepaint(_ConstellationPainter old) =>

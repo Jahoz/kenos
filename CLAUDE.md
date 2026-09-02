@@ -39,10 +39,12 @@ lib/
 │   ├── audio/         # AudioController : drone + cloches
 │   └── widgets/       # ScrambleText (security theater)
 └── features/
-    ├── onboarding/    # Le seuil : trois règles, une porte
-    ├── echo/          # domain (Echo, EchoColorTheme) + data (repository, store)
-    ├── cosmic_map/    # application (MapController, MotionService) + presentation
-    └── create_echo/   # Le Miroir : formulation, scellement, lancement
+    ├── onboarding/      # Le seuil : trois règles, une porte
+    ├── echo/            # domain (Echo, EchoExcerpt, cipher) + data (repo, store)
+    ├── cosmic_map/      # application (MapController, caméra de voyage) + presentation
+    ├── create_echo/     # Le Miroir : formulation, fragments, portes culturelles
+    ├── constellations/  # Cadavre exquis : lignes à l'aveugle, figure angle d'or
+    └── frequencies/     # Symphonie spatialisée (oscillateurs + repli assets)
 ```
 
 ## Commands
@@ -50,8 +52,8 @@ lib/
 ```bash
 make dev                   # Mode démo local (aucun backend requis)
 make analyze               # 0 issue
-make test                  # 51 tests (chiffrement, culling, contrôleurs, UI)
-make db-reset && make db-test  # Migrations + 48 invariants pgTAP
+make test                  # 162 tests (chiffrement, culling, contrôleurs, UI)
+make db-reset && make db-test  # Migrations + 96 invariants pgTAP
 make e2e                   # Boucle réelle sur PostgREST local
 python3 tool/gen_audio.py  # Régénère les assets audio (std-lib only)
 python3 tool/gen_icons.py  # Régénère les icônes Web/Android/iOS (std-lib only)
@@ -102,6 +104,17 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
 - ROSE (`#F43F5E`/`#FB7185`) est réservé à la destruction, jamais sélectionnable.
 - **Purge** : `kenos_purge()` (échos > 30 j, audit > 1 j, réceptions non
   lues > 30 j) — câblage `pg_cron` fourni commenté dans la migration 0004.
+- **Constellations (cadavre exquis)** : lignes scellées sur l'appareil,
+  `contribute_line` ne renvoie JAMAIS les fragments (le compte seul),
+  `consume_constellation` = lecture unique par un non-contributeur
+  uniquement (`KENOS_CONTRIBUTOR_BARRED`), bundle ciphertext + clé
+  (parité `consume_echo`, ouvert sur l'appareil — V3.11a).
+- **Extraits culturels (V3.10)** : la référence Spotify/YouTube voyage
+  scellée sous la clé de l'écho (le serveur borne le scellé 32-512,
+  ne voit jamais l'ID) ; l'URL lancée est TOUJOURS reconstruite
+  canoniquement depuis un parse strict — jamais la chaîne brute.
+  `door-preview` (Edge Function) ne connaît que l'ID de piste nu,
+  jamais l'écho ni le texte.
 
 ## Design Boundary
 
