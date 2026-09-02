@@ -1,0 +1,70 @@
+name: smoke-prod
+
+# F-13 — nightly anonymous smoke test against production.
+#
+# The V3.11a regression (constellations read empty in the shipped app
+# while every CI job stayed green) was caught by a human eye, weeks of
+# an automated blind spot. This workflow is the minimal tripwire: it
+# never authenticates as a real user, never writes echo data, and only
+# exercises the surfaces any first anonymous visitor hits. All checks
+# live in scripts/smoke_prod.sh so they can be run by hand too:
+#
+#   APP_URL=... SUPABASE_URL=... SUPABASE_ANON_KEY=... scripts/smoke_prod.sh
+#
+# Setup (once): add the repository secret SUPABASE_ANON_KEY with the
+# project's publishable key (Supabase → Project Settings → API — the
+# same value as .env.cloud; public by design, kept out of the repo).
+
+on:
+  schedule:
+    # 05:30 UTC = 07:30 Paris in summer (CEST). After the DST switch
+    # (late October) it reads 06:30 — nudge the cron then if the slot
+    # matters.
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+
+env:
+  APP_URL: https://kenos-lemon.vercel.app
+  SUPABASE_URL: https://xmbdrzkvjxaaoqwluonx.supabase.co
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  smoke:
+    name: anonymous prod smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Date stamped into env so the issue title matches the report.
+      - name: Stamp run date
+        run: echo "RUN_DATE=$(date -u +%F)" >> "$GITHUB_ENV"
+      - name: Run anonymous smoke checks
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: bash scripts/smoke_prod.sh
+      # No email, no chat: a plain issue is the failure channel, one
+      # per failed night, dated and linking the run log.
+      - name: Open failure issue
+        if: failure()
+        uses: actions/create-issue@v1
+        with:
+          title: "smoke prod FAIL ${{ env.RUN_DATE }}"
+          body: |
+            The nightly anonymous smoke against production failed.
+
+            - App: ${{ env.APP_URL }}
+            - Ether: ${{ env.SUPABASE_URL }}
+            - Run log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Re-run locally for the exact failing checks:
+
+            ```
+            APP_URL=${{ env.APP_URL }} SUPABASE_URL=${{ env.SUPABASE_URL }} \
+              SUPABASE_ANON_KEY=<publishable key> bash scripts/smoke_prod.sh
+            ```
+
+            If the failure is `SUPABASE_ANON_KEY must be set`, the
+            repository secret is missing (see the header comment of
+            this workflow).
