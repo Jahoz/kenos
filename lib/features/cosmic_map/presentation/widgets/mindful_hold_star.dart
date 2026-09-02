@@ -180,13 +180,10 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   void _onPointerDown(PointerDownEvent event) {
     if (_busy) return;
     if (_echo.isMine) {
-      // Sealed echo: consult the bottle-in-the-sea signal (never the text).
-      KenosHaptics.pulse(KenosPulse.holdStart);
-      ref.read(audioControllerProvider).playBell(KenosBell.seal);
-      final reception = ref
-          .read(receptionControllerProvider.notifier)
-          .receptionFor(_echo.id);
-      showReceptionSheet(context, echo: _echo, reception: reception);
+      // Sealed echo: consult the bottle-in-the-sea signal (never the
+      // text) — but only on a DELIBERATE tap (see _onSealedTap). A
+      // mere pointer-down here would fire on every pan that happens
+      // to start on one's own star.
       return;
     }
     _downPosition = event.position;
@@ -196,6 +193,20 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     KenosHaptics.pulse(KenosPulse.holdStart);
     _startBeats();
     _controller.forward();
+  }
+
+  /// One's own sealed star: a deliberate tap (not a pan, not a drag)
+  /// consults the signal. GestureDetector's tap only fires on a quick
+  /// release in place — panning the void over a sealed star never
+  /// opens anything.
+  void _onSealedTap() {
+    if (_busy) return;
+    KenosHaptics.pulse(KenosPulse.holdStart);
+    ref.read(audioControllerProvider).playBell(KenosBell.seal);
+    final reception = ref
+        .read(receptionControllerProvider.notifier)
+        .receptionFor(_echo.id);
+    showReceptionSheet(context, echo: _echo, reception: reception);
   }
 
   void _onPointerMove(PointerMoveEvent event) {
@@ -339,6 +350,16 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
       }
     }
     visual = Opacity(opacity: opacity, child: visual);
+
+    if (_echo.isMine) {
+      // Sealed stars answer a deliberate tap; the Listener below only
+      // carries the mindful hold for the readable ether.
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _onSealedTap,
+        child: Center(child: visual),
+      );
+    }
 
     return Listener(
       onPointerDown: _onPointerDown,

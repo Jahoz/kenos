@@ -11,6 +11,7 @@ import '../../../core/audio/audio_providers.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_fonts.dart';
+import '../../../core/constants/app_layout.dart';
 import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/widgets/hud.dart';
 import '../../../core/widgets/scramble_text.dart';
@@ -289,7 +290,12 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     try {
       await ref
           .read(mapControllerProvider.notifier)
-          .sendEcho(text: text, theme: _theme, media: _media, excerpt: _excerpt);
+          .sendEcho(
+            text: text,
+            theme: _theme,
+            media: _media,
+            excerpt: _excerpt,
+          );
       unawaited(audio.playBell(KenosBell.send));
       KenosHaptics.pulse(KenosPulse.launch);
       if (!mounted) return;
@@ -328,159 +334,176 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: IntrinsicHeight(
-                  child: Padding(
-            padding: const EdgeInsets.fromLTRB(26, 18, 26, 26),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'MIROIR',
-                      style: TextStyle(
-                        fontFamily: AppFonts.mono,
-                        fontSize: 9,
-                        letterSpacing: 4,
-                        color: AppColors.fade(AppColors.cyan, 0.6),
-                      ),
+                  // Full-bleed sky, readable measure: the editor stands
+                  // in a centered column on wide windows.
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppLayout.contentMaxWidth,
                     ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: _sealing
-                          ? null
-                          : () => Navigator.of(context).pop(),
-                      child: const Text('RENONCER'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'La formulation du vide',
-                  style: TextStyle(
-                    fontFamily: AppFonts.serifItalic,
-                    fontSize: 26,
-                    color: AppColors.fade(AppColors.pureLight, 0.92),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                Expanded(
-                  child: _sealing
-                      ? SingleChildScrollView(
-                          child: ScrambleText(
-                            text: _input.text,
-                            resolve: false,
-                            style: secretStyle(fontSize: 18),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(26, 18, 26, 26),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'MIROIR',
+                                style: TextStyle(
+                                  fontFamily: AppFonts.mono,
+                                  fontSize: 9,
+                                  letterSpacing: 4,
+                                  color: AppColors.fade(AppColors.cyan, 0.6),
+                                ),
+                              ),
+                              const Spacer(),
+                              TextButton(
+                                onPressed: _sealing
+                                    ? null
+                                    : () => Navigator.of(context).pop(),
+                                child: const Text('RENONCER'),
+                              ),
+                            ],
                           ),
-                        )
-                      : ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 100),
-                          child: TextField(
-                          controller: _input,
-                          focusNode: _focus,
-                          maxLines: null,
-                          minLines: 3,
-                          autofocus: true,
-                          maxLength: _maxLength,
-                          cursorColor: AppColors.teal,
-                          style: secretStyle(fontSize: 18),
-                          decoration: const InputDecoration(
-                            counterStyle: TextStyle(
-                              fontFamily: AppFonts.mono,
-                              fontSize: 9,
-                              letterSpacing: 2,
-                              color: Color(0x66F4F4F6),
-                            ),
-                            border: InputBorder.none,
-                            hintText:
-                                'Écris ce que tu ne dis nulle part.\nPersonne ne saura. Même pas toi, après.',
-                            hintStyle: TextStyle(
+                          const SizedBox(height: 12),
+                          Text(
+                            'La formulation du vide',
+                            style: TextStyle(
                               fontFamily: AppFonts.serifItalic,
-                              fontSize: 18,
-                              height: 1.75,
-                              color: Color(0x40F4F4F6),
+                              fontSize: 26,
+                              color: AppColors.fade(AppColors.pureLight, 0.92),
                             ),
                           ),
-                          onChanged: (_) => setState(() {}),
+                          const SizedBox(height: 28),
+                          Expanded(
+                            child: _sealing
+                                ? SingleChildScrollView(
+                                    child: ScrambleText(
+                                      text: _input.text,
+                                      resolve: false,
+                                      style: secretStyle(fontSize: 18),
+                                    ),
+                                  )
+                                : ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      minHeight: 100,
+                                    ),
+                                    child: TextField(
+                                      controller: _input,
+                                      focusNode: _focus,
+                                      maxLines: null,
+                                      minLines: 3,
+                                      autofocus: true,
+                                      maxLength: _maxLength,
+                                      cursorColor: AppColors.teal,
+                                      style: secretStyle(fontSize: 18),
+                                      decoration: const InputDecoration(
+                                        counterStyle: TextStyle(
+                                          fontFamily: AppFonts.mono,
+                                          fontSize: 9,
+                                          letterSpacing: 2,
+                                          color: Color(0x66F4F4F6),
+                                        ),
+                                        border: InputBorder.none,
+                                        hintText:
+                                            'Écris ce que tu ne dis nulle part.\nPersonne ne saura. Même pas toi, après.',
+                                        hintStyle: TextStyle(
+                                          fontFamily: AppFonts.serifItalic,
+                                          fontSize: 18,
+                                          height: 1.75,
+                                          color: Color(0x40F4F4F6),
+                                        ),
+                                      ),
+                                      onChanged: (_) => setState(() {}),
+                                    ),
+                                  ),
                           ),
-                        ),
-                ),
-                const SizedBox(height: 18),
-                if (!_sealing)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        tooltip: 'Choisir une image',
-                        onPressed: _recording ? null : _pickImage,
-                        icon: const Icon(Icons.photo_outlined),
+                          const SizedBox(height: 18),
+                          if (!_sealing)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                IconButton(
+                                  tooltip: 'Choisir une image',
+                                  onPressed: _recording ? null : _pickImage,
+                                  icon: const Icon(Icons.photo_outlined),
+                                ),
+                                IconButton(
+                                  tooltip: _recording
+                                      ? 'Terminer l\'enregistrement'
+                                      : 'Enregistrer un son',
+                                  onPressed: _toggleRecording,
+                                  icon: Icon(
+                                    _recording ? Icons.stop : Icons.mic_none,
+                                  ),
+                                  color: _recording
+                                      ? AppColors.rose
+                                      : AppColors.teal,
+                                ),
+                                IconButton(
+                                  tooltip: 'Sceller une porte culturelle',
+                                  onPressed: _recording
+                                      ? null
+                                      : _pasteExcerptLink,
+                                  icon: const Icon(Icons.link),
+                                ),
+                              ],
+                            ),
+                          // The attached fragment, made visible: thumbnail or
+                          // waveform, private listen, one-tap removal.
+                          if (_media != null) ...[
+                            MediaDraftPreview(
+                              media: _media!,
+                              onRemoved: () => setState(() => _media = null),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                          // The sealed door, made visible: what the reader will
+                          // be able to open, once, outside the void.
+                          if (_excerpt != null) ...[
+                            _ExcerptDraftChip(
+                              excerpt: _excerpt!,
+                              onRemoved: () => setState(() => _excerpt = null),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                          const SizedBox(height: 8),
+                          _ThemePicker(
+                            selected: _theme,
+                            enabled: !_sealing,
+                            onChanged: (t) => setState(() => _theme = t),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _theme.emotionHint,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: AppFonts.serifItalic,
+                              fontSize: 13,
+                              color: AppColors.fade(AppColors.pureLight, 0.5),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          OutlinedButton(
+                            onPressed: _canSend ? _sealAndLaunch : null,
+                            child: Text(
+                              _sealing ? 'SCELLEMENT…' : 'SCELLER & LANCER',
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            'UNE SEULE LECTURE POSSIBLE — AUCUN RETOUR — AUCUNE TRACE',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: AppFonts.mono,
+                              fontSize: 8,
+                              letterSpacing: 2,
+                              color: AppColors.fade(AppColors.pureLight, 0.3),
+                            ),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        tooltip: _recording
-                            ? 'Terminer l\'enregistrement'
-                            : 'Enregistrer un son',
-                        onPressed: _toggleRecording,
-                        icon: Icon(_recording ? Icons.stop : Icons.mic_none),
-                        color: _recording ? AppColors.rose : AppColors.teal,
-                      ),
-                      IconButton(
-                        tooltip: 'Sceller une porte culturelle',
-                        onPressed: _recording ? null : _pasteExcerptLink,
-                        icon: const Icon(Icons.link),
-                      ),
-                    ],
-                  ),
-                // The attached fragment, made visible: thumbnail or
-                // waveform, private listen, one-tap removal.
-                if (_media != null) ...[
-                  MediaDraftPreview(
-                    media: _media!,
-                    onRemoved: () => setState(() => _media = null),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-                // The sealed door, made visible: what the reader will
-                // be able to open, once, outside the void.
-                if (_excerpt != null) ...[
-                  _ExcerptDraftChip(
-                    excerpt: _excerpt!,
-                    onRemoved: () => setState(() => _excerpt = null),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-                const SizedBox(height: 8),
-                _ThemePicker(
-                  selected: _theme,
-                  enabled: !_sealing,
-                  onChanged: (t) => setState(() => _theme = t),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _theme.emotionHint,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: AppFonts.serifItalic,
-                    fontSize: 13,
-                    color: AppColors.fade(AppColors.pureLight, 0.5),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                OutlinedButton(
-                  onPressed: _canSend ? _sealAndLaunch : null,
-                  child: Text(_sealing ? 'SCELLEMENT…' : 'SCELLER & LANCER'),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'UNE SEULE LECTURE POSSIBLE — AUCUN RETOUR — AUCUNE TRACE',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: AppFonts.mono,
-                    fontSize: 8,
-                    letterSpacing: 2,
-                    color: AppColors.fade(AppColors.pureLight, 0.3),
-                  ),
-                ),
-              ],
-            ),
+                    ),
                   ),
                 ),
               ),
@@ -550,9 +573,10 @@ class _ExcerptDraftChip extends StatelessWidget {
 
   String get _origin => switch (excerpt.kind) {
     EchoExcerptKind.song => 'open.spotify.com',
-    EchoExcerptKind.video => excerpt.startSeconds > 0
-        ? 'youtube.com · ${_format(excerpt.startSeconds)}'
-        : 'youtube.com',
+    EchoExcerptKind.video =>
+      excerpt.startSeconds > 0
+          ? 'youtube.com · ${_format(excerpt.startSeconds)}'
+          : 'youtube.com',
   };
 
   static String _format(int seconds) {
@@ -582,7 +606,9 @@ class _ExcerptDraftChip extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: Icon(
-                isSong ? Icons.music_note_outlined : Icons.smart_display_outlined,
+                isSong
+                    ? Icons.music_note_outlined
+                    : Icons.smart_display_outlined,
                 size: 26,
                 color: AppColors.fade(AppColors.teal, 0.8),
               ),
@@ -638,7 +664,6 @@ class _ExcerptDraftChip extends StatelessWidget {
     );
   }
 }
-
 
 /// The attached excerpt, made visible: which song or video travels
 /// with the echo — a door for the single winner to open.

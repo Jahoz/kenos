@@ -103,7 +103,7 @@ class _ReceptionPanelState extends ConsumerState<ReceptionPanel>
             const SizedBox(height: 20),
             Text(
               reception != null
-                  ? 'ÉCHO INTERCEPTÉ PAR UN INCONNU'
+                  ? 'TON ÉCHO A ÉTÉ LU'
                   : 'TON ÉCHO DÉRIVE ENCORE',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -115,7 +115,23 @@ class _ReceptionPanelState extends ConsumerState<ReceptionPanel>
                     : AppColors.fade(AppColors.pureLight, 0.4),
               ),
             ),
-            const SizedBox(height: 34),
+            const SizedBox(height: 26),
+            // What this IS: the bottle came back — your sealed echo's
+            // journey, never its text.
+            Text(
+              reception != null
+                  ? 'Un inconnu l\'a intercepté quelque part dans le vide.\n'
+                      'L\'écho n\'existe plus — ce signal est tout ce qui revient.'
+                  : 'Personne ne l\'a lu. Il flotte,\nquelque part, intact.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppFonts.serifItalic,
+                fontSize: 16.5,
+                height: 1.75,
+                color: AppColors.fade(AppColors.pureLight, 0.6),
+              ),
+            ),
+            const SizedBox(height: 30),
             // Drift telemetry — machine voice.
             Text(
               'DÉRIVÉ PENDANT ${reception != null ? reception.driftLabel : _liveDrift(driftNow)}',
@@ -168,23 +184,35 @@ class _ReceptionPanelState extends ConsumerState<ReceptionPanel>
                   color: AppColors.fade(AppColors.pureLight, 0.5),
                 ),
               ),
-            ] else ...[
-              Text(
-                'Personne ne l\'a lu. Il flotte,\nquelque part, intact.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: AppFonts.serifItalic,
-                  fontSize: 17,
-                  height: 1.8,
-                  color: AppColors.fade(AppColors.pureLight, 0.5),
-                ),
-              ),
             ],
             const SizedBox(height: 36),
-            OutlinedButton(
-              onPressed: () => _close(burn: reception != null),
-              child: Text(reception != null ? 'BRÛLER LE SIGNAL' : 'REVENIR AU VIDE'),
-            ),
+            if (reception != null) ...[
+              OutlinedButton(
+                onPressed: () => _close(burn: true),
+                child: const Text('BRÛLER LE SIGNAL'),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Le signal n\'existe qu\'une fois — le brûler, c\'est le laisser partir pour de bon.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: AppFonts.mono,
+                  fontSize: 8,
+                  letterSpacing: 1.5,
+                  height: 1.8,
+                  color: AppColors.fade(AppColors.pureLight, 0.35),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => _close(),
+                child: const Text('PLUS TARD — L\'ÉTOILE CONTINUERA DE PULSER'),
+              ),
+            ] else
+              OutlinedButton(
+                onPressed: () => _close(),
+                child: const Text('REVENIR AU VIDE'),
+              ),
             const SizedBox(height: 20),
           ],
         ),
