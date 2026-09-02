@@ -1,6 +1,6 @@
 # KENOS — canonical commands (see CONTRIBUTING.md for the full picture)
 .DEFAULT_GOAL := help
-.PHONY: help dev dev-cloud analyze test test-cloud test-coverage build-web deploy-web serve-web db-start db-reset db-test db-push db-seed-load db-load-report db-wipe-load e2e gen-icons gen-audio coverage
+.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load e2e gen-icons gen-audio coverage
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -11,6 +11,14 @@ dev: ## Run the app (demo mode without credentials)
 dev-cloud: ## Run the app on the real ether (.env.cloud required)
 	@touch .env.cloud
 	flutter run $$(grep -v '^#' .env.cloud | sed 's/^/--dart-define=/' | tr '\n' ' ')
+
+dev-local: ## Run the app on the LOCAL seeded ether (release PWA, :4308)
+	flutter build web --release \
+		--dart-define=SUPABASE_URL=$$(supabase status -o env | sed -n 's/.*API_URL=//p' | tr -d '"') \
+		--dart-define=SUPABASE_ANON_KEY=$$(supabase status -o env | sed -n 's/.*ANON_KEY=//p' | tr -d '"')
+	@# Perf is judged on RELEASE builds only — `flutter run` is debug
+	@# (5-20× slower) and will always feel broken under volume.
+	cd build/web && python3 -m http.server 4308
 
 analyze: ## Static analysis (must be 0 issue)
 	flutter analyze
@@ -67,8 +75,17 @@ db-test: ## pgTAP suite: 96 SQL invariants (RPC + RLS)
 db-push: ## Push unapplied migrations to the linked cloud project
 	supabase db push
 
-db-seed-load: ## Seed a 30-day load ramp into the local ether (all cases, ~12k rows)
+db-seed-load: ## Seed a 30-day load ramp into the local ether (READABLE sealed payloads, ~12k rows)
+	dart run tool/gen_load_payloads.dart > /tmp/kenos_payloads.csv
+	docker exec -i supabase_db_kenos psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+		-c "drop table if exists public.kenos_load_payloads" \
+		-c "create unlogged table public.kenos_load_payloads (seq serial primary key, text_value text, key_b64 text, payload_b64 text)"
+	{ printf '\\copy public.kenos_load_payloads (text_value, key_b64, payload_b64) FROM STDIN WITH (FORMAT csv)\n'; cat /tmp/kenos_payloads.csv; printf '\\.\n'; } \
+		| docker exec -i supabase_db_kenos psql -U postgres -d postgres -v ON_ERROR_STOP=1
 	docker exec -i supabase_db_kenos psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/snippets/load_seed.sql
+
+db-verify-load: ## End-to-end proof: consume a seeded echo + corpse, open on-device
+	dart run tool/verify_load_seed.dart
 
 db-load-report: ## Visualize the ramp: daily volumes, sector culling, case coverage
 	docker exec -i supabase_db_kenos psql -U postgres -d postgres < supabase/snippets/load_report.sql

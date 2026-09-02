@@ -23,9 +23,15 @@
 --     destruction (SQL self-discipline: the RPC validates, raw
 --     inserts must too).
 --   * Sealed echoes carry a real pgp key escrow under the shared KEK
---     (kenos_ether_kek()), plus syntactically valid base64 payloads.
---     A small legacy subset (key_seal = '', real French text) keeps
---     the plaintext passthrough path visible and consumable in-app.
+--     (kenos_ether_kek()). Their payloads are REAL client-format
+--     AES-256-GCM bundles when the staging table
+--     public.kenos_load_payloads exists (filled by `make db-seed-load`
+--     via tool/gen_load_payloads.dart) — the winner can actually open
+--     them on device. Without the staging table the seed falls back
+--     to syntactically valid random bundles (metadata-only testing:
+--     the stars render and cull, but reads are dead — run the make
+--     target for a functional ether). Legacy plaintext echoes
+--     (key_seal = '', real French text) keep the passthrough path.
 --   * Consumed echoes are GONE from `echoes` by design — their wake
 --     lives in receptions/reads/lineages/reports, exactly like prod.
 --   * Ramp: daily volume grows ~13%/day compounded over 30 days
@@ -98,6 +104,8 @@ declare
     reader             uuid;
     read_ts            timestamptz;
     sealed_key         text;
+    sealed_ct          text;
+    n_payloads         int := 0;
     is_legacy          boolean;
     theme              text;
     target             int;
@@ -116,6 +124,12 @@ begin
 
     -- The KEK must exist before anything is sealed under it.
     perform public.kenos_ether_kek();
+
+    -- Real GCM payloads (from tool/gen_load_payloads.dart) when the
+    -- make target staged them; 0 = random-bundle fallback.
+    if to_regclass('public.kenos_load_payloads') is not null then
+        select count(*) into n_payloads from public.kenos_load_payloads;
+    end if;
 
     -- ══ 1. Anonymous crowd, joining along the same ramp ══
     for i in 1..n_users loop
@@ -200,14 +214,23 @@ begin
                 null, null, null, 0
             );
         else
-            sealed_key := encode(gen_random_bytes(32), 'base64');
+            if n_payloads > 0 then
+                -- A REAL client-format seal: the winner opens it on
+                -- device (deterministic cycle over the staged pool).
+                select p.key_b64, p.payload_b64 into sealed_key, sealed_ct
+                  from public.kenos_load_payloads p
+                 where p.seq = ((i - 1) % n_payloads) + 1;
+            else
+                sealed_key := encode(gen_random_bytes(32), 'base64');
+                sealed_ct := encode(gen_random_bytes(96), 'base64');
+            end if;
             insert into public.echoes (
                 id, author_id, encrypted_text, key_seal,
                 coord_x, coord_y, coord_z, color_theme, created_at,
                 media_kind, media_path, parent_id, momentum
             ) values (
                 md5('kenos-load-echo-' || i)::uuid, author,
-                encode(gen_random_bytes(96), 'base64'),
+                sealed_ct,
                 encode(pgp_sym_encrypt(sealed_key, public.kenos_ether_kek()), 'base64'),
                 x, y, 0.05 + 0.95 * random(), theme,
                 now() - v * interval '1 day',
@@ -368,7 +391,14 @@ begin
         -- larger than any target_lines, so k stays collision-free.
         k := floor(random() * n_users)::int;   -- per-constellation base
         for i_x in 1..n_lines loop
-            sealed_key := encode(gen_random_bytes(32), 'base64');
+            if n_payloads > 0 then
+                select p.key_b64, p.payload_b64 into sealed_key, sealed_ct
+                  from public.kenos_load_payloads p
+                 where p.seq = ((i * 7 + i_x) % n_payloads) + 1;
+            else
+                sealed_key := encode(gen_random_bytes(32), 'base64');
+                sealed_ct := encode(gen_random_bytes(48), 'base64');
+            end if;
             insert into public.kenos_constellation_lines (
                 constellation_id, contributor_id, line_number,
                 encrypted_text, key_seal, created_at
@@ -376,12 +406,16 @@ begin
                 md5('kenos-load-const-' || i)::uuid,
                 md5('kenos-load-user-' || (1 + ((k + i_x * 61) % n_users)))::uuid,
                 i_x,
-                encode(gen_random_bytes(48), 'base64'),
+                sealed_ct,
                 encode(pgp_sym_encrypt(sealed_key, public.kenos_ether_kek()), 'base64'),
                 now() - v * interval '1 day' + i_x * (3 + random() * 25) * interval '1 minute'
             );
         end loop;
     end loop;
+
+    -- The staged payload pool has served its galaxy: ciphertext only,
+    -- already inserted — the staging table leaves no trace.
+    drop table if exists public.kenos_load_payloads;
 end
 $seed$;
 
