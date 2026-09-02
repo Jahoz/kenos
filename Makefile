@@ -42,6 +42,9 @@ build-web: ## Release web build (compiles the fragment shader)
 	flutter build web --release
 
 deploy-web: ## Build for the real ether and deploy the PWA to Vercel (prod)
+	@# NB: this rebuilds build/web with PROD credentials — the :4308
+	@# server then serves the real ether. Run `make dev-local` after a
+	@# deploy to restore the local-ether build on :4308.
 	@touch .env.cloud
 	flutter build web --release $$(grep -v '^#' .env.cloud | sed 's/^/--dart-define=/' | tr '\n' ' ')
 	@# Deploy FROM build/web (the documented static path): the root link
