@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/app/kenos_app.dart';
@@ -14,6 +15,12 @@ import 'package:kenos/features/echo/data/local_echo_repository.dart';
 /// only the real mechanics of the experience are tested here.
 void main() {
   Future<void> bootApp(WidgetTester tester) async {
+    // The designed posture: a held phone. The old default surface
+    // (800×600 landscape) is a desktop window now — there, the column
+    // compresses the sky and no star sits clear of the HUD strip.
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -31,6 +38,49 @@ void main() {
       ),
     );
     await tester.pump();
+  }
+
+
+  /// Picks a holdable star: fully visible, clear of the HUD strip, its
+  /// center covered by nothing. The sky is a window into a 2× world —
+  /// when the holdable band is empty (planets polarize the latitudes),
+  /// the test TRAVELS like a human: pan the void, look again.
+  Future<int> pickHoldableStar(WidgetTester tester, Offset screen) async {
+    for (var attempt = 0; attempt < 14; attempt++) {
+      final starsNow = find.byType(MindfulHoldStar);
+      final rectsNow = [
+        for (var i = 0; i < starsNow.evaluate().length; i++)
+          tester.getRect(starsNow.at(i)),
+      ];
+      for (var i = 0; i < rectsNow.length; i++) {
+        final r = rectsNow[i];
+        final onScreen = r.left >= 0 &&
+            r.right <= screen.dx &&
+            r.top > 150 &&
+            r.bottom <= screen.dy;
+        final covered = rectsNow.asMap().entries.any(
+              (e) => e.key != i && e.value.contains(r.center),
+            );
+        if (onScreen && (!covered || attempt >= 12)) {
+          return i;
+        }
+      }
+      // Nothing holdable in this window: travel (alternate directions —
+      // the holdable band may be up or down the world). The drag
+      // starts top-right, clear of the star bands, and warms up with a
+      // micro-move first — a fast raw drag from a covered point never
+      // engages the pan (the star's hold eats it).
+      final g = await tester.startGesture(
+        Offset(screen.dx * 0.77, screen.dy * 0.24),
+      );
+      await g.moveBy(const Offset(-2, 1));
+      await tester.pump(const Duration(milliseconds: 300));
+      await g.moveBy(Offset(0, attempt.isEven ? -280.0 : 280.0));
+      await tester.pump();
+      await g.up();
+      await tester.pump(const Duration(milliseconds: 350));
+    }
+    return -1;
   }
 
   testWidgets('le seuil affiche les trois règles et mène à l\'espace', (
@@ -71,74 +121,59 @@ void main() {
     final stateBefore = container.read(mapControllerProvider).valueOrNull ?? [];
     expect(stateBefore, isNotEmpty, reason: 'l\'éther démo est vide');
 
-    // 3-second long press on an ether star.
-    // NB: le premier pump n'attache que le ticker de l'animation.
-    // Orbits cluster stars near their planets and they MOVE with real
-    // time — overlaps vary run to run. Hold a star whose center is
-    // covered by no other star: the pressed one is surely the intended.
+    // 3-second long press on an ether star — travelling if the
+    // holdable band is empty.
     final screen = Offset(
       tester.view.physicalSize.width / tester.view.devicePixelRatio,
       tester.view.physicalSize.height / tester.view.devicePixelRatio,
     );
-    // The living clock sweeps stars through overlaps: retry over a
-    // few beats of orbit until one qualifies (visible + uncovered).
-    int pick = -1;
-    for (var attempt = 0; attempt < 40 && pick == -1; attempt++) {
-      final starsNow = find.byType(MindfulHoldStar);
-      final rectsNow = [
-        for (var i = 0; i < starsNow.evaluate().length; i++)
-          tester.getRect(starsNow.at(i)),
-      ];
-      for (var i = 0; i < rectsNow.length; i++) {
-        final r = rectsNow[i];
-        final onScreen = r.left >= 0 &&
-            r.right <= screen.dx &&
-            r.top >= 0 &&
-            r.bottom <= screen.dy;
-        final covered = rectsNow.asMap().entries.any(
-          (e) => e.key != i && e.value.contains(r.center),
-        );
-        // Best candidate: visible and uncovered. Fallback (last
-        // resort, attempt 39): any visible star — the assertion below
-        // tolerates whichever star the pointer actually consumed by
-        // checking the count, not the id.
-        if (onScreen && (!covered || attempt == 39)) {
-          pick = i;
-          break;
-        }
-      }
-      if (pick == -1) {
-        await tester.pump(const Duration(milliseconds: 400));
-      }
-    }
-    expect(pick, greaterThanOrEqualTo(0), reason: 'aucune étoile visible');
+    var pick = await pickHoldableStar(tester, screen);
+    expect(pick, greaterThanOrEqualTo(0), reason: 'aucune étoile visible même en voyageant');
     // The living clock makes a single tap timing-sensitive: retry the
     // hold (re-picking a qualifying star) until the reveal opens.
     var revealed = false;
-    for (var hold = 0; hold < 3 && !revealed; hold++) {
-      // Re-pick: orbits swept the sky between attempts.
-      var star = find.byType(MindfulHoldStar).at(pick);
-      if (star.evaluate().isEmpty) {
-        for (var i = 0; i < find.byType(MindfulHoldStar).evaluate().length; i++) {
+    var skyWaits = 0;
+    for (var hold = 0; hold < 5 && !revealed; hold++) {
+      // The sky can be empty for a beat (a map refresh): wait it out,
+      // never index into a vanished list.
+      var skyCount = find.byType(MindfulHoldStar).evaluate().length;
+      while (skyCount == 0 && skyWaits < 10) {
+        skyWaits++;
+        await tester.pump(const Duration(milliseconds: 400));
+        skyCount = find.byType(MindfulHoldStar).evaluate().length;
+      }
+      if (skyCount == 0) break;
+      // Fresh pick on every attempt: the previous failure left the
+      // sky moved (and the held star possibly drifted somewhere worse).
+      final fresh = await pickHoldableStar(tester, screen);
+      if (fresh >= 0) pick = fresh;
+      if (pick >= skyCount) {
+        // Orbits swept the sky: any visible star will do.
+        pick = 0;
+        for (var i = 0; i < skyCount; i++) {
           final r = tester.getRect(find.byType(MindfulHoldStar).at(i));
-          if (r.left >= 0 && r.right <= screen.dx && r.top >= 0 && r.bottom <= screen.dy) {
+          if (r.left >= 0 && r.right <= screen.dx && r.top > 150 && r.bottom <= screen.dy) {
             pick = i;
             break;
           }
         }
-        star = find.byType(MindfulHoldStar).at(pick);
       }
+      final star = find.byType(MindfulHoldStar).at(pick);
       expect((tester.widget(star) as MindfulHoldStar).echo.id, isNotEmpty);
       final gesture = await tester.startGesture(tester.getCenter(star));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 3200));
       await gesture.up();
-      await tester.pump(const Duration(milliseconds: 600));
-      revealed =
-          find.text('ÉCHO INTERCEPTÉ — LECTURE UNIQUE').evaluate().isNotEmpty ||
-          find.textContaining('TON ÉCHO DÉRIVE').evaluate().isNotEmpty;
+      // The reveal can land a beat late (async consume + route build):
+      // poll for it instead of trusting a single pump.
+      for (var wait = 0; wait < 8 && !revealed; wait++) {
+        await tester.pump(const Duration(milliseconds: 300));
+        revealed =
+            find.text('ÉCHO INTERCEPTÉ — LECTURE UNIQUE').evaluate().isNotEmpty ||
+            find.textContaining('TON ÉCHO DÉRIVE').evaluate().isNotEmpty;
+      }
     }
-    expect(revealed, isTrue, reason: 'aucune étoile tenue après 3 essais');
+    expect(revealed, isTrue, reason: 'aucune étoile tenue après 5 essais');
 
     // The reveal modal (or the sealed-star sheet) is up.
     expect(
@@ -203,45 +238,21 @@ void main() {
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pump(const Duration(milliseconds: 2600));
 
-    // Orbits cluster stars near their planets and they MOVE with real
-    // time — overlaps vary run to run. Hold a star whose center is
-    // covered by no other star: the pressed one is surely the intended.
+    // 3-second long press on an ether star — travelling if the
+    // holdable band is empty.
     final screen = Offset(
       tester.view.physicalSize.width / tester.view.devicePixelRatio,
       tester.view.physicalSize.height / tester.view.devicePixelRatio,
     );
-    // The living clock sweeps stars through overlaps: retry over a
-    // few beats of orbit until one qualifies (visible + uncovered).
-    int pick = -1;
-    for (var attempt = 0; attempt < 40 && pick == -1; attempt++) {
-      final starsNow = find.byType(MindfulHoldStar);
-      final rectsNow = [
-        for (var i = 0; i < starsNow.evaluate().length; i++)
-          tester.getRect(starsNow.at(i)),
-      ];
-      for (var i = 0; i < rectsNow.length; i++) {
-        final r = rectsNow[i];
-        final onScreen = r.left >= 0 &&
-            r.right <= screen.dx &&
-            r.top >= 0 &&
-            r.bottom <= screen.dy;
-        final covered = rectsNow.asMap().entries.any(
-          (e) => e.key != i && e.value.contains(r.center),
-        );
-        // Best candidate: visible and uncovered. Fallback (last
-        // resort, attempt 39): any visible star — the assertion below
-        // tolerates whichever star the pointer actually consumed by
-        // checking the count, not the id.
-        if (onScreen && (!covered || attempt == 39)) {
-          pick = i;
-          break;
-        }
-      }
-      if (pick == -1) {
-        await tester.pump(const Duration(milliseconds: 400));
-      }
+    var pick = await pickHoldableStar(tester, screen);
+    expect(pick, greaterThanOrEqualTo(0), reason: 'aucune étoile visible même en voyageant');
+    // The sky can vanish for a beat (a map refresh): wait it out.
+    var skyCount = find.byType(MindfulHoldStar).evaluate().length;
+    for (var wait = 0; skyCount == 0 && wait < 10; wait++) {
+      await tester.pump(const Duration(milliseconds: 400));
+      skyCount = find.byType(MindfulHoldStar).evaluate().length;
     }
-    expect(pick, greaterThanOrEqualTo(0), reason: 'aucune étoile visible');
+    if (pick >= skyCount) pick = 0;
     final star = find.byType(MindfulHoldStar).at(pick);
     expect((tester.widget(star) as MindfulHoldStar).echo.id, isNotEmpty);
     final gesture = await tester.startGesture(tester.getCenter(star));

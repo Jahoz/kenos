@@ -3,18 +3,21 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
 import '../constants/app_fonts.dart';
+import '../constants/app_layout.dart';
 
 /// Portrait is KENOS's posture: the ether is a held breath, not a
-/// widescreen. Native platforms LOCK it in `main()`; the web cannot
-/// lock a browser orientation — there, the guard replaces the app
-/// with a quiet veil asking the device to stand up. UX stays mastered
-/// everywhere, by lock or by ritual.
+/// widescreen. The app itself lives in a centered posture column
+/// (see [AppLayout]) — wide viewports are WELCOMED, tablet and desktop
+/// alike. Only a held phone lying flat (a short landscape window)
+/// meets the quiet veil asking it to stand back up. Native platforms
+/// lock phones upright in `main()`; the web cannot lock a browser
+/// orientation, so the ritual veil stands in for the lock.
 class PortraitGuard extends StatelessWidget {
   const PortraitGuard({super.key, required this.child, this.enforce});
 
   final Widget child;
 
-  /// Force the veil in landscape regardless of platform (tests).
+  /// Force the veil-capable behavior regardless of platform (tests).
   /// Defaults to web-only, where no native lock exists.
   final bool? enforce;
 
@@ -22,11 +25,19 @@ class PortraitGuard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!_enforce) return child;
-    final orientation =
-        MediaQuery.maybeOrientationOf(context) ?? Orientation.portrait;
-    if (orientation == Orientation.portrait) return child;
+    if (_enforce) {
+      final size = MediaQuery.sizeOf(context);
+      final orientation =
+          MediaQuery.maybeOrientationOf(context) ?? Orientation.portrait;
+      final heldPhoneLyingFlat =
+          orientation == Orientation.landscape &&
+          size.height < AppLayout.phoneLandscapeMaxHeight;
+      if (heldPhoneLyingFlat) return _veil();
+    }
+    return child;
+  }
 
+  Widget _veil() {
     return Scaffold(
       backgroundColor: AppColors.voidBlack,
       body: Center(
