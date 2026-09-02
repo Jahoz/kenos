@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../domain/echo.dart';
+import '../domain/read_scar.dart';
 import '../domain/reception.dart';
 import 'user_stats_store.dart';
 
@@ -26,7 +27,9 @@ class LocalEchoStore {
   static const _kReceptions = 'kenos.receptions';
   static const _kFreqGuide = 'kenos.freq_guide';
   static const _kStats = 'kenos.user_stats';
+  static const _kScars = 'kenos.read_scars';
   static const _maxSealed = 50;
+  static const _maxScars = 80;
 
   /// Safety net: a wedged keychain I/O must never freeze the
   /// experience — we fall back to the memory cache.
@@ -109,8 +112,7 @@ class LocalEchoStore {
       _write(_kFreqGuide, '1');
 
   /// Demo-mode persistence for the bottle-in-the-sea loop.
-  Future<List<Reception>> readReceptions() async {
-    final raw = await _read(_kReceptions);
+  Future<List<Reception>> readReceptions() async {    final raw = await _read(_kReceptions);
     if (raw == null || raw.isEmpty) return const [];
     try {
       return (jsonDecode(raw) as List)
@@ -127,6 +129,32 @@ class LocalEchoStore {
       _kReceptions,
       jsonEncode(receptions.map((r) => r.toJson()).toList()),
     );
+  }
+
+  /// Reading scars: contentless places where you held a light and it
+  /// dissolved. Local to this device, capped, forgotten with the
+  /// ether's 30-day horizon.
+  Future<List<ReadScar>> readScars() async {
+    final raw = await _read(_kScars);
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final now = DateTime.now();
+      return (jsonDecode(raw) as List)
+          .map((s) => ReadScar.fromJson(s as Map<String, dynamic>))
+          .whereType<ReadScar>()
+          .where((s) => now.difference(s.readAt).inDays < 30)
+          .toList();
+    } catch (e) {
+      debugPrint('[kenos.store] read scars corrupted: $e');
+      return const [];
+    }
+  }
+
+  Future<void> addReadScar(ReadScar scar) async {
+    final current = await readScars();
+    final next = [scar, ...current.where((s) => s.echoId != scar.echoId)];
+    if (next.length > _maxScars) next.removeRange(_maxScars, next.length);
+    await _write(_kScars, jsonEncode(next.map((s) => s.toJson()).toList()));
   }
 
   /// Read user stats (echo count, reception count, etc).

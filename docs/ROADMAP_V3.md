@@ -417,6 +417,13 @@ distance à l'œil ne comptait pas. Tout cela est mort.
   Le mécanisme s'enseigne seul : une ligne au Seuil (« à portée de ton
   œil ») et un whisper unique par session (« TROP LOIN.
   RAPPROCHE-TOI. »).
+- **Trois familles d'étoiles, distinguées par la FORME** : les
+  scellées lisent comme des **anneaux creux** teal (le contenu est
+  parti — même l'auteur ne relit plus : donné = creux), l'éther
+  lisible garde ses lumières **pleines** (une confidence attend
+  dedans), et chaque lecture consumée laisse une **cicatrice** — un
+  point creux froid, sans contenu, local à l'appareil (cap 80, fondu
+  à l'horizon 30 jours de l'éther). Le voyage de lecture se peint.
 - **Outillage de charge** : seed SQL reproductible (30 j de rampe,
   tous les cas de vie, scellés AES **lisibles** générés par
   `tool/gen_load_payloads.dart`, vérification e2e

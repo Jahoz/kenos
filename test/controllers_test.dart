@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/cosmic_map/application/map_controller.dart';
+import 'package:kenos/features/cosmic_map/application/read_scar_controller.dart';
 import 'package:kenos/features/cosmic_map/application/reception_controller.dart';
 import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/data/echo_repository.dart';
@@ -13,6 +14,7 @@ import 'package:kenos/features/echo/domain/echo.dart';
 import 'package:kenos/features/echo/domain/echo_color_theme.dart';
 import 'package:kenos/features/echo/domain/echo_excerpt.dart';
 import 'package:kenos/features/echo/domain/echo_media.dart';
+import 'package:kenos/features/echo/domain/read_scar.dart';
 import 'package:kenos/features/echo/domain/reception.dart';
 
 /// In-memory ether with the production CONTRACT semantics:
@@ -139,6 +141,7 @@ class FakeEchoRepository implements EchoRepository {
 /// In-memory sealed store — same surface, no keychain.
 class FakeLocalEchoStore implements LocalEchoStore {
   final List<Echo> sealed = [];
+  final List<ReadScar> scars = [];
   UserStats stats = UserStats.empty();
 
   @override
@@ -161,6 +164,22 @@ class FakeLocalEchoStore implements LocalEchoStore {
 
   @override
   Future<void> writeReceptions(List<Reception> receptions) async {}
+
+  @override
+  Future<List<ReadScar>> readScars() async => [...scars];
+
+  @override
+  Future<void> addReadScar(ReadScar scar) async {
+    scars.insert(0, scar);
+    // One scar per echo, capped — mirrors the real store.
+    for (var i = 1; i < scars.length; i++) {
+      if (scars[i].echoId == scar.echoId) {
+        scars.removeAt(i);
+        break;
+      }
+    }
+    if (scars.length > 80) scars.removeRange(80, scars.length);
+  }
 
   @override
   Future<void> recordVisit() async {}
@@ -382,6 +401,48 @@ void main() {
       container.read(mapControllerProvider.notifier).forget('ether-1');
       final echoes = container.read(mapControllerProvider).valueOrNull!;
       expect(echoes.map((e) => e.id), isNot(contains('ether-1')));
+    });
+  });
+
+  group('ReadScarController', () {
+    test('la lecture laisse une cicatrice locale, sans contenu', () async {
+      await container.read(readScarControllerProvider.future);
+      await container.read(readScarControllerProvider.notifier).record(
+            echoId: 'ether-1',
+            worldX: 0.42,
+            worldY: 0.77,
+          );
+      final scars = container.read(readScarControllerProvider).valueOrNull!;
+      expect(scars.single.echoId, 'ether-1');
+      expect(scars.single.worldX, closeTo(0.42, 0.001));
+      expect(store.scars.single.echoId, 'ether-1',
+          reason: 'persisté dans le store local, jamais sur le réseau');
+    });
+
+    test('relire le même écho ne laisse qu\'une cicatrice', () async {
+      await container.read(readScarControllerProvider.future);
+      final controller = container.read(readScarControllerProvider.notifier);
+      await controller.record(echoId: 'x', worldX: 0.1, worldY: 0.1);
+      await controller.record(echoId: 'x', worldX: 0.2, worldY: 0.2);
+      expect(store.scars.where((s) => s.echoId == 'x'), hasLength(1));
+    });
+
+    test('une cicatrice récente respire, une ancienne s\'efface', () {
+      final fresh = ReadScar(
+        echoId: 'f',
+        worldX: 0.5,
+        worldY: 0.5,
+        readAt: DateTime.now(),
+      );
+      final old = ReadScar(
+        echoId: 'o',
+        worldX: 0.5,
+        worldY: 0.5,
+        readAt: DateTime.now().subtract(const Duration(days: 31)),
+      );
+      expect(fresh.opacity, greaterThan(0.1));
+      expect(old.opacity, lessThan(0.01),
+          reason: "l'éther oublie à 30 jours, la cicatrice aussi");
     });
   });
 

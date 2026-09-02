@@ -17,15 +17,18 @@ import '../../constellations/domain/constellation_figure.dart';
 import '../../constellations/presentation/constellation_sheets.dart';
 import '../../echo/data/echo_providers.dart';
 import '../../echo/domain/echo.dart';
+import '../../echo/domain/read_scar.dart';
 import '../application/kenos_system.dart';
 import '../application/map_controller.dart';
 import '../application/motion_service.dart';
+import '../application/read_scar_controller.dart';
 import '../application/reception_controller.dart';
 import '../application/travel_camera.dart';
 import 'widgets/awakening_sas.dart';
 import 'widgets/background_painters.dart';
 import 'widgets/mindful_hold_star.dart';
 import 'widgets/origin_node.dart';
+import 'widgets/scar_field_painter.dart';
 import 'widgets/star_shift.dart';
 import 'widgets/system_painter.dart';
 import 'widgets/vestige.dart';
@@ -282,6 +285,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final readable = all.where((e) => !e.isMine).length;
     final signals =
         ref.watch(receptionControllerProvider).valueOrNull?.length ?? 0;
+    // The reader's trail: faint hollow points where lights dissolved.
+    final scars = ref.watch(readScarControllerProvider).valueOrNull ??
+        const <ReadScar>[];
 
     // L'Aube: once the first sync settles, the sas may speak.
     ref.listen(receptionControllerProvider, (previous, next) {
@@ -352,6 +358,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           ),
                         ),
                       ),
+                      // The reader's trail: hollow points where lights
+                      // dissolved — local, contentless, fading.
+                      if (scars.isNotEmpty)
+                        RepaintBoundary(
+                          child: CustomPaint(
+                            painter: ScarFieldPainter(
+                              center: _camera.center,
+                              zoom: _camera.zoom,
+                              scars: scars,
+                            ),
+                          ),
+                        ),
                       // The Vestiges: carved shards of culture, static
                       // in the void, tappable for a re-readable reveal.
                       if (_vestiges.isNotEmpty)

@@ -14,7 +14,9 @@ import '../../../../core/widgets/hud.dart';
 import '../../../echo/data/echo_repository.dart';
 import '../../../echo/domain/echo.dart';
 import '../../../echo/domain/reception.dart';
+import '../../application/kenos_system.dart';
 import '../../application/map_controller.dart';
+import '../../application/read_scar_controller.dart';
 import '../../application/reception_controller.dart';
 import 'reception_sheet.dart';
 import 'reveal_sheet.dart';
@@ -158,6 +160,16 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
         ref.read(mapControllerProvider.notifier).forget(targetId);
         _intercepted();
       } else {
+        // The reading leaves its mark: a contentless scar at the spot
+        // where the light dissolved — the reader's trail, local only.
+        final spot = KenosSystem.echoPosition(_echo, DateTime.now());
+        unawaited(
+          ref.read(readScarControllerProvider.notifier).record(
+                echoId: targetId,
+                worldX: spot.dx,
+                worldY: spot.dy,
+              ),
+        );
         unawaited(ref.read(audioControllerProvider).playBell(KenosBell.reveal));
         KenosHaptics.pulse(KenosPulse.reveal);
         await showRevealSheet(context, echo: echo);
@@ -323,41 +335,63 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
               child: Center(
                 child: Transform.scale(
                   scale: coreScale,
-                  child: Container(
-                    width: coreRadius * 2,
-                    height: coreRadius * 2,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          Colors.white,
-                          color,
-                          AppColors.fade(color, 0),
-                        ],
-                        stops: const [0, 0.45, 1],
-                      ),
-                      // The glow IS the depth haze: distant stars get a
-                      // softer, wider halo (the retired bucket blur
-                      // re-rasterized the viewport every frame once the
-                      // orbits came alive — this raster is cached per
-                      // star). Soft = far, tight = near.
-                      boxShadow: glowBoost > 0.05 || z < 0.55
-                          ? [
-                              BoxShadow(
-                                color: AppColors.fade(
-                                  color,
-                                  0.30 * glowBoost +
-                                      0.18 * (0.55 - z).clamp(0.0, 0.55),
-                                ),
-                                blurRadius: 14 +
-                                    10 * glowBoost +
-                                    22 * (0.55 - z).clamp(0.0, 0.55),
-                                spreadRadius: 1 + 3 * glowBoost,
-                              ),
-                            ]
-                          : null,
-                    ),
-                  ),
+                  // One's own sealed echoes read as HOLLOW rings: the
+                  // content was given away — even its author cannot
+                  // read it again. Full glow belongs to the readable
+                  // ether alone (and the hollow scars to what was
+                  // read). Shape is the distinction; no color needed.
+                  child: _echo.isMine
+                      ? Container(
+                          width: coreRadius * 2,
+                          height: coreRadius * 2,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.fade(AppColors.teal, 0.85),
+                              width: 1.3,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          width: coreRadius * 2,
+                          height: coreRadius * 2,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                Colors.white,
+                                color,
+                                AppColors.fade(color, 0),
+                              ],
+                              stops: const [0, 0.45, 1],
+                            ),
+                            // The glow IS the depth haze: distant stars get a
+                            // softer, wider halo (the retired bucket blur
+                            // re-rasterized the viewport every frame once the
+                            // orbits came alive — this raster is cached per
+                            // star). Soft = far, tight = near.
+                            boxShadow:
+                                glowBoost > 0.05 || z < 0.55
+                                    ? [
+                                        BoxShadow(
+                                          color: AppColors.fade(
+                                            color,
+                                            0.30 * glowBoost +
+                                                0.18 *
+                                                    (0.55 - z)
+                                                        .clamp(0.0, 0.55),
+                                          ),
+                                          blurRadius: 14 +
+                                              10 * glowBoost +
+                                              22 *
+                                                  (0.55 - z)
+                                                      .clamp(0.0, 0.55),
+                                          spreadRadius: 1 + 3 * glowBoost,
+                                        ),
+                                      ]
+                                    : null,
+                          ),
+                        ),
                 ),
               ),
             ),
