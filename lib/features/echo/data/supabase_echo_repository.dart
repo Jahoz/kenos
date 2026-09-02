@@ -35,15 +35,16 @@ class SupabaseEchoRepository implements EchoRepository {
     double minX,
     double minY,
     double maxX,
-    double maxY,
-  ) async {
+    double maxY, {
+    int maxTotal = SectorGrid.maxTotal,
+  }) async {
     final rows = await _client.rpc('fetch_map_sector', params: {
       'p_min_x': ParallaxMath.clamp(minX, 0, 1),
       'p_min_y': ParallaxMath.clamp(minY, 0, 1),
       'p_max_x': ParallaxMath.clamp(maxX, 0, 1),
       'p_max_y': ParallaxMath.clamp(maxY, 0, 1),
       'p_max_per_sector': SectorGrid.maxPerSector,
-      'p_max_total': SectorGrid.maxTotal,
+      'p_max_total': maxTotal,
     });
     return (rows as List)
         .map((row) => Echo.fromJson(row as Map<String, dynamic>))

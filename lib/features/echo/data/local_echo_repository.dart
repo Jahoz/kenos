@@ -128,7 +128,17 @@ class LocalEchoRepository implements EchoRepository {
         ),
       ),
     ];
-    for (final (text, theme, excerpt) in seeds) {
+    // Volume parity (montée en charge): the demo ether carries a galaxy,
+    // not a handful — otherwise demo mode can never reveal the costs the
+    // real ether pays. The curated confidés stay the soul; the crowd
+    // cycles them across varied orbits, depths and ages, comets included.
+    final crowd = <(String, String, EchoExcerpt?)>[...seeds];
+    final textOnly = seeds.where((s) => s.$3 == null).toList();
+    for (var n = 0; n < 106; n++) {
+      final (text, theme, _) = textOnly[n % textOnly.length];
+      crowd.add((text, theme, null));
+    }
+    for (final (text, theme, excerpt) in crowd) {
       final id = _uuid();
       final sealed = await EchoCipher.seal(text);
       _echoes[id] = _DemoEcho(
@@ -139,8 +149,13 @@ class LocalEchoRepository implements EchoRepository {
           coordZ: 0.15 + _random.nextDouble() * 0.75,
           theme: EchoColorTheme.fromWire(theme),
           createdAt: DateTime.now().subtract(
-            Duration(minutes: _random.nextInt(60 * 48)),
+            Duration(minutes: _random.nextInt(60 * 24 * 30)),
           ),
+          // A carried thought travels a wilder arc: some crowd stars
+          // are comets, so the demo map shows the phoenix tails too.
+          momentum: _random.nextDouble() < 0.08
+              ? 1 + _random.nextInt(3)
+              : 0,
           // Map metadata only: the door's KIND travels, the door itself
           // lives sealed (below) until the single winner opens it.
           mediaKind: excerpt?.kind.mediaKind,
@@ -218,8 +233,9 @@ class LocalEchoRepository implements EchoRepository {
     double minX,
     double minY,
     double maxX,
-    double maxY,
-  ) async {
+    double maxY, {
+    int maxTotal = SectorGrid.maxTotal,
+  }) async {
     await _ready();
     await Future<void>.delayed(latency);
     final visible = _echoes.values
@@ -233,7 +249,7 @@ class LocalEchoRepository implements EchoRepository {
         .toList();
     // Same culling as the backend RPC: the demo ether stays a galaxy,
     // never a scrollable feed.
-    return SectorGrid.cull(visible);
+    return SectorGrid.cull(visible, maxTotal: maxTotal);
   }
 
   @override

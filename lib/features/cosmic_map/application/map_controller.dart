@@ -6,10 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../echo/data/echo_providers.dart';
 import '../../echo/data/echo_repository.dart';
+import '../../echo/data/sector_grid.dart';
 import '../../echo/domain/echo.dart';
 import '../../echo/domain/echo_color_theme.dart';
 import '../../echo/domain/echo_excerpt.dart';
 import '../../echo/domain/echo_media.dart';
+import 'travel_camera.dart';
 
 /// Stellar map controller: merges the ether (remote metadata, never the
 /// text) and the user's sealed echoes (local store, sealed without
@@ -22,15 +24,31 @@ class MapController extends AsyncNotifier<List<Echo>> {
     try {
       await ref.watch(sessionReadyProvider.future);
     } catch (_) {
-      // deliberately ignored: the error will surface via fetchStarMap
+      // deliberately ignored: the error will surface via the viewport sync
     }
 
     final repo = ref.watch(echoRepositoryProvider);
     final store = ref.watch(localEchoStoreProvider);
-
-    final remote = await repo.fetchStarMap();
     final mine = await store.sealedEchoes();
-    return [...mine, ...remote];
+
+    // The first gaze: only the sky the eye actually holds. The rest of
+    // the ether is discovered by travelling — the bottle in the sea is
+    // searched for, not delivered. Same rect and budget as every travel
+    // sync (V3.7a), aimed at the opening camera. Computed locally and
+    // RETURNED (Riverpod discards state writes during build), and the
+    // rect is recorded so the first gesture-end dedups against it.
+    final first = _slackRect(TravelCamera().visibleRect);
+    _lastSyncedRect = first;
+    final fresh = await repo.fetchStarMapInSector(
+      first.loX,
+      first.loY,
+      first.hiX,
+      first.hiY,
+      // The viewport budget: a screen paints stars, not a catalogue.
+      maxTotal: SectorGrid.viewBudget,
+    );
+    final freshIds = fresh.map((e) => e.id).toSet();
+    return [...mine.where((e) => !freshIds.contains(e.id)), ...fresh];
   }
 
   /// Atomic interception of an echo.
@@ -163,6 +181,19 @@ class MapController extends AsyncNotifier<List<Echo>> {
   /// not re-ask the ether.
   ({double loX, double loY, double hiX, double hiY})? _lastSyncedRect;
 
+  /// Slacks a raw viewport rect to the fetch rect: clamped to the
+  /// server's [0,1]², padded by [_travelSlack]. One single formula so
+  /// the first gaze and every travel sync speak the same geometry.
+  ({double loX, double loY, double hiX, double hiY}) _slackRect(
+    ({double minX, double minY, double maxX, double maxY}) r,
+  ) =>
+      (
+        loX: (r.minX - _travelSlack).clamp(0.0, 1.0),
+        loY: (r.minY - _travelSlack).clamp(0.0, 1.0),
+        hiX: (r.maxX + _travelSlack).clamp(0.0, 1.0),
+        hiY: (r.maxY + _travelSlack).clamp(0.0, 1.0),
+      );
+
   Future<void> refreshViewport({
     required double minX,
     required double minY,
@@ -170,10 +201,11 @@ class MapController extends AsyncNotifier<List<Echo>> {
     required double maxY,
   }) async {
     final repo = ref.read(echoRepositoryProvider);
-    final loX = (minX - _travelSlack).clamp(0.0, 1.0);
-    final loY = (minY - _travelSlack).clamp(0.0, 1.0);
-    final hiX = (maxX + _travelSlack).clamp(0.0, 1.0);
-    final hiY = (maxY + _travelSlack).clamp(0.0, 1.0);
+    final rect = _slackRect((minX: minX, minY: minY, maxX: maxX, maxY: maxY));
+    final loX = rect.loX;
+    final loY = rect.loY;
+    final hiX = rect.hiX;
+    final hiY = rect.hiY;
     if (hiX - loX <= 0 || hiY - loY <= 0) return;
     final synced = _lastSyncedRect;
     if (synced != null &&
@@ -190,6 +222,8 @@ class MapController extends AsyncNotifier<List<Echo>> {
       loY,
       hiX,
       hiY,
+      // The viewport budget: a screen paints stars, not a catalogue.
+      maxTotal: SectorGrid.viewBudget,
     );
     if (!state.hasValue) return;
     final current = [...(state.value ?? const <Echo>[])];

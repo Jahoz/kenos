@@ -7,6 +7,7 @@ import 'package:kenos/features/cosmic_map/application/reception_controller.dart'
 import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/data/echo_repository.dart';
 import 'package:kenos/features/echo/data/local_echo_store.dart';
+import 'package:kenos/features/echo/data/sector_grid.dart';
 import 'package:kenos/features/echo/data/user_stats_store.dart';
 import 'package:kenos/features/echo/domain/echo.dart';
 import 'package:kenos/features/echo/domain/echo_color_theme.dart';
@@ -27,6 +28,10 @@ class FakeEchoRepository implements EchoRepository {
   final List<Reception> _receptions = [];
   final _changes = StreamController<void>.broadcast();
 
+  /// Every viewport the ether was asked for (test evidence).
+  final rects = <({double loX, double loY, double hiX, double hiY})>[];
+  final budgets = <int>[];
+
   @override
   Future<List<Echo>> fetchStarMap() => fetchStarMapInSector(0, 0, 1, 1);
 
@@ -35,16 +40,20 @@ class FakeEchoRepository implements EchoRepository {
     double minX,
     double minY,
     double maxX,
-    double maxY,
-  ) async =>
-      _ether
-          .where((e) => !_consumed.contains(e.id))
-          .where((e) =>
-              e.coordX >= minX &&
-              e.coordX <= maxX &&
-              e.coordY >= minY &&
-              e.coordY <= maxY)
-          .toList();
+    double maxY, {
+    int maxTotal = SectorGrid.maxTotal,
+  }) async {
+    rects.add((loX: minX, loY: minY, hiX: maxX, hiY: maxY));
+    budgets.add(maxTotal);
+    return _ether
+        .where((e) => !_consumed.contains(e.id))
+        .where((e) =>
+            e.coordX >= minX &&
+            e.coordX <= maxX &&
+            e.coordY >= minY &&
+            e.coordY <= maxY)
+        .toList();
+  }
 
   @override
   Future<ConsumedEcho?> consumeEcho(String id) async {
@@ -224,6 +233,39 @@ void main() {
   });
 
   group('MapController', () {
+    test('le premier regard ne charge que le ciel visible, au budget viewport',
+        () async {
+      await container.read(mapControllerProvider.future);
+
+      // Exactly ONE fetch on boot — the opening camera's rect plus the
+      // travel slack, never the whole sky.
+      expect(repo.rects, hasLength(1));
+      final r = repo.rects.single;
+      // Default camera: zoom 1.75 → ±0.2857 around (0.5, 0.5), + 0.05 slack.
+      expect(r.loX, closeTo(0.1643, 0.001));
+      expect(r.loY, closeTo(0.1643, 0.001));
+      expect(r.hiX, closeTo(0.8357, 0.001));
+      expect(r.hiY, closeTo(0.8357, 0.001));
+      expect(repo.budgets.single, SectorGrid.viewBudget,
+          reason: 'la carte peint des étoiles, pas un catalogue');
+    });
+
+    test('un retour sur un ciel déjà synchronisé ne re-demande rien',
+        () async {
+      await container.read(mapControllerProvider.future);
+      expect(repo.rects, hasLength(1));
+
+      // Re-centring on the opening rect (RECALIBRER semantics): the
+      // containment dedup absorbs it — zero new fetch, zero double call.
+      await container.read(mapControllerProvider.notifier).refreshViewport(
+            minX: 0.2143,
+            minY: 0.2143,
+            maxX: 0.7857,
+            maxY: 0.7857,
+          );
+      expect(repo.rects, hasLength(1));
+    });
+
     test('build fusionne éthers distants et scellés, sans doublon d\'id',
         () async {
       final echoes = await container.read(mapControllerProvider.future);

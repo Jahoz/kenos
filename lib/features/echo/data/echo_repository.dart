@@ -6,6 +6,7 @@ import '../domain/echo_color_theme.dart';
 import '../domain/echo_excerpt.dart';
 import '../domain/echo_media.dart';
 import '../domain/reception.dart';
+import 'sector_grid.dart';
 
 /// Ether access contract.
 ///
@@ -18,12 +19,15 @@ abstract class EchoRepository {
 
   /// Viewport variant: normalized rect, sector-culled (8×8 grid, newest
   /// per sector, capped total). Demo mode mirrors the exact semantics.
+  /// [maxTotal] lets the caller ask for a viewport budget instead of
+  /// the full-sky ceiling (exploration loads what the eye holds).
   Future<List<Echo>> fetchStarMapInSector(
     double minX,
     double minY,
     double maxX,
-    double maxY,
-  );
+    double maxY, {
+    int maxTotal = SectorGrid.maxTotal,
+  });
 
   /// Atomic consumption: returns the content to the winner, `null` if the
   /// echo was just intercepted elsewhere.
