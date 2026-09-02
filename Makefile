@@ -18,7 +18,7 @@ dev-local: ## Run the app on the LOCAL seeded ether (release PWA, :4308)
 		--dart-define=SUPABASE_ANON_KEY=$$(supabase status -o env | sed -n 's/.*ANON_KEY=//p' | tr -d '"')
 	@# Perf is judged on RELEASE builds only — `flutter run` is debug
 	@# (5-20× slower) and will always feel broken under volume.
-	cd build/web && python3 -m http.server 4308
+	python3 tool/serve_web.py 4308
 
 analyze: ## Static analysis (must be 0 issue)
 	flutter analyze
@@ -63,8 +63,8 @@ deploy-web: ## Build for the real ether and deploy the PWA to Vercel (prod)
 		&& echo "production verified: main.dart.js 200" \
 		|| (echo "PRODUCTION BROKEN - redeploy" && exit 1)
 
-serve-web: build-web ## Serve the built PWA on :4308
-	cd build/web && python3 -m http.server 4308
+serve-web: build-web ## Serve the built PWA on :4308 (no-cache dev server)
+	python3 tool/serve_web.py 4308
 
 db-start: ## Start the local Supabase stack (ports 56321-56324)
 	supabase start
