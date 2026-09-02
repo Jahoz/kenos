@@ -47,6 +47,12 @@ class MindfulHoldStar extends ConsumerStatefulWidget {
   /// field (they are anchors, not bottles).
   final double reception;
 
+  /// One far-field whisper per app session (static: survives screen
+  /// remounts, like the Awakening's own guard) — the field teaches
+  /// itself once, then stays quiet.
+  @visibleForTesting
+  static bool farWhisperSpoken = false;
+
   @override
   ConsumerState<MindfulHoldStar> createState() => _MindfulHoldStarState();
 }
@@ -195,7 +201,12 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     }
     if (widget.reception <= 0) {
       // Beyond the reception field: a glimmer, not a bottle. The hold
-      // does not arm — the gesture stays a travel toward it.
+      // does not arm — the gesture stays a travel toward it. The sky
+      // explains itself once, then stays quiet.
+      if (!MindfulHoldStar.farWhisperSpoken) {
+        MindfulHoldStar.farWhisperSpoken = true;
+        _toast('TROP LOIN. RAPPROCHE-TOI.');
+      }
       return;
     }
     _downPosition = event.position;

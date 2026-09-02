@@ -71,8 +71,11 @@ class OnboardingScreen extends ConsumerWidget {
                         'On donne pour se libérer.',
                   ),
                   const Spacer(flex: 2),
+                  // The reception field taught in one line: the bottle
+                  // in the sea is searched for, at distance.
                   Text(
-                    'POUR LIRE UN ÉCHO : MAINTIEN SON ÉTOILE TROIS SECONDES.',
+                    'POUR LIRE UN ÉCHO : MAINTIEN SON ÉTOILE TROIS SECONDES, '
+                    'À PORTÉE DE TON ŒIL.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: AppFonts.mono,
