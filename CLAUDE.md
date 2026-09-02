@@ -9,7 +9,9 @@ peut être lu qu'une seule fois, par une seule personne** — puis il s'autodét
 (burn after reading).
 
 - Zéro validation : pas de profil, pas de likes, pas de commentaires, pas de feed.
-- Friction as a feature : lire exige un appui long de 3 s (*Mindful Hold*).
+- Friction as a feature : lire exige un appui long de 3 s (*Mindful Hold*)
+  — et **d'être à portée de l'œil** (champ de réception, V3.12 : au-delà,
+  l'étoile n'est qu'un scintillement et le hold ne s'arme pas).
 - Éphémère absolu : 10 s de fenêtre de lecture, puis dissolution.
 - Sans identifiants Supabase, l'app démarre en **MODE DÉMO LOCAL** (éther simulé,
   sémantique identique — atomicité comprise).
@@ -53,7 +55,7 @@ lib/
 make dev                   # Mode démo local (aucun backend requis)
 make dev-local             # PWA release sur l'éther local seedé (:4308) — JAMAIS juger la perf sur `flutter run` (debug, 5-20× plus lent)
 make analyze               # 0 issue
-make test                  # 162 tests (chiffrement, culling, contrôleurs, UI)
+make test                  # 171 tests (chiffrement, culling, contrôleurs, UI)
 make db-reset && make db-test  # Migrations + 96 invariants pgTAP
 make db-seed-load && make db-load-report  # Montée en charge : seed 30 j (scellés LISIBLES, ~12k lignes) + rapport
 make db-verify-load           # Preuve e2e : consommer un écho seedé, l'ouvrir sur l'appareil

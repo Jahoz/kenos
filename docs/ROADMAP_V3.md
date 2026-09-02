@@ -382,6 +382,49 @@ du panneau. Les vidéos gardent leur porte extérieure (l'embed exige une
 webview — refus de complexité maintenu). Démo : décline toujours (test
 épinglé). 4 tests (song vs vidéo, HUD de dégradation, parité démo).
 
+## V3.12 — Le Champ de Réception & le Ciel Vivant ✅ (livrés 2026-09-02)
+
+Nés d'une montée en charge seedée (4 200 échos, 180 inconnus, 30 jours
+de rampe) : le premier regard demandait tout le ciel (94 Ko, plafond
+400 atteint), le ciel n'avançait que 4 fois par seconde, et la
+distance à l'œil ne comptait pas. Tout cela est mort.
+
+- **Le premier regard ne charge que le ciel visible** : le rect de la
+  caméra d'ouverture + la marge de voyage, au budget viewport
+  (`SectorGrid.viewBudget = 180`) — 42 Ko sur le même éther (−55 %).
+  Le reste se découvre en voyageant (machinerie V3.7a, fusion par
+  union). RECALIBRER ne refetch plus (le dédoublonnage de rect
+  l'absorbe). La démo passe de 14 à 120 étoiles : elle révèle enfin
+  les coûts du vrai éther.
+- **L'œil est écoutable, le ciel est mémoïsé** : `TravelCamera` devient
+  `ChangeNotifier` — les gestes ne rebuild plus l'écran, seulement les
+  couches qui regardent à travers lui. Tri/profondeurs mémoïsés, porte
+  epsilon sur le tilt, `RepaintBoundary` par étoile.
+- **Les orbites battent au framerate, au niveau du rendu** : `StarShift`
+  (boîte proxy à décalage de peinture piloté par `ValueNotifier`) — le
+  drift est un passage de layout + recomposition GPU des rasters en
+  cache, zéro rebuild de widget. Le souffle garde son métabolisme 4 Hz ;
+  le ticker ne fait jamais de `setState`. Le halo de profondeur quitte
+  le `ImageFiltered` de bucket (un blur re-filtre dès que son contenu
+  bouge — chaque frame, maintenant) et vit dans le glow de chaque
+  étoile : lointain = plus doux, plus large.
+- **Le champ de réception** (`ParallaxMath.receptionIntensity`, rayon
+  0,16 + fondu 0,18 en unités monde) : à portée de l'œil, une étoile
+  est vive et tenable ; au-delà, elle s'estompe à ~30 % — un
+  scintillement — et le Mindful Hold ne s'arme plus. Zoomer, c'est
+  approcher. Les étoiles scellées ignorent le champ (des ancres, pas
+  des bouteilles). **La bouteille à la mer se mérite à la distance.**
+  Le mécanisme s'enseigne seul : une ligne au Seuil (« à portée de ton
+  œil ») et un whisper unique par session (« TROP LOIN.
+  RAPPROCHE-TOI. »).
+- **Outillage de charge** : seed SQL reproductible (30 j de rampe,
+  tous les cas de vie, scellés AES **lisibles** générés par
+  `tool/gen_load_payloads.dart`, vérification e2e
+  `make db-verify-load`), wipe propre (`make db-wipe-load`), serveur
+  de dev `no-store` (une tab en cache a déjà servi le mauvais éther
+  toute une soirée). Portes : 171 tests Dart, e2e 18 ✓, analyze 0,
+  déployé et vérifié live.
+
 ## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — **GELÉ, arbitrage Hugo 2026-09-02** : on va au bout du Cadavre Exquis et des Symphonies d'abord)
 
 Créer une mini-galaxie invitable (amis, collègues), vivant en parallèle
