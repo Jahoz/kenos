@@ -49,17 +49,11 @@ void main() {
   });
 
   group('bornes visuelles', () {
-    test('opacité et flou restent dans des plages sûres', () {
+    test('opacité et tailles restent dans des plages sûres', () {
       for (final z in [0.05, 0.2, 0.5, 0.8, 1.0]) {
         expect(ParallaxMath.opacityFor(z), inExclusiveRange(0, 1.01));
-        expect(ParallaxMath.blurSigma(z), greaterThanOrEqualTo(0));
         expect(ParallaxMath.coreRadius(z), greaterThan(0));
       }
-    });
-
-    test('les objets proches ne sont pas flous, les lointains le sont', () {
-      expect(ParallaxMath.blurSigma(1.0), 0);
-      expect(ParallaxMath.blurSigma(0.1), greaterThan(0));
     });
   });
 

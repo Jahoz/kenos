@@ -34,11 +34,10 @@ class ParallaxMath {
   /// Opacity: distant objects fade into the void.
   static double opacityFor(double z) => 0.22 + 0.78 * z;
 
-  /// Depth blur (sigma) — 0 for close objects.
-  static double blurSigma(double z) {
-    if (z > 0.55) return 0;
-    return (0.55 - z) * 5.0;
-  }
+  /// Depth haze: retired with the bucket ImageFiltered (it had to
+  /// re-filter the whole viewport every frame once the orbits came
+  /// alive). The haze now lives in each star's glow — see
+  /// MindfulHoldStar: far = softer, wider halo.
 
   /// The traveller's reception field: the eye receives what drifts
   /// CLOSE. Within [receptionRadius] (world units) of the eye a star
