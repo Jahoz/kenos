@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/audio/audio_providers.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
+import '../../../core/constants/app_layout.dart';
 import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/utils/motion_preferences.dart';
 import '../../../core/utils/parallax_math.dart';
@@ -481,7 +482,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             // quiet controls. The void dominates; the numbers breathe.
             SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 16, 0),
+                padding: AppLayout.hudPadding,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -551,8 +552,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               alignment: Alignment.bottomLeft,
               child: Padding(
                 padding: EdgeInsets.only(
-                  left: 22,
-                  bottom: MediaQuery.sizeOf(context).width < 640 ? 118 : 44,
+                  left: AppLayout.originLeft,
+                  bottom: MediaQuery.sizeOf(context).width <
+                          AppLayout.mirrorGateMaxWidth
+                      ? AppLayout.originBottomNarrow
+                      : AppLayout.originBottomWide,
                 ),
                 child: const OriginNode(),
               ),
@@ -561,7 +565,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             Align(
               alignment: Alignment.bottomCenter,
               child: SafeArea(
-                minimum: const EdgeInsets.only(bottom: 30),
+                minimum: const EdgeInsets.only(
+                  bottom: AppLayout.mirrorGateBottomInset,
+                ),
                 child: _AnimatedEchoButton(
                   onPressed: () => context.push('/mirror'),
                 ),
