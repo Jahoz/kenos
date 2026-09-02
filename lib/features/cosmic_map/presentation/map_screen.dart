@@ -130,6 +130,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void dispose() {
     _glide?.cancel();
+    _camera.dispose();
     super.dispose();
   }
 
@@ -144,17 +145,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
-    setState(() {
-      if (details.pointerCount >= 2 && details.scale != 1.0) {
-        _camera.zoomBy(
-          details.scale / _pinchFactor,
-          _screenToWorld(details.focalPoint),
-        );
-        _pinchFactor = details.scale;
-      }
-      _dragTotal += details.focalPointDelta;
-      _camera.panByScreen(details.focalPointDelta, _viewport);
-    });
+    // No setState: the camera notifies, only the layers that look
+    // through it rebuild (the screen and the HUD stay untouched).
+    if (details.pointerCount >= 2 && details.scale != 1.0) {
+      _camera.zoomBy(
+        details.scale / _pinchFactor,
+        _screenToWorld(details.focalPoint),
+      );
+      _pinchFactor = details.scale;
+    }
+    _dragTotal += details.focalPointDelta;
+    _camera.panByScreen(details.focalPointDelta, _viewport);
   }
 
   void _onScaleEnd(ScaleEndDetails details) {
@@ -187,7 +188,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         _refreshAfterTravel();
         return;
       }
-      setState(() => _camera.panByWorld(path[i++]));
+      _camera.panByWorld(path[i++]);
     });
   }
 
@@ -235,9 +236,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (hit < 0) return;
     final target = KenosSystem.planetPosition(hit, DateTime.now());
     _glide?.cancel();
-    setState(() {
-      _camera.panByWorld(target - _camera.center);
-    });
+    _camera.panByWorld(target - _camera.center);
     _refreshAfterTravel();
   }
 
@@ -269,7 +268,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// RECALIBRER, travelled: return the eye to the heart of the ether.
   void _recenter() {
     _glide?.cancel();
-    setState(() => _camera.recenter());
+    _camera.recenter();
     _refreshAfterTravel();
   }
 
@@ -326,9 +325,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   onScaleUpdate: _onScaleUpdate,
                   onScaleEnd: _onScaleEnd,
                   behavior: HitTestBehavior.translucent,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
+                  // The eye moves → only what looks through it
+                  // rebuilds: heavens, vestiges, corpses, stars. The
+                  // HUD, the gates and the scenery keep their frames.
+                  child: ListenableBuilder(
+                    listenable: _camera,
+                    builder: (context, _) => Stack(
+                      fit: StackFit.expand,
+                      children: [
                       // The heavens: black hole + planets, behind stars.
                       RepaintBoundary(
                         child: CustomPaint(
@@ -443,28 +447,29 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           ),
                         ),
                       echoes.when(
-                    data: (list) => list.isEmpty
-                        ? const _CalmEther()
-                        : _ParallaxStarLayer(
-                            echoes: list,
-                            camera: _camera,
-                          ),
-                    loading: () => const _Centered(
-                      'CALIBRATION DE L\'ÉTHER…',
-                      color: AppColors.teal,
-                    ),
-                    error: (e, _) => _UnreachableEther(
-                      onRetry: () {
-                        ref.invalidate(sessionReadyProvider);
-                        ref.invalidate(mapControllerProvider);
-                      },
-                    ),
-                    ),
-                  ],
+                        data: (list) => list.isEmpty
+                            ? const _CalmEther()
+                            : _ParallaxStarLayer(
+                                echoes: list,
+                                camera: _camera,
+                              ),
+                        loading: () => const _Centered(
+                          'CALIBRATION DE L\'ÉTHER…',
+                          color: AppColors.teal,
+                        ),
+                        error: (e, _) => _UnreachableEther(
+                          onRetry: () {
+                            ref.invalidate(sessionReadyProvider);
+                            ref.invalidate(mapControllerProvider);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                );
-              },
-            ),
+              );
+            },
+          ),
             // Top HUD — one thin line of machine whisper, one row of
             // quiet controls. The void dominates; the numbers breathe.
             SafeArea(
@@ -491,13 +496,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ),
                     const SizedBox(height: 4),
                     // The quiet second line — presence, not urgency.
-                    Text(
-                      _readableSilent,
-                      style: TextStyle(
-                        fontFamily: AppFonts.mono,
-                        fontSize: 8,
-                        letterSpacing: 3,
-                        color: AppColors.fade(AppColors.pureLight, 0.28),
+                    // Listens to the eye: the drift label follows the
+                    // travel without waking the whole screen.
+                    ListenableBuilder(
+                      listenable: _camera,
+                      builder: (context, _) => Text(
+                        _readableSilent,
+                        style: TextStyle(
+                          fontFamily: AppFonts.mono,
+                          fontSize: 8,
+                          letterSpacing: 3,
+                          color: AppColors.fade(AppColors.pureLight, 0.28),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -515,10 +525,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           child: const Text('IMPACT'),
                         ),
                         TextButton(
-                          onPressed: () {
-                            _recenter();
-                            ref.invalidate(mapControllerProvider);
-                          },
+                          // Recentring only: the sky around the heart
+                          // of the ether is already synced (rect dedup)
+                          // — no full refetch, no double call.
+                          onPressed: _recenter,
                           child: const Text('RECALIBRER'),
                         ),
                       ],
@@ -569,6 +579,15 @@ class _AmbientBackground extends ConsumerStatefulWidget {
   ConsumerState<_AmbientBackground> createState() => _AmbientBackgroundState();
 }
 
+/// Epsilon gate for the tilt stream: quantized to 0.02 (≤ ~1 px of
+/// parallax at the strongest amplitude). Records compare BY VALUE, so
+/// `select` skips the rebuild while the drift stays sub-pixel — the
+/// eye sees the same sky, the frames stop bleeding.
+({double x, double y}) _gateTilt(AsyncValue<Tilt> value) {
+  final t = value.valueOrNull ?? Tilt.zero;
+  return (x: (t.x * 50).round() / 50, y: (t.y * 50).round() / 50);
+}
+
 class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
   static const _tick = Duration(milliseconds: 125);
 
@@ -596,7 +615,7 @@ class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
     // Ambient parallax calms down (×0.15) but stays alive: the ether is
     // not a screenshot.
     final motionScale = context.wantsReducedMotion ? 0.15 : 1.0;
-    final tilt = ref.watch(tiltProvider).valueOrNull ?? Tilt.zero;
+    final tilt = ref.watch(tiltProvider.select(_gateTilt));
 
     return RepaintBoundary(
       child: Stack(
@@ -657,6 +676,37 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
   DateTime? _frozenAt;
   String? _frozenFor;
 
+  /// The sky is expensive to COMPUTE and slow to CHANGE: orbits take
+  /// 25–75 s per revolution. Sort order, depths and world positions
+  /// are memoized for [_orbitEpochMs] (100 ms — an invisible lag on a
+  /// drifting star) and refreshed on every list change; only the
+  /// linear worldToScreen runs at gesture rate.
+  static const _orbitEpochMs = 100;
+  int _orbitComputedAtMs = -1;
+  List<Echo>? _orbitSource;
+  List<Echo> _sorted = const [];
+  final Map<String, double> _depths = {};
+  final Map<String, Offset> _worldPositions = {};
+
+  void _refreshOrbits(DateTime now) {
+    if (identical(_orbitSource, widget.echoes) &&
+        now.millisecondsSinceEpoch - _orbitComputedAtMs < _orbitEpochMs) {
+      return;
+    }
+    _orbitSource = widget.echoes;
+    _orbitComputedAtMs = now.millisecondsSinceEpoch;
+    _sorted = widget.echoes.toList()
+      ..sort((a, b) => a.resolveZ(now).compareTo(b.resolveZ(now)));
+    _depths.clear();
+    _worldPositions.clear();
+    for (final echo in _sorted) {
+      _depths[echo.id] = echo.resolveZ(now);
+      // V3.7b: an echo orbits the planet of its intent — the server's
+      // raw launch point was only its birth place.
+      _worldPositions[echo.id] = KenosSystem.echoPosition(echo, now);
+    }
+  }
+
   @override
   void dispose() {
     _breath?.cancel();
@@ -667,15 +717,20 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
   Widget build(BuildContext context) {
     // Ambient parallax calms down (×0.15) under reduce-motion.
     final motionScale = context.wantsReducedMotion ? 0.15 : 1.0;
-    final tilt = ref.watch(tiltProvider).valueOrNull ?? Tilt.zero;
+    final tilt = ref.watch(tiltProvider.select(_gateTilt));
     final now = DateTime.now();
+    _refreshOrbits(now);
 
     // The breathing: every star on its own phase (id-hash), a slow
-    // 6-second swell. Frozen under reduce-motion (a star chart).
+    // 6-second swell. Frozen under reduce-motion (a star chart). The
+    // timer dies with the sky it animates.
     if (!context.wantsReducedMotion && widget.echoes.isNotEmpty) {
       _breath ??= Timer.periodic(const Duration(milliseconds: 250), (_) {
         if (mounted) setState(() => _breathAt = DateTime.now());
       });
+    } else if (_breath != null) {
+      _breath?.cancel();
+      _breath = null;
     }
 
     // A caught star holds still: snapshot the instant the hold began,
@@ -688,47 +743,48 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
     final frozenFor = _frozenFor;
     final frozenAt = _frozenAt;
 
-    final sorted = widget.echoes.toList()
-      ..sort((a, b) => a.resolveZ(now).compareTo(b.resolveZ(now)));
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
         final h = constraints.maxHeight;
-        final layers = <Widget>[];
-
-        for (var b = 0; b < _bucketEdges.length - 1; b++) {
-          final children = <Widget>[];
-          for (final echo in sorted) {
-            final z = echo.resolveZ(now);
-            if (z < _bucketEdges[b] || z >= _bucketEdges[b + 1]) continue;
-            // V3.7b: an echo orbits the planet of its intent — the
-            // server's raw launch point was only its birth place.
-            // A CAUGHT echo (under a finger) computes from its frozen
-            // instant: catching a moving light is not a chase.
-            final echoNow = (frozenFor == echo.id && frozenAt != null)
-                ? frozenAt
-                : now;
-            final sp = widget.camera.worldToScreen(
-              KenosSystem.echoPosition(echo, echoNow),
-              Size(w, h),
-            );
-            // Travel culling: only the visible sky carries widgets.
-            if (sp.dx < -60 || sp.dx > w + 60 || sp.dy < -60 || sp.dy > h + 60) {
-              continue;
-            }
-            final diameter = ParallaxMath.starDiameter(z);
-            final hit = diameter + 26; // comfortable touch target
-            final screenPos = sp;
-            final baseX = screenPos.dx;
-            final baseY = screenPos.dy;
-            children.add(
-              Positioned(
-                key: ValueKey(echo.id),
-                left: baseX - hit / 2,
-                top: baseY - hit / 2,
-                width: hit,
-                height: hit,
+        // One pass, four buckets (far → near): the depth of each star
+        // comes from the memo, not from re-deriving it per bucket.
+        final buckets = List.generate(
+          _bucketEdges.length - 1,
+          (_) => <Widget>[],
+        );
+        for (final echo in _sorted) {
+          final z = _depths[echo.id] ?? echo.resolveZ(now);
+          var b = 0;
+          while (b < _bucketEdges.length - 2 && z >= _bucketEdges[b + 1]) {
+            b++;
+          }
+          // A CAUGHT echo (under a finger) computes from its frozen
+          // instant: catching a moving light is not a chase.
+          final echoNow = (frozenFor == echo.id && frozenAt != null)
+              ? frozenAt
+              : null;
+          final world = echoNow != null
+              ? KenosSystem.echoPosition(echo, echoNow)
+              : (_worldPositions[echo.id] ??
+                  KenosSystem.echoPosition(echo, now));
+          final sp = widget.camera.worldToScreen(world, Size(w, h));
+          // Travel culling: only the visible sky carries widgets.
+          if (sp.dx < -60 || sp.dx > w + 60 || sp.dy < -60 || sp.dy > h + 60) {
+            continue;
+          }
+          final diameter = ParallaxMath.starDiameter(z);
+          final hit = diameter + 26; // comfortable touch target
+          buckets[b].add(
+            Positioned(
+              key: ValueKey(echo.id),
+              left: sp.dx - hit / 2,
+              top: sp.dy - hit / 2,
+              width: hit,
+              height: hit,
+              // The star's raster survives the pan: moving it inside
+              // the bucket is a GPU recomposition, not a repaint.
+              child: RepaintBoundary(
                 child: MindfulHoldStar(
                   key: ValueKey('star-${echo.id}'),
                   echo: echo,
@@ -736,8 +792,13 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer> {
                   breathAt: _breathAt,
                 ),
               ),
-            );
-          }
+            ),
+          );
+        }
+
+        final layers = <Widget>[];
+        for (var b = 0; b < buckets.length; b++) {
+          final children = buckets[b];
           if (children.isEmpty) continue;
 
           final bucketZ =

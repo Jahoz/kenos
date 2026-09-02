@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// The traveller's eye over the ether (V3.7a — Le Voyage).
@@ -10,7 +11,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// void to travel. The camera may drift slightly BEYOND the known
 /// ether ([-margin, 1+margin]) — travelling to the edge means reaching
 /// into emptiness, and emptiness is the point.
-class TravelCamera {
+///
+/// A [ChangeNotifier]: gestures mutate the eye and ONLY the layers
+/// that look through it rebuild — the screen, the HUD and the gates
+/// never spend a frame on a pan.
+class TravelCamera extends ChangeNotifier {
   TravelCamera({
     double zoom = 1.75,
     this.margin = 0.1,
@@ -72,6 +77,7 @@ class TravelCamera {
     final applied = next - _center;
     _center = next;
     _drift += applied.distance;
+    if (applied != Offset.zero) notifyListeners();
     return applied;
   }
 
@@ -88,11 +94,14 @@ class TravelCamera {
     final target = focalWorldPoint -
         (focalWorldPoint - _center) / applied;
     _center = _clamped(target);
+    notifyListeners();
   }
 
   /// Recentre on the heart of the ether (RECALIBRER).
   void recenter() {
+    if (_center == const Offset(0.5, 0.5)) return;
     _center = const Offset(0.5, 0.5);
+    notifyListeners();
   }
 
   /// World point → screen point for a given viewport.
