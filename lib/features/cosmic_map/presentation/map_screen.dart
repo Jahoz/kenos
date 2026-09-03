@@ -633,14 +633,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextButton(
-                      style: TextButton.styleFrom(
+                    // The corpse gate: a real outlined button (a whisper
+                    // text was invisible in the void) — indigo, the
+                    // constellation's color, one breath above the mirror.
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
+                          horizontal: 16,
+                          vertical: 10,
                         ),
-                        minimumSize: const Size(0, 30),
+                        minimumSize: const Size(0, 36),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        side: BorderSide(
+                          color: AppColors.fade(AppColors.indigo, 0.55),
+                        ),
+                        backgroundColor: AppColors.voidBlack,
                       ),
                       // The corpse gate pops with the fresh id: the
                       // ring was dropped near the eye — offer the
@@ -655,13 +662,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         'OUVRIR UN CADAVRE',
                         style: TextStyle(
                           fontFamily: AppFonts.mono,
-                          fontSize: 8,
+                          fontSize: 9,
                           letterSpacing: 3,
-                          color: AppColors.fade(AppColors.indigo, 0.55),
+                          color: AppColors.fade(AppColors.indigo, 0.9),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     _AnimatedEchoButton(
                       onPressed: () => context.push('/mirror'),
                     ),
