@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,9 +15,7 @@ import '../../../core/constants/app_layout.dart';
 import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/widgets/hud.dart';
 import '../../../core/widgets/scramble_text.dart';
-import '../../constellations/data/constellation_repository.dart';
 import '../../cosmic_map/application/map_controller.dart';
-import '../../cosmic_map/application/travel_camera.dart';
 import '../../echo/data/echo_repository.dart';
 import '../../echo/domain/echo_color_theme.dart';
 import '../../echo/domain/echo_excerpt.dart';
@@ -41,7 +38,6 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
 
   EchoColorTheme _theme = EchoColorTheme.teal;
   bool _sealing = false;
-  bool _corpseMode = false;
   final ImagePicker _picker = ImagePicker();
   final AudioRecorder _recorder = AudioRecorder();
   EchoMediaDraft? _media;
@@ -320,35 +316,6 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     }
   }
 
-  /// The exquisite corpse: drop an open ring near where the eye
-  /// rests — a POEM or a SONG, chosen at the drop, never mixed. No
-  /// text from the author: strangers write/compose it blind, and the
-  /// ring pops with the result so the map can offer the seeder the
-  /// FIRST line (they are just another stranger).
-  Future<void> _dropCorpse(ConstellationKind kind) async {
-    if (_sealing) return;
-    setState(() => _sealing = true);
-    _focus.unfocus();
-    KenosHaptics.pulse(KenosPulse.seal);
-    try {
-      final eye = ref.read(travelPositionProvider);
-      final rng = Random();
-      final meta = await ref.read(constellationRepositoryProvider).seed(
-            (eye.dx + (rng.nextDouble() - 0.5) * 0.12).clamp(0.05, 0.95),
-            (eye.dy + (rng.nextDouble() - 0.5) * 0.12).clamp(0.05, 0.95),
-            kind: kind,
-          );
-      unawaited(ref.read(audioControllerProvider).playBell(KenosBell.send));
-      KenosHaptics.pulse(KenosPulse.launch);
-      if (!mounted) return;
-      Navigator.of(context).pop(meta.id);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _sealing = false);
-      showHud(context, 'L\'ÉTHER A REFUSÉ LE CADAVRE.');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -405,85 +372,13 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            _corpseMode
-                                ? 'Un cadavre exquis'
-                                : 'La formulation du vide',
+                            'La formulation du vide',
                             style: TextStyle(
                               fontFamily: AppFonts.serifItalic,
                               fontSize: 26,
                               color: AppColors.fade(AppColors.pureLight, 0.92),
                             ),
                           ),
-                          if (_corpseMode) ...[
-                            const SizedBox(height: 28),
-                            Expanded(
-                              child: Center(
-                                child: Text(
-                                  'Des inconnus y écriront une ligne chacun,\n'
-                                  'chacun voyant seulement la ligne qui le\n'
-                                  'précède. Refermé, le poème devient un\n'
-                                  'artefact : lisible par tous — toi aussi.\n\n'
-                                  'Ou ce sera une chanson : des phrases de\n'
-                                  'notes, continues à l\'oreille.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontFamily: AppFonts.serifItalic,
-                                    fontSize: 16,
-                                    height: 1.9,
-                                    color: AppColors.fade(AppColors.pureLight, 0.62),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Text(
-                              'L\'ANNEAU NAÎTRA PRÈS DE LÀ OÙ REPOSE TON REGARD',
-                              style: TextStyle(
-                                fontFamily: AppFonts.mono,
-                                fontSize: 8.5,
-                                letterSpacing: 2,
-                                color: AppColors.fade(AppColors.pureLight, 0.4),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Wrap(
-                              alignment: WrapAlignment.center,
-                              spacing: 14,
-                              runSpacing: 10,
-                              children: [
-                                OutlinedButton(
-                                  onPressed: _sealing
-                                      ? null
-                                      : () => _dropCorpse(
-                                            ConstellationKind.poem,
-                                          ),
-                                  child: Text(
-                                    _sealing ? 'LARGUAGE…' : 'LARGUER UN POÈME',
-                                  ),
-                                ),
-                                OutlinedButton(
-                                  onPressed: _sealing
-                                      ? null
-                                      : () => _dropCorpse(
-                                            ConstellationKind.melody,
-                                          ),
-                                  child: Text(
-                                    _sealing ? 'LARGUAGE…' : 'LARGUER UNE CHANSON',
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 14),
-                            Text(
-                              'TU LE LIRAS REFERMÉ — JAMAIS EN TRAIN DE SE FAIRE',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: AppFonts.mono,
-                                fontSize: 8,
-                                letterSpacing: 2,
-                                color: AppColors.fade(AppColors.pureLight, 0.3),
-                              ),
-                            ),
-                          ] else ...[
                           const SizedBox(height: 28),
                           Expanded(
                             child: _sealing
@@ -537,8 +432,6 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                               onImage: _recording ? null : _pickImage,
                               onSound: _toggleRecording,
                               onDoor: _recording ? null : _pasteExcerptLink,
-                              onCorpse: () =>
-                                  setState(() => _corpseMode = true),
                             ),
                           // The attached fragment, made visible: thumbnail or
                           // waveform, private listen, one-tap removal.
@@ -592,7 +485,6 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                               color: AppColors.fade(AppColors.pureLight, 0.3),
                             ),
                           ),
-                          ],
                         ],
                       ),
                     ),
@@ -620,7 +512,6 @@ class _ModeStrip extends StatelessWidget {
     required this.onImage,
     required this.onSound,
     required this.onDoor,
-    required this.onCorpse,
   });
 
   final bool recording;
@@ -629,7 +520,6 @@ class _ModeStrip extends StatelessWidget {
   final VoidCallback? onImage;
   final VoidCallback? onSound;
   final VoidCallback? onDoor;
-  final VoidCallback? onCorpse;
 
   @override
   Widget build(BuildContext context) {
@@ -685,8 +575,6 @@ class _ModeStrip extends StatelessWidget {
             onDoor,
             hasDoor ? AppColors.teal : null,
           ),
-          dot,
-          mode('CADAVRE', onCorpse, AppColors.fade(AppColors.indigo, 0.9)),
         ],
       ),
     );

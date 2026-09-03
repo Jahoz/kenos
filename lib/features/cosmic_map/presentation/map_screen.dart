@@ -621,23 +621,51 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 child: const OriginNode(),
               ),
             ),
-            // Mirror gate.
+            // Mirror gate + the corpse's own door: two acts of
+            // different natures, two doors — one empties oneself
+            // (the Mirror), one opens a space for strangers.
             Align(
               alignment: Alignment.bottomCenter,
               child: SafeArea(
                 minimum: const EdgeInsets.only(
                   bottom: AppLayout.mirrorGateBottomInset,
                 ),
-                child: _AnimatedEchoButton(
-                  // The Mirror may come back with a fresh corpse id:
-                  // the ring was dropped near the eye — offer the
-                  // seeder to give the FIRST blind line.
-                  onPressed: () async {
-                    final seeded = await context.push('/mirror');
-                    if (seeded is String && seeded.isNotEmpty) {
-                      await _corpseSeeded(seeded);
-                    }
-                  },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        minimumSize: const Size(0, 30),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      // The corpse gate pops with the fresh id: the
+                      // ring was dropped near the eye — offer the
+                      // seeder the FIRST blind line.
+                      onPressed: () async {
+                        final seeded = await context.push('/cadavre');
+                        if (seeded is String && seeded.isNotEmpty) {
+                          await _corpseSeeded(seeded);
+                        }
+                      },
+                      child: Text(
+                        'OUVRIR UN CADAVRE',
+                        style: TextStyle(
+                          fontFamily: AppFonts.mono,
+                          fontSize: 8,
+                          letterSpacing: 3,
+                          color: AppColors.fade(AppColors.indigo, 0.55),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _AnimatedEchoButton(
+                      onPressed: () => context.push('/mirror'),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -1058,7 +1086,7 @@ class _CorpseGuide extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              'Pour en lancer un : MIROIR → CADAVRE.',
+              'Pour en ouvrir un : OUVRIR UN CADAVRE,\nau pied du miroir.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: AppFonts.serifItalic,

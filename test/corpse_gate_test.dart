@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/constellations/data/constellation_repository.dart';
+import 'package:kenos/features/constellations/presentation/corpse_screen.dart';
 import 'package:kenos/features/cosmic_map/application/travel_camera.dart';
-import 'package:kenos/features/create_echo/presentation/mirror_screen.dart';
 
-/// The Mirror's fourth mode: CADAVRE drops an open ring near the eye
-/// and pops with the fresh id — the map then offers the seeder to
-/// give the FIRST blind line. Before this existed, seeding a corpse
-/// had NO UI at all.
+/// The corpse has its own door (OUVRIR UN CADAVRE on the map) and its
+/// own screen — an echo empties oneself, a corpse opens a space for
+/// strangers. Pinned: poem or song chosen at the drop, the ring born
+/// near the resting eye, the id pops back to the map for the FIRST
+/// blind line.
 void main() {
   late FakeConstellationRepository repo;
 
@@ -16,7 +17,10 @@ void main() {
     repo = FakeConstellationRepository();
   });
 
-  Future<void> pumpMirror(WidgetTester tester) async {
+  Future<void> pumpCorpse(WidgetTester tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -27,13 +31,11 @@ void main() {
         child: MaterialApp(
           home: Builder(
             builder: (context) => TextButton(
-              // Push the Mirror like the map's gate does, capturing
-              // the pop result (the fresh corpse id).
+              // Push like the map's gate, capturing the pop result.
               onPressed: () async {
-                repo.poppedWith = await Navigator.of(context)
-                    .push<String?>(
-                      MaterialPageRoute(builder: (_) => const MirrorScreen()),
-                    );
+                repo.poppedWith = await Navigator.of(context).push<String?>(
+                  MaterialPageRoute(builder: (_) => const CorpseScreen()),
+                );
               },
               child: const Text('GATE'),
             ),
@@ -45,41 +47,45 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('les modes portent des noms — le cadavre est visible',
+  testWidgets('le cadavre a son propre seuil : poème ou chanson',
       (tester) async {
-    await pumpMirror(tester);
-    expect(find.text('CADAVRE'), findsOneWidget,
-        reason: 'la bande de modes remplace les icônes muettes');
-    expect(find.text('PORTE'), findsOneWidget);
-    expect(find.text('APAISER'), findsOneWidget,
-        reason: 'le thème se lit');
+    await pumpCorpse(tester);
+    expect(find.text('Un cadavre exquis'), findsOneWidget);
+    expect(find.text('LARGUER UN POÈME'), findsOneWidget);
+    expect(find.text('LARGUER UNE CHANSON'), findsOneWidget);
+    expect(find.text('RENONCER'), findsOneWidget);
   });
 
-  testWidgets('larguer un cadavre : anneau près de l\'œil, id au pop',
+  testWidgets('larguer un poème : anneau près de l\'œil, id au pop',
       (tester) async {
-    await pumpMirror(tester);
-
-    await tester.tap(find.text('CADAVRE'));
-    await tester.pumpAndSettle();
-    expect(find.text('Un cadavre exquis'), findsOneWidget);
+    await pumpCorpse(tester);
 
     await tester.tap(find.text('LARGUER UN POÈME'));
     await tester.pumpAndSettle();
 
-    // Seeded ONCE, near the resting eye (±0.06 jitter).
     expect(repo.seeds, hasLength(1));
     expect(repo.seeds.single.dx, inExclusiveRange(0.44, 0.56));
     expect(repo.seeds.single.dy, inExclusiveRange(0.44, 0.56));
-
-    // The Mirror popped with the fresh corpse id.
+    expect(repo.lastKind, ConstellationKind.poem);
     expect(repo.poppedWith, 'corpse-fresh');
-    expect(find.byType(MirrorScreen), findsNothing);
+    expect(find.byType(CorpseScreen), findsNothing);
+  });
+
+  testWidgets('larguer une chanson : le genre voyage', (tester) async {
+    await pumpCorpse(tester);
+
+    await tester.tap(find.text('LARGUER UNE CHANSON'));
+    await tester.pumpAndSettle();
+
+    expect(repo.lastKind, ConstellationKind.melody);
+    expect(repo.poppedWith, 'corpse-fresh');
   });
 }
 
 class FakeConstellationRepository implements ConstellationRepository {
   final List<Offset> seeds = [];
   String? poppedWith;
+  ConstellationKind? lastKind;
 
   @override
   Future<ConstellationMeta> seed(
@@ -88,6 +94,7 @@ class FakeConstellationRepository implements ConstellationRepository {
     ConstellationKind kind = ConstellationKind.poem,
   }) async {
     seeds.add(Offset(x, y));
+    lastKind = kind;
     return ConstellationMeta(
       id: 'corpse-fresh',
       seedX: x,

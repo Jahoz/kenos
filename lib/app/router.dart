@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/constants/app_durations.dart';
 import '../core/utils/motion_preferences.dart';
+import '../features/constellations/presentation/corpse_screen.dart';
 import '../features/cosmic_map/presentation/impact_screen.dart';
 import '../features/cosmic_map/presentation/map_screen.dart';
 import '../features/create_echo/presentation/mirror_screen.dart';
@@ -39,6 +40,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/mirror',
         pageBuilder: (context, state) => _fade(context, child: const MirrorScreen()),
+      ),
+      GoRoute(
+        path: '/cadavre',
+        pageBuilder: (context, state) => _fade(context, child: const CorpseScreen()),
       ),
       GoRoute(
         path: '/impact',
