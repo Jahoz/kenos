@@ -61,7 +61,7 @@ make db-seed-load && make db-load-report  # Montée en charge : seed 30 j (scell
 make db-verify-load           # Preuve e2e : consommer un écho seedé, l'ouvrir sur l'appareil
 make db-wipe-load              # Reset clean du seed (data réelle + KEK intacts)
 make e2e                   # Boucle réelle sur PostgREST local
-make deploy-site           # Landing de présentation → kenos-site.vercel.app (projet Vercel séparé)
+make deploy-site           # Landing → kenos-site.vercel.app (Vercel séparé, SANS lien git ; épingle l'alias — jamais de déploiement par push)
 python3 tool/gen_audio.py  # Régénère les assets audio (std-lib only)
 python3 tool/gen_icons.py  # Régénère les icônes Web/Android/iOS (std-lib only)
 ```

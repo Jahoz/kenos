@@ -66,8 +66,19 @@ deploy-web: ## Build for the real ether and deploy the PWA to Vercel (prod)
 serve-web: build-web ## Serve the built PWA on :4308 (no-cache dev server)
 	python3 tool/serve_web.py 4308
 
-deploy-site: ## Deploy the presentation landing (separate project, kenos-site)
-	cd site && vercel deploy --prod --yes
+deploy-site: ## Deploy the landing (kenos-site) + pin the production alias
+	@# The alias assignment at deploy time is a known race (it lost
+	@# twice) — pin it explicitly to the fresh deployment. The project
+	@# is CLI-only on purpose: no git link (a repo-root push once
+	@# built an EMPTY site that shadowed the real one for an hour).
+	cd site && DEPLOY=$$(vercel deploy --prod --yes 2>&1); \
+	  echo "$$DEPLOY" | tail -2; \
+	  URL=$$(echo "$$DEPLOY" | awk '/Production/ && /jahozs-projects/ {print $$2}' | head -1); \
+	  vercel alias set "$$URL" kenos-site.vercel.app; \
+	  sleep 3; \
+	  curl -fsS -o /dev/null "https://kenos-site.vercel.app/?v=$$(date +%s)" \
+	    && echo "landing verified: 200" \
+	    || (echo "LANDING BROKEN — check vercel alias" && exit 1)
 
 db-start: ## Start the local Supabase stack (ports 56321-56324)
 	supabase start
