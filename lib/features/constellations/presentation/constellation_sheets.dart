@@ -74,9 +74,9 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
   AssembledLine? _previous;
   bool _peeked = false;
 
-  /// SONG mode: the composer's draft (note indices into the waves'
-  /// pentatonic scale).
-  List<int> _draft = [];
+  /// SONG mode: the composer's draft — notes AND the rhythm the
+  /// fingers actually played.
+  NotePhrase? _draft;
 
   /// The composer pad, addressable for EFFACER.
   final GlobalKey<_ComposerPadState> _padKey = GlobalKey<_ComposerPadState>();
@@ -103,11 +103,11 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
 
   /// One note, best-effort: the spatial engine when it lives, the
   /// baked wave asset otherwise. The song never blocks, never throws.
-  Future<void> _playNote(int noteIndex, {double pan = 0}) async {
+  Future<void> _playNote(int noteIndex, {double pan = 0, double gain = 0.6}) async {
     final spatial = await SpatialWaveAudio.instance.playNote(
       noteIndex,
       pan: pan,
-      gain: 0.6,
+      gain: gain,
     );
     if (!spatial) {
       try {
@@ -120,14 +120,15 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
     }
   }
 
-  Future<void> _playPhrase(Iterable<int> notes) async {
-    final list = notes.toList();
-    for (var i = 0; i < list.length; i++) {
-      // Pan sweeps the stereo field with the phrase's progression.
-      unawaited(_playNote(list[i], pan: -0.6 + 1.2 * (i / 7)));
-      await Future<void>.delayed(
-        const Duration(milliseconds: NotePhrase.phraseNoteSpacingMs),
-      );
+  /// Plays a phrase at ITS OWN RHYTHM — each note held exactly as
+  /// long as the stranger held it, the pan sweeping the stereo field
+  /// with the progression. Fire-and-forget from every caller.
+  Future<void> _playPhrase(NotePhrase phrase) async {
+    final holds = phrase.holds;
+    final n = phrase.notes.length;
+    for (var i = 0; i < n; i++) {
+      unawaited(_playNote(phrase.notes[i], pan: -0.6 + 1.2 * (i / (n - 1).clamp(1, 7))));
+      await Future<void>.delayed(Duration(milliseconds: holds[i]));
     }
   }
 
@@ -140,7 +141,7 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
   Future<void> _send() async {
     if (_sending) return;
     final payload = _isSong
-        ? (_draft.isEmpty ? null : NotePhrase(_draft).encode())
+        ? (_draft == null || _draft!.notes.isEmpty ? null : _draft!.encode())
         : _input.text.trim().isEmpty ? null : _input.text.trim();
     if (payload == null) return;
     if (!_isSong && payload.length > _maxLength) return;
@@ -234,7 +235,7 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
                     TextButton(
                       onPressed: () {
                         final phrase = NotePhrase.tryParse(_previous!.text);
-                        if (phrase != null) unawaited(_playPhrase(phrase.notes));
+                        if (phrase != null) unawaited(_playPhrase(phrase));
                       },
                       child: const Text('ÉCOUTER'),
                     )
@@ -263,14 +264,16 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
                   ),
               const SizedBox(height: 22),
               if (_isSong) ...[
-                // The composer: tap the void, the note lands EXACTLY
-                // where the finger fell — bottom = low, top =
-                // crystalline (the waves' own mapping), the dot's hue
-                // from the tap's horizontal band (the symphonies'
-                // palette: purple left → cyan right).
+                // The composer: tap the void — the HEIGHT is the note
+                // (bottom = low, top = crystalline, the waves' own
+                // mapping), the TIME is the finger's own rhythm
+                // (every interval between touches is recorded and
+                // travels sealed with the phrase). The score writes
+                // itself left → right; the hue follows the phrase's
+                // progression (the symphonies' palette).
                 _ComposerPad(
                   key: _padKey,
-                  onChanged: (notes) => setState(() => _draft = notes),
+                  onChanged: (phrase) => setState(() => _draft = phrase),
                   onPlayNote: (note) => unawaited(_playNote(note)),
                 ),
                 const SizedBox(height: 12),
@@ -279,15 +282,17 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
                   children: [
                     TextButton(
                       onPressed:
-                          _draft.isEmpty ? null : () => unawaited(_playPhrase(_draft)),
+                          _draft == null || _draft!.notes.isEmpty
+                              ? null
+                              : () => unawaited(_playPhrase(_draft!)),
                       child: const Text('ÉCOUTER MA PHRASE'),
                     ),
                     TextButton(
-                      onPressed: _draft.isEmpty
+                      onPressed: _draft == null || _draft!.notes.isEmpty
                           ? null
                           : () {
                               _padKey.currentState?.clear();
-                              setState(() => _draft = []);
+                              setState(() => _draft = null);
                             },
                       child: const Text('EFFACER'),
                     ),
@@ -326,7 +331,9 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
                 // The void gives nothing to the void: an empty line —
                 // written or sung — never leaves the device.
                 onPressed: _sending ||
-                        (_isSong ? _draft.isEmpty : _input.text.trim().isEmpty)
+                        (_isSong
+                            ? _draft == null || _draft!.notes.isEmpty
+                            : _input.text.trim().isEmpty)
                     ? null
                     : _send,
                 child: Text(
@@ -364,7 +371,9 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
 class _ComposerPad extends StatefulWidget {
   const _ComposerPad({super.key, required this.onChanged, required this.onPlayNote});
 
-  final ValueChanged<List<int>> onChanged;
+  /// The whole living draft — notes AND the rhythm the fingers
+  /// played. Null when the pad is empty.
+  final ValueChanged<NotePhrase?> onChanged;
   final void Function(int note) onPlayNote;
 
   @override
@@ -375,11 +384,32 @@ class _ComposerPadState extends State<_ComposerPad> {
   static const padWidth = 260.0;
   static const padHeight = 170.0;
 
-  final List<({int note, double x, double y})> _spots = [];
+  /// Every touch: the note (from the tap's height) and the instant
+  /// it landed (a clock started at the FIRST touch). The intervals
+  /// between touches ARE the rhythm — recorded live, sealed with the
+  /// phrase, never flattened again.
+  final List<({int note, int atMs, double y})> _taps = [];
+  final Stopwatch _clock = Stopwatch();
 
-  List<int> get notes => [for (final s in _spots) s.note];
+  NotePhrase? get _phrase {
+    if (_taps.isEmpty) return null;
+    final holds = <int>[
+      for (var i = 0; i < _taps.length; i++)
+        // The last note's hold ends the phrase; the others last
+        // exactly as long as the stranger waited before the next.
+        i == _taps.length - 1
+            ? NotePhrase.defaultHoldMs
+            : _taps[i + 1].atMs - _taps[i].atMs,
+    ];
+    return NotePhrase([for (final t in _taps) t.note], holds);
+  }
 
-  void clear() => setState(_spots.clear);
+  void clear() => setState(() {
+        _taps.clear();
+        _clock.stop();
+        _clock.reset();
+        widget.onChanged(null);
+      });
 
   @override
   Widget build(BuildContext context) {
@@ -396,19 +426,26 @@ class _ComposerPadState extends State<_ComposerPad> {
                 ? padHeight
                 : constraints.maxHeight,
           );
+          // The score writes itself left → right: each dot's X is
+          // its TIME in the phrase (normalized to the pad). With one
+          // note only, the span is the default hold — the dot starts
+          // at the left edge, writing begins.
+          final spanMs = _taps.isEmpty
+              ? 1
+              : (_taps.last.atMs).clamp(NotePhrase.defaultHoldMs, 1 << 30);
+          double timeX(int i) =>
+              0.05 + 0.9 * (_taps[i].atMs / spanMs).clamp(0.0, 1.0);
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapUp: (details) {
-              if (_spots.length >= NotePhrase.maxNotes) return;
-              // Normalized IN the pad, by the pad's own constraints.
-              final x = (details.localPosition.dx / size.width)
-                  .clamp(0.0, 1.0);
+              if (_taps.length >= NotePhrase.maxNotes) return;
+              if (!_clock.isRunning && _taps.isEmpty) _clock.start();
               final y = (details.localPosition.dy / size.height)
                   .clamp(0.0, 1.0);
               final note = WaveMath.noteForY(y);
-              setState(() => _spots.add((note: note, x: x, y: y)));
+              setState(() => _taps.add((note: note, atMs: _clock.elapsedMilliseconds, y: y)));
               widget.onPlayNote(note);
-              widget.onChanged(notes);
+              widget.onChanged(_phrase);
             },
             child: Container(
               key: const Key('song_composer_pad'),
@@ -419,35 +456,35 @@ class _ComposerPadState extends State<_ComposerPad> {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // EXACT placement: the dot sits where the finger
-                  // fell — 5 px half-size so the center aligns.
-                  for (final (i, s) in _spots.indexed)
+                  for (final (i, t) in _taps.indexed)
                     Positioned(
-                      left: s.x * size.width - 5,
-                      top: s.y * size.height - 5,
+                      left: timeX(i) * size.width - 5,
+                      top: t.y * size.height - 5,
                       child: Container(
                         width: 10,
                         height: 10,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          // The symphonies' hue grammar: the band the
-                          // note was born in. Later notes breathe
-                          // brighter (the phrase gains confidence).
+                          // The symphonies' hue grammar, riding the
+                          // phrase's TIME: the band it was born in.
+                          // Later notes breathe brighter.
                           color: AppColors.fade(
-                            WavePalette.hueFor(WaveMath.hueForX(s.x)),
+                            WavePalette.hueFor(WaveMath.hueForX(timeX(i))),
                             0.45 + 0.55 * (i + 1) / NotePhrase.maxNotes,
                           ),
                         ),
                       ),
                     ),
-                  if (_spots.isEmpty)
+                  if (_taps.isEmpty)
                     const Center(
                       child: Text(
-                        'TOUCHE LE VIDE — CHAQUE TOUCHE EST UNE NOTE',
+                        'TOUCHE — LA HAUTEUR EST LA NOTE,\nLE RYTHME EST TON GESTE',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontFamily: AppFonts.mono,
                           fontSize: 7.5,
                           letterSpacing: 2,
+                          height: 1.9,
                           color: Color(0x40F4F4F6),
                         ),
                       ),
@@ -516,12 +553,14 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
       );
       final pan = station.dx.clamp(-1.0, 1.0);
       final gain = 0.85 - 0.3 * ((station.dy + 1) / 2);
-      for (final note in _phrases![p].notes) {
+      final phrase = _phrases![p];
+      final holds = phrase.holds;
+      for (var i = 0; i < phrase.notes.length; i++) {
         if (!mounted || !_songAlive) return;
-        unawaited(_playNote(note, pan: pan, gain: gain));
-        await Future<void>.delayed(
-          const Duration(milliseconds: NotePhrase.phraseNoteSpacingMs),
-        );
+        unawaited(_playNote(phrase.notes[i], pan: pan, gain: gain));
+        // Each note held exactly as long as the stranger held it:
+        // the rhythm crosses the ether with the melody.
+        await Future<void>.delayed(Duration(milliseconds: holds[i]));
       }
       await Future<void>.delayed(const Duration(milliseconds: 600));
     }

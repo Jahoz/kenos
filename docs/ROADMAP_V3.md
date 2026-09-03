@@ -488,6 +488,15 @@ futur possible, les yeux ouverts), **poème OU chanson** au largage
   déscellées — le peek V3.13 interprète la charge), puis pose ses
   notes sur le vide (tap : bas = grave, haut = cristallin — le
   mapping exact des ondes).
+- **Le rythme voyage avec la mélodie** (2026-09-03, « hyper
+  important ») : chaque intervalle entre touches du compositeur est
+  chronométré et scellé dans la phrase (`d`, tenues bornées 120-4000
+  ms — un flutter au minimum, un souffle au maximum, jamais de
+  silence infini). La lecture restitue chaque tenue exacte — chez le
+  compositeur, chez le suivant qui écoute la phrase précédente, et
+  dans la chanson refermée. La portée s'écrit de gauche à droite :
+  chaque point à SA hauteur, à SON instant ; la teinte suit la
+  progression (palette des ondes).
 - **La figure chante** : refermée, la chanson est un artefact qui se
   traverse — phrase après phrase, chacune synthétisée à SA station
   de l'angle d'or, placée dans le champ stéréo (flutter_soloud,

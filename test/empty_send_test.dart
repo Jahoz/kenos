@@ -72,7 +72,7 @@ void main() {
     expect(buttonOf(tester, 'DONNER LA PHRASE').onPressed, isNull);
 
     // One note on the composer pad revives it.
-    final pad = find.textContaining('TOUCHE LE VIDE');
+    final pad = find.textContaining('LA HAUTEUR EST LA NOTE');
     await tester.tapAt(tester.getCenter(pad));
     await tester.pump();
     expect(buttonOf(tester, 'DONNER LA PHRASE').onPressed, isNotNull);

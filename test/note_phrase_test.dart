@@ -14,6 +14,37 @@ void main() {
       expect(parsed!.notes, [0, 4, 7, 12, 19]);
     });
 
+    test('LE RYTHME voyage : chaque note gardant sa tenue réelle', () {
+      // The stranger played: a quick pair, then a long held breath.
+      final phrase = NotePhrase([7, 9, 12], [220, 3200, 1400]);
+      final parsed = NotePhrase.tryParse(phrase.encode());
+      expect(parsed, isNotNull);
+      expect(parsed!.notes, [7, 9, 12]);
+      expect(parsed.holds, [220, 3200, 1400],
+          reason: 'le rythme du geste traverse le scellé intact');
+      expect(
+        parsed.playbackSpan.inMilliseconds,
+        greaterThan(220 + 3200 + 1400),
+        reason: 'la durée totale inclut la queue d\'expiration',
+      );
+    });
+
+    test('bornes du rythme : un flutter au minimum, un souffle au maximum',
+        () {
+      // Too fast and absurdly long holds are clamped, never rejected.
+      final clamped = NotePhrase.tryParse('{"n":[4,4],"d":[10,999999]}')!;
+      expect(clamped.holds[0], NotePhrase.minHoldMs,
+          reason: 'plus vite qu\'un trille = un trille');
+      expect(clamped.holds[1], NotePhrase.maxHoldMs,
+          reason: 'plus long qu\'un souffle = un souffle');
+    });
+
+    test('une phrase sans rythme (legacy) retombe sur la tenue par défaut',
+        () {
+      final legacy = NotePhrase.tryParse('{"n":[0,4]}')!;
+      expect(legacy.holds, [1400, 1400]);
+    });
+
     test('une ligne de poème ne se parse pas en phrase', () {
       expect(NotePhrase.tryParse('je navigue dans le vide pour toi'), isNull);
     });
