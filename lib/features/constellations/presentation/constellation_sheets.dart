@@ -348,6 +348,11 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
                   maxLines: 1,
                   cursorColor: AppColors.teal,
                   textAlign: TextAlign.center,
+                  // Without this the send button never wakes: typing
+                  // alone rebuilds nothing (caught by the empty-send
+                  // tests — the void gives nothing, but a line must
+                  // revive the gesture).
+                  onChanged: (_) => setState(() {}),
                   style: TextStyle(
                     fontFamily: AppFonts.serifItalic,
                     fontSize: 17,
@@ -365,8 +370,10 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
                 ),
               const SizedBox(height: 20),
               OutlinedButton(
+                // The void gives nothing to the void: an empty line —
+                // written or sung — never leaves the device.
                 onPressed: _sending ||
-                        (_isSong && _draft.isEmpty)
+                        (_isSong ? _draft.isEmpty : _input.text.trim().isEmpty)
                     ? null
                     : _send,
                 child: Text(
