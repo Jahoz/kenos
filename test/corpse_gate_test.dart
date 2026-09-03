@@ -50,9 +50,9 @@ void main() {
   testWidgets('le cadavre a son propre seuil : poème ou chanson',
       (tester) async {
     await pumpCorpse(tester);
-    expect(find.text('Un cadavre exquis'), findsOneWidget);
-    expect(find.text('LARGUER UN POÈME'), findsOneWidget);
-    expect(find.text('LARGUER UNE CHANSON'), findsOneWidget);
+    expect(find.text("Un poème à l'aveugle"), findsOneWidget);
+    expect(find.text('SEMER UN POÈME'), findsOneWidget);
+    expect(find.text('SEMER UNE CHANSON'), findsOneWidget);
     expect(find.text('RENONCER'), findsOneWidget);
   });
 
@@ -60,7 +60,7 @@ void main() {
       (tester) async {
     await pumpCorpse(tester);
 
-    await tester.tap(find.text('LARGUER UN POÈME'));
+    await tester.tap(find.text('SEMER UN POÈME'));
     await tester.pumpAndSettle();
 
     expect(repo.seeds, hasLength(1));
@@ -74,7 +74,7 @@ void main() {
   testWidgets('larguer une chanson : le genre voyage', (tester) async {
     await pumpCorpse(tester);
 
-    await tester.tap(find.text('LARGUER UNE CHANSON'));
+    await tester.tap(find.text('SEMER UNE CHANSON'));
     await tester.pumpAndSettle();
 
     expect(repo.lastKind, ConstellationKind.melody);

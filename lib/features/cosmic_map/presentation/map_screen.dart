@@ -78,7 +78,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             .length;
     if (sealedCount > 0) parts.add('$sealedCount SCELLÉES');
     if (_constellations.isNotEmpty) {
-      parts.add('${_constellations.length} CADAVRES');
+      parts.add('${_constellations.length} CONSTELLATIONS');
     }
     final unreadVestiges = _vestiges.where((v) => !v.isRead).length;
     if (unreadVestiges > 0) parts.add('$unreadVestiges VESTIGES');
@@ -659,7 +659,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         }
                       },
                       child: Text(
-                        'OUVRIR UN CADAVRE',
+                        'SEMER UNE CONSTELLATION',
                         style: TextStyle(
                           fontFamily: AppFonts.mono,
                           fontSize: 9,
@@ -1059,7 +1059,7 @@ class _CorpseGuide extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'LES CADAVRES EXQUIS',
+              'LES CONSTELLATIONS',
               style: TextStyle(
                 fontFamily: AppFonts.mono,
                 fontSize: 10,
@@ -1093,7 +1093,7 @@ class _CorpseGuide extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              'Pour en ouvrir un : OUVRIR UN CADAVRE,\nau pied du miroir.',
+              'Pour en semer une : SEMER UNE CONSTELLATION,\nau pied du miroir.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: AppFonts.serifItalic,

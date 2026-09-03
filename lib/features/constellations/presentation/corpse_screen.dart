@@ -14,7 +14,7 @@ import '../../../core/widgets/hud.dart';
 import '../../cosmic_map/application/travel_camera.dart';
 import '../data/constellation_repository.dart';
 
-/// LE CADAVRE — its own threshold, its own gesture.
+/// LA CONSTELLATION — its own threshold, its own gesture.
 ///
 /// An echo is emptying ONESELF; a corpse is opening a space for
 /// STRANGERS. Two acts of different natures — the corpse does not
@@ -54,7 +54,7 @@ class _CorpseScreenState extends ConsumerState<CorpseScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _dropping = false);
-      showHud(context, 'L\'ÉTHER A REFUSÉ LE CADAVRE.');
+      showHud(context, 'L\'ÉTHER A REFUSÉ LA CONSTELLATION.');
     }
   }
 
@@ -82,7 +82,7 @@ class _CorpseScreenState extends ConsumerState<CorpseScreen> {
                     Row(
                       children: [
                         Text(
-                          'CADAVRE EXQUIS',
+                          'CONSTELLATION',
                           style: TextStyle(
                             fontFamily: AppFonts.mono,
                             fontSize: 9,
@@ -100,7 +100,7 @@ class _CorpseScreenState extends ConsumerState<CorpseScreen> {
                     ),
                     const SizedBox(height: 40),
                     Text(
-                      'Un cadavre exquis',
+                      'Un poème à l\'aveugle',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: AppFonts.serifItalic,
@@ -145,7 +145,7 @@ class _CorpseScreenState extends ConsumerState<CorpseScreen> {
                               ? null
                               : () => _drop(ConstellationKind.poem),
                           child: Text(
-                            _dropping ? 'LARGUAGE…' : 'LARGUER UN POÈME',
+                            _dropping ? 'SEMER…' : 'SEMER UN POÈME',
                           ),
                         ),
                         OutlinedButton(
@@ -153,7 +153,7 @@ class _CorpseScreenState extends ConsumerState<CorpseScreen> {
                               ? null
                               : () => _drop(ConstellationKind.melody),
                           child: Text(
-                            _dropping ? 'LARGUAGE…' : 'LARGUER UNE CHANSON',
+                            _dropping ? 'SEMER…' : 'SEMER UNE CHANSON',
                           ),
                         ),
                       ],
