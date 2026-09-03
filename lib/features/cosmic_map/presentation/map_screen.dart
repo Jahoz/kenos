@@ -296,7 +296,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         unawaited(_loadConstellations());
         return;
       }
-      await showConstellationReading(context, lines: lines);
+      await showConstellationReading(
+        context,
+        lines: lines,
+        curatedBy: cst.curatedBy,
+      );
       // No reload: the artifact stays, refermé.
     } else {
       unawaited(showContributeSheet(context, ref: ref, constellation: cst)

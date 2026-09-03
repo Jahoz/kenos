@@ -42,6 +42,7 @@ Future<void> showContributeSheet(
 Future<void> showConstellationReading(
   BuildContext context, {
   required List<AssembledLine> lines,
+  String? curatedBy,
 }) {
   return showGeneralDialog(
     context: context,
@@ -53,7 +54,7 @@ Future<void> showConstellationReading(
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return FadeTransition(
         opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        child: _ReadingPanel(lines: lines),
+        child: _ReadingPanel(lines: lines, curatedBy: curatedBy),
       );
     },
   );
@@ -500,9 +501,13 @@ class _ComposerPadState extends State<_ComposerPad> {
 }
 
 class _ReadingPanel extends ConsumerStatefulWidget {
-  const _ReadingPanel({required this.lines});
+  const _ReadingPanel({required this.lines, this.curatedBy});
 
   final List<AssembledLine> lines;
+
+  /// The Curator's attribution: a curated reading NAMES the poet —
+  /// it never pretends strangers wrote public-domain poetry.
+  final String? curatedBy;
 
   @override
   ConsumerState<_ReadingPanel> createState() => _ReadingPanelState();
@@ -676,9 +681,11 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
                   ],
                 const SizedBox(height: 26),
                 Text(
-                  song != null
-                      ? 'UNE CHANSON D\'ÉTRANGERS — ELLE RESTE, REFERMÉE'
-                      : 'UN POÈME D\'ÉTRANGERS — IL RESTE, REFERMÉ',
+                  widget.curatedBy != null
+                      ? '— ${widget.curatedBy} —'
+                      : song != null
+                          ? 'UNE CHANSON D\'ÉTRANGERS — ELLE RESTE, REFERMÉE'
+                          : 'UN POÈME D\'ÉTRANGERS — IL RESTE, REFERMÉ',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: AppFonts.mono,

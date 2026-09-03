@@ -1,6 +1,6 @@
 # KENOS — canonical commands (see CONTRIBUTING.md for the full picture)
 .DEFAULT_GOAL := help
-.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web deploy-site serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load e2e gen-icons gen-audio coverage
+.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web deploy-site serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load db-garden db-curate e2e gen-icons gen-audio coverage
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -106,6 +106,14 @@ db-verify-load: ## End-to-end proof: consume a seeded echo + corpse, open on-dev
 
 db-load-report: ## Visualize the ramp: daily volumes, sector culling, case coverage
 	docker exec -i supabase_db_kenos psql -U postgres -d postgres < supabase/snippets/load_report.sql
+
+db-garden: ## Plant open constellation rings up to target (local gardener)
+	docker exec -i supabase_db_kenos psql -U postgres -d postgres \
+		-c "select public.kenos_garden_seed();"
+
+db-curate: ## Curate public-domain poetry artifacts (local, idempotent)
+	docker exec -i supabase_db_kenos psql -U postgres -d postgres \
+		-v ON_ERROR_STOP=1 < supabase/snippets/curate_constellations.sql
 
 db-wipe-load: ## Clean reset: remove every seeded row (real data + KEK untouched)
 	docker exec -i supabase_db_kenos psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/snippets/load_wipe.sql

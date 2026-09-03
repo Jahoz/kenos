@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(97);
+select plan(104);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -818,6 +818,53 @@ select throws_ok(
   'P0001', 'KENOS_INVALID_KIND',
   'the kind is POEM or MELODY — never a shout'
 );
+
+-- ── V3.14b — the Gardener & the Curator ─────────────────────────────────
+-- Wipe every corpse first (deterministic garden).
+reset role;
+delete from public.kenos_constellations;
+select is(
+  public.kenos_garden_seed(14, 5),
+  5,
+  'the gardener plants up to max_new on an empty ether'
+);
+select is(
+  public.kenos_garden_seed(14, 5),
+  5,
+  'the gardener plants again toward the target'
+);
+select is(
+  public.kenos_garden_seed(14, 5),
+  4,
+  'the gardener stops exactly at the target (14)'
+);
+select is(
+  public.kenos_garden_seed(14, 5),
+  0,
+  'a full garden plants nothing'
+);
+select is(
+  (select count(*) from public.kenos_constellation_lines),
+  0::bigint,
+  'the gardener writes NO lines — rings wait for strangers'
+);
+select is(
+  (select count(*) from public.kenos_constellations
+    where kind not in ('POEM', 'MELODY')),
+  0::bigint,
+  'every planted ring is a poem or a song'
+);
+-- The attribution rides the metadata (curated corpses carry it).
+update public.kenos_constellations
+   set curated_by = 'TEST POET', state = 'CLOSED', closed_at = now()
+ where id = (select id from public.kenos_constellations limit 1);
+select is(
+  (select curated_by from public.fetch_constellations(0, 0, 1, 1)
+    where state = 'CLOSED' limit 1),
+  'TEST POET',
+  'the map sees the attribution — the reading will name the poet'
+);
+delete from public.kenos_constellations;
 
 -- Purge: open corpses > 7 days go back to the void; a closed corpse
 -- is an artifact for a moon — then the ether forgets.

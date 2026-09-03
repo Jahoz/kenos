@@ -60,6 +60,8 @@ make db-reset && make db-test  # Migrations + 96 invariants pgTAP
 make db-seed-load && make db-load-report  # Montée en charge : seed 30 j (scellés LISIBLES, ~12k lignes) + rapport
 make db-verify-load           # Preuve e2e : consommer un écho seedé, l'ouvrir sur l'appareil
 make db-wipe-load              # Reset clean du seed (data réelle + KEK intacts)
+make db-garden                 # Jardiner : plante des anneaux ouverts (jamais de lignes)
+make db-curate                 # Curater : artefacts poésie domaine public, crédités
 make e2e                   # Boucle réelle sur PostgREST local
 make deploy-site           # Landing → kenos-site.vercel.app (Vercel séparé, SANS lien git ; épingle l'alias — jamais de déploiement par push)
 python3 tool/gen_audio.py  # Régénère les assets audio (std-lib only)

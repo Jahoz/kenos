@@ -14,6 +14,7 @@ class ConstellationMeta {
     required this.lineCount,
     required this.target,
     this.kind = ConstellationKind.poem,
+    this.curatedBy,
   });
 
   final String id;
@@ -26,6 +27,11 @@ class ConstellationMeta {
   /// POEM (sealed text lines) or MELODY (sealed note phrases — the
   /// constellation-song, V3.14).
   final ConstellationKind kind;
+
+  /// The Curator's attribution (V3.14b): a curated constellation is
+  /// REAL public-domain poetry, and the reading NAMES the poet — it
+  /// never pretends strangers wrote it. Null = strangers' own.
+  final String? curatedBy;
 
   bool get isClosed => state == 'CLOSED';
 
@@ -40,6 +46,7 @@ class ConstellationMeta {
         kind: json['kind'] == 'MELODY'
             ? ConstellationKind.melody
             : ConstellationKind.poem,
+        curatedBy: json['curated_by'] as String?,
       );
 }
 

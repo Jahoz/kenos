@@ -512,6 +512,30 @@ futur possible, les yeux ouverts), **poème OU chanson** au largage
 - Gates : 111 invariants pgTAP (+4 : défaut POEM, seed MELODY, le
   genre au fetch, jamais de SHOUT), 181 tests Dart, e2e 18/18.
 
+## V3.14b — Le Jardinier & le Curateur ✅ (livrés 2026-09-03)
+
+L'éther de production devait vivre : des anneaux ouverts à remplir
+(offre), et des artefacts lisibles dès le premier jour (culture).
+
+- **Le Jardinier** — `kenos_garden_seed(target, max_new)` : plante des
+  anneaux OUVERTS (jamais une ligne — les anneaux attendent les
+  inconnus), auto-régulé : il compte ce qui vit et ne plante que le
+  manquant (câblage pg_cron fourni commenté ; `make db-garden` en
+  local). Mélanges poèmes/chansons, cibles 4-7, positions dérivantes.
+- **Le Curateur** — `curated_by` : les artefacts lisibles naissent de
+  VRAIE poésie de domaine public, créditée (philosophie Vestiges :
+  contenu réel, jamais de fausses confidences). `curate_constellations.sql`
+  sème 7 constellations refermées — Rimbaud, Verlaine, Baudelaire,
+  Apollinaire, Nerval, Labé — lignes dans l'ordre du poète, ouverture
+  sur l'appareil, **le nom du poète à la lecture** (`— RIMBAUD —` en
+  footer, jamais l'illusion que des inconnus l'ont écrit). Idempotent,
+  effaçable en un prédicat (`curated_by is not null`). `make db-curate`.
+- Appliqué en production le 2026-09-03 : 13 anneaux ouverts + 7
+  artefacts crédités, vérifiés via REST authentifié. Gates : 104
+  invariants pgTAP (+7 : le jardinier plante par paliers jusqu'à la
+  cible puis s'arrête, n'écrit JAMAIS de ligne, ne plante que
+  POEM/MELODY, l'attribution voyage au fetch), 189 tests Dart.
+
 ## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — **GELÉ, arbitrage Hugo 2026-09-02** : on va au bout du Cadavre Exquis et des Symphonies d'abord)
 
 Créer une mini-galaxie invitable (amis, collègues), vivant en parallèle
