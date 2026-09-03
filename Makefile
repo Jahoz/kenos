@@ -111,9 +111,11 @@ db-garden: ## Plant open constellation rings up to target (local gardener)
 	docker exec -i supabase_db_kenos psql -U postgres -d postgres \
 		-c "select public.kenos_garden_seed();"
 
-db-curate: ## Curate public-domain poetry artifacts (local, idempotent)
+db-curate: ## Curate poetry artifacts + vestiges (local, idempotent)
 	docker exec -i supabase_db_kenos psql -U postgres -d postgres \
 		-v ON_ERROR_STOP=1 < supabase/snippets/curate_constellations.sql
+	docker exec -i supabase_db_kenos psql -U postgres -d postgres \
+		-v ON_ERROR_STOP=1 < supabase/snippets/curate_vestiges.sql
 
 db-wipe-load: ## Clean reset: remove every seeded row (real data + KEK untouched)
 	docker exec -i supabase_db_kenos psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/snippets/load_wipe.sql

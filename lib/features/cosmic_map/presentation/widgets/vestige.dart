@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_fonts.dart';
@@ -61,31 +62,58 @@ class Vestige {
       };
 }
 
-/// Loads the curated vestiges (bundled JSON — zero backend, honest
-/// offline, identical on every device). A subset shows at a time,
-/// rotating with the days: the library renews itself as you return —
-/// always something left to discover.
+/// Loads the curated vestiges: the ETHER's library first (the Curator
+/// feeds it without a release), the bundled JSON as the honest offline
+/// fallback — the app never blocks, the demo ether keeps its shards.
+/// A subset shows at a time, rotating with the days: the library
+/// renews itself as you return — always something left to discover.
 Future<List<Vestige>> loadVestiges() async {
+  final all = await _loadAllVestiges();
+  Vestige.knownCount = all.length;
+
+  // Daily rotation: ~2/3 of the shards are adrift on any given day,
+  // deterministically — every device sees the same drifting set,
+  // and tomorrow's sky holds shards today's doesn't.
+  final day = DateTime.now().difference(DateTime(2026, 1, 1)).inDays;
+  final visible = <Vestige>[];
+  for (var i = 0; i < all.length; i++) {
+    final slot = (i + day * 5) % all.length;
+    if (slot < all.length * 2 / 3) {
+      visible.add(all[i]);
+    }
+  }
+  return visible;
+}
+
+/// The whole curated library: ether first, bundle fallback.
+Future<List<Vestige>> _loadAllVestiges() async {
+  // 1. The ether's library (when a backend is configured and alive).
+  try {
+    final client = Supabase.instance.client;
+    final signedIn =
+        client.auth.currentUser != null || client.auth.currentSession != null;
+    if (signedIn) {
+      final rows = await client.rpc('fetch_vestiges');
+      if (rows is List && rows.isNotEmpty) {
+        return [
+          for (final row in rows)
+            Vestige.fromJson((row as Map).cast<String, dynamic>()),
+        ];
+      }
+    }
+  } catch (e) {
+    // The ether's library is a guest: if it is unreachable, the
+    // bundle carries the culture — silently.
+    debugPrint('[kenos.vestiges] ether library unreachable: $e');
+  }
+
+  // 2. The bundled library (demo mode, offline, always honest).
   try {
     final raw = await rootBundle.loadString('assets/vestiges.json');
     final data = jsonDecode(raw) as Map<String, dynamic>;
-    final all = (data['vestiges'] as List)
+    return (data['vestiges'] as List)
         .map((v) => Vestige.fromJson(v as Map<String, dynamic>))
         .toList();
-    Vestige.knownCount = all.length;
-
-    // Daily rotation: ~2/3 of the shards are adrift on any given day,
-    // deterministically — every device sees the same drifting set,
-    // and tomorrow's sky holds shards today's doesn't.
-    final day = DateTime.now().difference(DateTime(2026, 1, 1)).inDays;
-    final visible = <Vestige>[];
-    for (var i = 0; i < all.length; i++) {
-      final slot = (i + day * 5) % all.length;
-      if (slot < all.length * 2 / 3) {
-        visible.add(all[i]);
-      }
-    }
-    return visible;
   } catch (e) {
     // The ether works without its library: the app never blocks.
     debugPrint('[kenos.vestiges] unavailable: $e');

@@ -536,6 +536,32 @@ L'éther de production devait vivre : des anneaux ouverts à remplir
   cible puis s'arrête, n'écrit JAMAIS de ligne, ne plante que
   POEM/MELODY, l'attribution voyage au fetch), 189 tests Dart.
 
+## V3.14c — Les Vestiges traversent l'éther ✅ (livrés 2026-09-03)
+
+Les Vestiges vivaient dans le bundle (12 éclats, honnête hors-ligne —
+mais gelés entre les releases). Le Curateur les nourrit désormais
+depuis la base : **32 éclats** — les 12 originaux (positions kept) +
+une première récolte de 20 (faits d'astronomie, étymologies grecques
+et latines, micro-histoires Voyager/Sénéque/Labé, haïkus, citations
+de domaine public), crédités, upsertables sans release.
+
+- Migration 0015 : table `kenos_vestiges` (kind quote/etymology/
+  haiku/history/fact, texte 1-400, live flag) + `fetch_vestiges()`
+  RPC (≤ 200 en vol). Culture délibérément LISIBLE — pas de scellé,
+  pas de burn : un éclat se relit toujours.
+- Client : **l'éther d'abord, le bundle en repli** — connecté, la
+  carte lit la bibliothèque curatée ; en démo/hors-ligne, les 12
+  éclats du bundle portent la culture. Jamais de blocage.
+- La rotation quotidienne (~2/3 dérivants, déterministe) reste
+  client : même ciel pour tous les appareils ce jour-là. L'état lu
+  reste local (un fantôme, jamais un burn). Purge : les vestiges
+  **n'expirent jamais** — la culture ne pourrit pas, le curateur la
+  retire (`live = false`).
+- `make db-curate` (constellations + vestiges). Appliqué en prod le
+  2026-09-03, vérifié REST : 32 éclats servis. Gates : 106 pgTAP
+  (+2 : la bibliothèque sert ses éclats, un éclat retiré quitte le
+  ciel), 189 tests Dart, e2e 18/18.
+
 ## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — **GELÉ, arbitrage Hugo 2026-09-02** : on va au bout du Cadavre Exquis et des Symphonies d'abord)
 
 Créer une mini-galaxie invitable (amis, collègues), vivant en parallèle

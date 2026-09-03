@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(104);
+select plan(106);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -865,6 +865,32 @@ select is(
   'the map sees the attribution — the reading will name the poet'
 );
 delete from public.kenos_constellations;
+
+-- ── V3.14c — the Vestiges cross the ether ──────────────────────────────
+-- The library is curated culture: readable text (deliberately public —
+-- no sealing, no burning), live-flagged, capped at 200 in flight.
+reset role;
+insert into public.kenos_vestiges (id, kind, text, source, pos_x, pos_y) values
+  ('t-vest-1', 'quote', 'test quote', 'test', 0.5, 0.5),
+  ('t-vest-2', 'fact', 'test fact', 'test', 0.5, 0.6);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d1","role":"authenticated"}', true);
+select is(
+  (select count(*) from public.fetch_vestiges()),
+  2::bigint,
+  'the drifting library serves its shards'
+);
+reset role;
+update public.kenos_vestiges set live = false where id = 't-vest-2';
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d1","role":"authenticated"}', true);
+select is(
+  (select count(*) from public.fetch_vestiges()),
+  1::bigint,
+  'a retired shard leaves the sky (live = false)'
+);
+reset role;
+delete from public.kenos_vestiges where id like 't-vest-%';
 
 -- Purge: open corpses > 7 days go back to the void; a closed corpse
 -- is an artifact for a moon — then the ether forgets.
