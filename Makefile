@@ -1,6 +1,6 @@
 # KENOS — canonical commands (see CONTRIBUTING.md for the full picture)
 .DEFAULT_GOAL := help
-.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web deploy-site serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load db-garden db-curate e2e gen-icons gen-audio coverage
+.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web deploy-site serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load db-garden db-curate db-sow-vestiges e2e gen-icons gen-audio coverage
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -110,6 +110,9 @@ db-load-report: ## Visualize the ramp: daily volumes, sector culling, case cover
 db-garden: ## Plant open constellation rings up to target (local gardener)
 	docker exec -i supabase_db_kenos psql -U postgres -d postgres \
 		-c "select public.kenos_garden_seed();"
+
+db-sow-vestiges: ## AI-sow vestige shards (2-pass verify; review staging, then --emit)
+	dart run tool/gen_vestiges.dart $(SOW_ARGS)
 
 db-curate: ## Curate poetry artifacts + vestiges (local, idempotent)
 	docker exec -i supabase_db_kenos psql -U postgres -d postgres \
