@@ -156,9 +156,16 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
         ref.read(localEchoStoreProvider).recordConstellationTouched(),
       );
       KenosHaptics.pulse(KenosPulse.seal);
+      // The messenger is captured BEFORE the pop: the ack used to
+      // look up ScaffoldMessenger through this panel's context AFTER
+      // the dialog died — 'deactivated widget's ancestor' threw, the
+      // catch buried a SUCCESS under 'L'ÉTHER A REFUSÉ LA LIGNE'
+      // while the line sat safely in the ether (caught live in prod).
+      final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context, rootNavigator: true).pop();
-      _acknowledge(context, result.count);
-    } catch (_) {
+      _acknowledge(messenger, result.count);
+    } catch (e) {
+      debugPrint('[kenos.constellations] contribute refused: $e');
       if (mounted) {
         setState(() => _sending = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -168,8 +175,8 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
     }
   }
 
-  void _acknowledge(BuildContext context, int count) {
-    ScaffoldMessenger.of(context).showSnackBar(
+  void _acknowledge(ScaffoldMessengerState messenger, int count) {
+    messenger.showSnackBar(
       SnackBar(
         content: Text(
           count >= widget.constellation.target
