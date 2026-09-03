@@ -495,9 +495,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                             closed: cst.isClosed,
                                             lineCount: cst.lineCount,
                                             target: cst.target,
+                                            // Songs read cyan (the waves'
+                                            // instrument), poems white;
+                                            // closed = indigo artifact.
                                             color: cst.isClosed
                                                 ? AppColors.indigo
-                                                : AppColors.pureLight,
+                                                : cst.kind ==
+                                                        ConstellationKind.melody
+                                                    ? AppColors.cyan
+                                                    : AppColors.pureLight,
                                           ),
                                         ),
                                       ),

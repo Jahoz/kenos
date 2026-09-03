@@ -63,7 +63,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Un cadavre exquis'), findsOneWidget);
 
-    await tester.tap(find.text("LARGUER DANS L'ÉTHER"));
+    await tester.tap(find.text('LARGUER UN POÈME'));
     await tester.pumpAndSettle();
 
     // Seeded ONCE, near the resting eye (±0.06 jitter).
@@ -82,7 +82,11 @@ class FakeConstellationRepository implements ConstellationRepository {
   String? poppedWith;
 
   @override
-  Future<ConstellationMeta> seed(double x, double y) async {
+  Future<ConstellationMeta> seed(
+    double x,
+    double y, {
+    ConstellationKind kind = ConstellationKind.poem,
+  }) async {
     seeds.add(Offset(x, y));
     return ConstellationMeta(
       id: 'corpse-fresh',
@@ -91,6 +95,7 @@ class FakeConstellationRepository implements ConstellationRepository {
       state: 'OPEN',
       lineCount: 0,
       target: 5,
+      kind: kind,
     );
   }
 

@@ -469,6 +469,40 @@ arbitrée :
   contributeur-lit, artefact-survit, alias-non-destructif, purge
   lune), 176 tests Dart, e2e 18/18.
 
+## V3.14 — La constellation-chanson ✅ (idée Hugo, livrée 2026-09-03)
+
+« On doit pouvoir faire ça avec de l'audio… avec la symphonie
+améliorée qui enregistrerait et diffuserait pour la personne
+suivante. » Arbitrages : **notes pures** (la voix est une empreinte —
+l'anonymat de l'éther n'y survivrait pas ; documentée comme mode
+futur possible, les yeux ouverts), **poème OU chanson** au largage
+(jamais mélangés), **écoute à l'infini** comme l'artefact.
+
+- **Une ligne de chanson = une phrase de notes** : ≤ 8 indices dans
+  la gamme pentatonique publique des ondes, scellés en JSON sous la
+  clé éphémère de la ligne (~60 caractères — la borne 2000 du RPC
+  ne bouge pas). **Zéro octet audio dans l'éther** : rien à stocker
+  au-delà du scellé, rien à modérer, anonyme par construction.
+- **La règle classique devient sonore** : le compositeur ÉCOUTE la
+  phrase qui précède (synthétisée sur son appareil depuis les notes
+  déscellées — le peek V3.13 interprète la charge), puis pose ses
+  notes sur le vide (tap : bas = grave, haut = cristallin — le
+  mapping exact des ondes).
+- **La figure chante** : refermée, la chanson est un artefact qui se
+  traverse — phrase après phrase, chacune synthétisée à SA station
+  de l'angle d'or, placée dans le champ stéréo (flutter_soloud,
+  repli sur les assets cuits). **Lecture séquentielle** : une phrase
+  à la fois, jamais le tout d'un coup — la réponse à la surcharge.
+  REJOUER à volonté, la station qui chante respire en cyan.
+- Migration 20260903050411 : `kind` POEM/MELODY (garde
+  KENOS_INVALID_KIND), `seed_constellation(p_kind)` (param optionnel
+  — le smoke nocturne reste vert), `fetch_constellations` expose le
+  genre (et passe à 30 j — les artefacts vivent une lune). Le
+  marqueur carte : chansons ouvertes en cyan (l'instrument des
+  ondes), poèmes en blanc, refermés en indigo.
+- Gates : 111 invariants pgTAP (+4 : défaut POEM, seed MELODY, le
+  genre au fetch, jamais de SHOUT), 181 tests Dart, e2e 18/18.
+
 ## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — **GELÉ, arbitrage Hugo 2026-09-02** : on va au bout du Cadavre Exquis et des Symphonies d'abord)
 
 Créer une mini-galaxie invitable (amis, collègues), vivant en parallèle

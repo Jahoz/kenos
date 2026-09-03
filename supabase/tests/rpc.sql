@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(93);
+select plan(97);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -792,6 +792,31 @@ select throws_ok(
   $$select public.read_constellation(tests.constellation_seed_by('second'))$$,
   'P0001', 'KENOS_STILL_OPEN',
   'an open corpse cannot be read whole'
+);
+
+-- V3.14 — the constellation-song: the drop chooses poem or song,
+-- and the map knows what it draws.
+select is(
+  (select kind from public.fetch_constellations(0, 0, 1, 1)
+    where id = tests.constellation_seed_by('second')),
+  'POEM',
+  'a corpse seeds as a POEM by default'
+);
+select is(
+  (select count(*) from public.seed_constellation(0.8::float8, 0.8::float8, 'MELODY')),
+  1::bigint,
+  'a SONG is seeded (MELODY)'
+);
+select is(
+  (select kind from public.fetch_constellations(0, 0, 1, 1)
+    where seed_x = 0.8::float8),
+  'MELODY',
+  'the map sees the kind'
+);
+select throws_ok(
+  $$select public.seed_constellation(0.81::float8, 0.81::float8, 'SHOUT')$$,
+  'P0001', 'KENOS_INVALID_KIND',
+  'the kind is POEM or MELODY — never a shout'
 );
 
 -- Purge: open corpses > 7 days go back to the void; a closed corpse

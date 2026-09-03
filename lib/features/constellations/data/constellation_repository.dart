@@ -13,6 +13,7 @@ class ConstellationMeta {
     required this.state,
     required this.lineCount,
     required this.target,
+    this.kind = ConstellationKind.poem,
   });
 
   final String id;
@@ -21,6 +22,10 @@ class ConstellationMeta {
   final String state; // OPEN | CLOSED
   final int lineCount;
   final int target;
+
+  /// POEM (sealed text lines) or MELODY (sealed note phrases — the
+  /// constellation-song, V3.14).
+  final ConstellationKind kind;
 
   bool get isClosed => state == 'CLOSED';
 
@@ -32,8 +37,14 @@ class ConstellationMeta {
         state: json['state'] as String,
         lineCount: (json['line_count'] as num).toInt(),
         target: (json['target'] as num).toInt(),
+        kind: json['kind'] == 'MELODY'
+            ? ConstellationKind.melody
+            : ConstellationKind.poem,
       );
 }
+
+/// A corpse is a poem or a song — chosen at the drop, never mixed.
+enum ConstellationKind { poem, melody }
 
 /// One assembled line of a read constellation.
 class AssembledLine {
@@ -59,8 +70,13 @@ class ContributeResult {
 /// poem — an artifact, open to everyone (contributors included),
 /// re-readable like the vestiges.
 abstract class ConstellationRepository {
-  /// Seeds a new open constellation at the given position.
-  Future<ConstellationMeta> seed(double x, double y);
+  /// Seeds a new open constellation at the given position — a poem
+  /// or a song, chosen at the drop, never mixed.
+  Future<ConstellationMeta> seed(
+    double x,
+    double y, {
+    ConstellationKind kind = ConstellationKind.poem,
+  });
 
   /// Contributes ONE sealed line, continuing from the preceding one
   /// (returned sealed — opened on this device). Never the fragments
@@ -91,13 +107,18 @@ class SupabaseConstellationRepository implements ConstellationRepository {
   final SupabaseClient _client;
 
   @override
-  Future<ConstellationMeta> seed(double x, double y) async {
+  Future<ConstellationMeta> seed(
+    double x,
+    double y, {
+    ConstellationKind kind = ConstellationKind.poem,
+  }) async {
     final rows = await _client.rpc('seed_constellation', params: {
       'p_seed_x': x,
       'p_seed_y': y,
+      'p_kind': kind == ConstellationKind.melody ? 'MELODY' : 'POEM',
     });
     final id = ((rows as List).first as Map)['id'] as String;
-    // The server picks a random target 4-7; fetch it.
+    // The server picks a random target 4-7; fetch the whole truth.
     final all = await fetchVisible();
     return all.firstWhere(
       (c) => c.id == id,
@@ -108,6 +129,7 @@ class SupabaseConstellationRepository implements ConstellationRepository {
         state: 'OPEN',
         lineCount: 0,
         target: 5,
+        kind: kind,
       ),
     );
   }
@@ -230,7 +252,11 @@ class LocalConstellationRepository implements ConstellationRepository {
   final List<_DemoConstellation> _constellations = [];
 
   @override
-  Future<ConstellationMeta> seed(double x, double y) async {
+  Future<ConstellationMeta> seed(
+    double x,
+    double y, {
+    ConstellationKind kind = ConstellationKind.poem,
+  }) async {
     final c = _DemoConstellation(
       meta: ConstellationMeta(
         id: 'const-${DateTime.now().microsecondsSinceEpoch}',
@@ -239,10 +265,11 @@ class LocalConstellationRepository implements ConstellationRepository {
         state: 'OPEN',
         lineCount: 0,
         target: 4 + (DateTime.now().second % 4),
+        kind: kind,
       ),
     );
     _constellations.add(c);
-    return c.meta;
+    return c.currentMeta;
   }
 
   @override
@@ -303,6 +330,7 @@ class _DemoConstellation {
         state: closed ? 'CLOSED' : 'OPEN',
         lineCount: lines.length,
         target: meta.target,
+        kind: meta.kind,
       );
 }
 

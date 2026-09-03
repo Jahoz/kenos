@@ -321,10 +321,11 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
   }
 
   /// The exquisite corpse: drop an open ring near where the eye
-  /// rests. No text from the author — strangers will write it blind,
-  /// and the ring pops with the result so the map can offer the
-  /// seeder to give the FIRST line (they are just another stranger).
-  Future<void> _dropCorpse() async {
+  /// rests — a POEM or a SONG, chosen at the drop, never mixed. No
+  /// text from the author: strangers write/compose it blind, and the
+  /// ring pops with the result so the map can offer the seeder the
+  /// FIRST line (they are just another stranger).
+  Future<void> _dropCorpse(ConstellationKind kind) async {
     if (_sealing) return;
     setState(() => _sealing = true);
     _focus.unfocus();
@@ -335,6 +336,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
       final meta = await ref.read(constellationRepositoryProvider).seed(
             (eye.dx + (rng.nextDouble() - 0.5) * 0.12).clamp(0.05, 0.95),
             (eye.dy + (rng.nextDouble() - 0.5) * 0.12).clamp(0.05, 0.95),
+            kind: kind,
           );
       unawaited(ref.read(audioControllerProvider).playBell(KenosBell.send));
       KenosHaptics.pulse(KenosPulse.launch);
@@ -415,7 +417,9 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                                   'Des inconnus y écriront une ligne chacun,\n'
                                   'chacun voyant seulement la ligne qui le\n'
                                   'précède. Refermé, le poème devient un\n'
-                                  'artefact : lisible par tous — toi aussi.',
+                                  'artefact : lisible par tous — toi aussi.\n\n'
+                                  'Ou ce sera une chanson : des phrases de\n'
+                                  'notes, continues à l\'oreille.',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontFamily: AppFonts.serifItalic,
@@ -436,11 +440,32 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                               ),
                             ),
                             const SizedBox(height: 20),
-                            OutlinedButton(
-                              onPressed: _sealing ? null : _dropCorpse,
-                              child: Text(
-                                _sealing ? 'LARGUAGE…' : 'LARGUER DANS L\'ÉTHER',
-                              ),
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 14,
+                              runSpacing: 10,
+                              children: [
+                                OutlinedButton(
+                                  onPressed: _sealing
+                                      ? null
+                                      : () => _dropCorpse(
+                                            ConstellationKind.poem,
+                                          ),
+                                  child: Text(
+                                    _sealing ? 'LARGUAGE…' : 'LARGUER UN POÈME',
+                                  ),
+                                ),
+                                OutlinedButton(
+                                  onPressed: _sealing
+                                      ? null
+                                      : () => _dropCorpse(
+                                            ConstellationKind.melody,
+                                          ),
+                                  child: Text(
+                                    _sealing ? 'LARGUAGE…' : 'LARGUER UNE CHANSON',
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 14),
                             Text(

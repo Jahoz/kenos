@@ -92,10 +92,18 @@ class _AwakeningPanelState extends ConsumerState<_AwakeningPanel>
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 34),
-            child: Column(
-              children: [
+          child: Center(
+            // Wide screens (tablets, desktop): the sas keeps its
+            // readable measure, centered in the void — never a full
+            // 1200 px column pinned to nothing.
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: 560,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 34),
+                child: Column(
+                  children: [
                 const Spacer(flex: 5),
                 // The warm ember: the origin node, breathing.
                 AnimatedBuilder(
@@ -180,7 +188,9 @@ class _AwakeningPanelState extends ConsumerState<_AwakeningPanel>
                   ),
                 ),
                 const SizedBox(height: 26),
-              ],
+                  ],
+                ),
+              ),
             ),
           ),
         ),

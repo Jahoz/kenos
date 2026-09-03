@@ -55,7 +55,7 @@ lib/
 make dev                   # Mode démo local (aucun backend requis)
 make dev-local             # PWA release sur l'éther local seedé (:4308) — JAMAIS juger la perf sur `flutter run` (debug, 5-20× plus lent)
 make analyze               # 0 issue
-make test                  # 176 tests (chiffrement, culling, contrôleurs, UI)
+make test                  # 181 tests (chiffrement, culling, contrôleurs, UI)
 make db-reset && make db-test  # Migrations + 96 invariants pgTAP
 make db-seed-load && make db-load-report  # Montée en charge : seed 30 j (scellés LISIBLES, ~12k lignes) + rapport
 make db-verify-load           # Preuve e2e : consommer un écho seedé, l'ouvrir sur l'appareil
@@ -122,6 +122,15 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
   tous (contributeurs inclus), re-lisible, jamais consommé ;
   `consume_constellation` reste en alias (les clients déployés guérissent).
   Purge : OPEN > 7 j, CLOSED > 30 j (l'artefact vit une lune).
+- **Constellations-chansons (V3.14)** : un cadavre est POÈME ou
+  CHANSON au largage (`kind`, jamais mélangé). Une ligne de chanson
+  = une phrase de ≤ 8 indices de la gamme pentatonique, scellée en
+  JSON — zéro octet audio dans l'éther, anonyme par construction
+  (la voix est arbitré HORS pour l'instant : une voix est une
+  empreinte). Le compositeur ÉCOUTE la phrase précédente (synthèse
+  sur l'appareil), la chanson refermée se traverse : lecture
+  séquentielle, chaque phrase spatialisée à sa station d'angle d'or
+  (flutter_soloud, repli assets cuits).
 - **Extraits culturels (V3.10)** : la référence Spotify/YouTube voyage
   scellée sous la clé de l'écho (le serveur borne le scellé 32-512,
   ne voit jamais l'ID) ; l'URL lancée est TOUJOURS reconstruite
