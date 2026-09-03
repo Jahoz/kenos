@@ -281,23 +281,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _refreshAfterTravel();
   }
 
-  /// An OPEN corpse takes a blind line; a CLOSED one is read whole,
-  /// once. The server enforces the soul: contributors never read.
+  /// An OPEN corpse takes a line (continuing the preceding one); a
+  /// CLOSED one is an ARTIFACT — readable by everyone, contributors
+  /// included, again and again. Nothing is consumed anymore.
   Future<void> _onConstellationTap(ConstellationMeta cst) async {
     KenosHaptics.pulse(KenosPulse.themePick);
     if (cst.isClosed) {
-      final lines = await ref
-          .read(constellationRepositoryProvider)
-          .consume(cst.id);
+      final lines =
+          await ref.read(constellationRepositoryProvider).read(cst.id);
       if (!mounted) return;
       if (lines == null || lines.isEmpty) {
+        // Open race (closed elsewhere is impossible here) or gone
+        // with the moon: the sky tells the truth again.
         unawaited(_loadConstellations());
         return;
       }
-      unawaited(showConstellationReading(context, lines: lines)
-          .then((_) {
-        if (mounted) _loadConstellations();
-      }));
+      await showConstellationReading(context, lines: lines);
+      // No reload: the artifact stays, refermé.
     } else {
       unawaited(showContributeSheet(context, ref: ref, constellation: cst)
           .then((_) {
@@ -1038,9 +1038,10 @@ class _CorpseGuide extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              'Touche-en un pour donner une ligne — sans jamais\n'
-              'voir le tout. Refermé en indigo, un inconnu\n'
-              'le lira entier, puis il n\'existera plus.',
+              'Touche-en un pour donner une ligne, à la suite\n'
+              'de celle qui te précède — sans jamais\n'
+              'voir le tout. Refermé en indigo, le poème\n'
+              'devient un artefact : lisible par tous.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: AppFonts.serifItalic,

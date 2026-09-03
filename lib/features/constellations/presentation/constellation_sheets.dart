@@ -7,11 +7,12 @@ import '../../../../core/haptics/kenos_haptics.dart';
 import '../../echo/data/echo_providers.dart';
 import '../data/constellation_repository.dart';
 import '../domain/constellation_figure.dart';
-/// The Exquisite Corpse panels: contribute a blind line to an OPEN
-/// constellation, or read a CLOSED one whole — once, never again.
-/// The contributor NEVER sees the whole they helped write.
+/// The Exquisite Corpse panels: contribute a line by continuing the
+/// preceding one (the classic rule — nobody sees the whole while it
+/// writes itself), or read a CLOSED poem — an artifact, open to
+/// everyone, re-readable like the vestiges.
 
-/// Contribute one blind line to an open constellation.
+/// Contribute one line to an open constellation, continuing the poem.
 Future<void> showContributeSheet(
   BuildContext context, {
   required WidgetRef ref,
@@ -33,7 +34,7 @@ Future<void> showContributeSheet(
   );
 }
 
-/// Read a closed constellation whole — the only reading it will ever get.
+/// Read a finished constellation — an artifact: it stays, refermé.
 Future<void> showConstellationReading(
   BuildContext context, {
   required List<AssembledLine> lines,
@@ -66,8 +67,25 @@ class _ContributePanel extends ConsumerStatefulWidget {
 class _ContributePanelState extends ConsumerState<_ContributePanel> {
   final _input = TextEditingController();
   bool _sending = false;
+  AssembledLine? _previous;
+  bool _peeked = false;
 
   static const _maxLength = 140;
+
+  @override
+  void initState() {
+    super.initState();
+    _peekPrevious();
+  }
+
+  /// The classic rule: one CONTINUES. The tail of the poem shows
+  /// itself before the line is given — never the whole.
+  Future<void> _peekPrevious() async {
+    final previous = await ref
+        .read(constellationRepositoryProvider)
+        .peekPrevious(widget.constellation.id);
+    if (mounted) setState(() { _previous = previous; _peeked = true; });
+  }
 
   @override
   void dispose() {
@@ -81,7 +99,7 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
     if (text.isEmpty || text.length > _maxLength) return;
     setState(() => _sending = true);
     try {
-      final count = await ref
+      final result = await ref
           .read(constellationRepositoryProvider)
           .contribute(constellationId: widget.constellation.id, text: text);
       if (!mounted) return;
@@ -90,7 +108,7 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
       );
       KenosHaptics.pulse(KenosPulse.seal);
       Navigator.of(context, rootNavigator: true).pop();
-      _acknowledge(context, count);
+      _acknowledge(context, result.count);
     } catch (_) {
       if (mounted) {
         setState(() => _sending = false);
@@ -107,7 +125,7 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
         content: Text(
           count >= widget.constellation.target
               ? 'LIGNE DONNÉE — LA CONSTELLATION S\'EST REFERMÉE.'
-              : 'LIGNE DONNÉE — TU NE LA RELIRAS JAMAIS.',
+              : 'LIGNE DONNÉE — LE POÈME GRANDIT.',
         ),
       ),
     );
@@ -144,7 +162,40 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
                   color: AppColors.fade(AppColors.pureLight, 0.75),
                 ),
               ),
-              const SizedBox(height: 26),
+              const SizedBox(height: 24),
+              if (_peeked)
+                if (_previous != null) ...[
+                  Text(
+                    'LA LIGNE QUI PRÉCÈDE',
+                    style: TextStyle(
+                      fontFamily: AppFonts.mono,
+                      fontSize: 9,
+                      letterSpacing: 3,
+                      color: AppColors.fade(AppColors.teal, 0.6),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '«${_previous!.text}»',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: AppFonts.serifItalic,
+                      fontSize: 17,
+                      height: 1.6,
+                      color: AppColors.fade(AppColors.pureLight, 0.88),
+                    ),
+                  ),
+                ] else
+                  Text(
+                    'TU OUVRES LE POÈME — LA PREMIÈRE LIGNE EST À TOI.',
+                    style: TextStyle(
+                      fontFamily: AppFonts.mono,
+                      fontSize: 8.5,
+                      letterSpacing: 2,
+                      color: AppColors.fade(AppColors.teal, 0.6),
+                    ),
+                  ),
+              const SizedBox(height: 22),
               TextField(
                 controller: _input,
                 autofocus: true,
@@ -267,7 +318,7 @@ class _ReadingPanelState extends State<_ReadingPanel>
                 ],
                 const SizedBox(height: 26),
                 Text(
-                  'TU ES LE SEUL À L\'AVOIR LUE ENTIÈRE — ELLE N\'EXISTE PLUS',
+                  'UN POÈME D\'ÉTRANGERS — IL RESTE, REFERMÉ',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: AppFonts.mono,

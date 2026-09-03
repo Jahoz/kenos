@@ -43,25 +43,46 @@ class AssembledLine {
   final String text;
 }
 
-/// The Exquisite Corpse contract: seed, contribute blind, see the
-/// counts (never the fragments), read a closed corpse whole once.
+/// What a contribution returns: the line count so far, and the
+/// PRECEDING line (the classic surrealist rule — one continues,
+/// nobody sees the whole). Null previous = the contributor opens
+/// the poem.
+class ContributeResult {
+  const ContributeResult({required this.count, this.previous});
+
+  final int count;
+  final AssembledLine? previous;
+}
+
+/// The Exquisite Corpse contract (V3.13 — classic rule): seed,
+/// contribute by continuing the preceding line, read the FINISHED
+/// poem — an artifact, open to everyone (contributors included),
+/// re-readable like the vestiges.
 abstract class ConstellationRepository {
   /// Seeds a new open constellation at the given position.
   Future<ConstellationMeta> seed(double x, double y);
 
-  /// Contributes ONE sealed line. Returns the line count so far —
-  /// NEVER the fragments (the soul of the blind poem).
-  Future<int> contribute({
+  /// Contributes ONE sealed line, continuing from the preceding one
+  /// (returned sealed — opened on this device). Never the fragments
+  /// of the whole (the soul of the blind poem).
+  Future<ContributeResult> contribute({
     required String constellationId,
     required String text,
   });
 
+  /// The tail of an OPEN poem — exactly ONE line (the last), to
+  /// continue it. Null when the poem has not started. The whole
+  /// stays blind.
+  Future<AssembledLine?> peekPrevious(String constellationId);
+
   /// The map's constellations (metadata only).
   Future<List<ConstellationMeta>> fetchVisible();
 
-  /// Reads a CLOSED constellation whole — once, never again. Returns
-  /// null if already read (the corpse is gone).
-  Future<List<AssembledLine>?> consume(String id);
+  /// Reads a CLOSED constellation whole — an artifact: no
+  /// destruction, no contributor bar, readable again and again.
+  /// Returns null when the corpse is not finished (or is gone with
+  /// the ether's 30-day horizon).
+  Future<List<AssembledLine>?> read(String id);
 }
 
 class SupabaseConstellationRepository implements ConstellationRepository {
@@ -92,19 +113,61 @@ class SupabaseConstellationRepository implements ConstellationRepository {
   }
 
   @override
-  Future<int> contribute({
+  Future<ContributeResult> contribute({
     required String constellationId,
     required String text,
   }) async {
     // The line is sealed on-device like an echo — the corpse never
     // sees what it carries.
     final sealed = await EchoCipher.seal(text);
-    final count = await _client.rpc('contribute_line', params: {
+    final result = await _client.rpc('contribute_line', params: {
       'p_constellation_id': constellationId,
       'p_ciphertext': sealed.payloadB64,
       'p_key': sealed.keyB64,
     });
-    return count as int;
+    final bundle = (result as Map).cast<String, dynamic>();
+    final previousBundle = bundle['previous'] as Map?;
+    // The preceding line opens HERE, on the contributor's device —
+    // the server passed its key exactly once, for this one line.
+    AssembledLine? previous;
+    if (previousBundle != null) {
+      final cipherText = previousBundle['text'] as String;
+      final key = previousBundle['key'] as String?;
+      final clear = (key == null || key.isEmpty)
+          ? cipherText
+          : await EchoCipher.openOrNull(key, cipherText);
+      if (clear != null) {
+        previous = AssembledLine(
+          number: (bundle['count'] as num).toInt() - 1,
+          text: clear,
+        );
+      }
+    }
+    return ContributeResult(
+      count: (bundle['count'] as num).toInt(),
+      previous: previous,
+    );
+  }
+
+  @override
+  Future<AssembledLine?> peekPrevious(String constellationId) async {
+    try {
+      final result = await _client.rpc(
+        'peek_previous_line',
+        params: {'p_constellation_id': constellationId},
+      );
+      if (result == null) return null;
+      final bundle = (result as Map).cast<String, dynamic>();
+      final cipherText = bundle['text'] as String;
+      final key = bundle['key'] as String?;
+      final clear = (key == null || key.isEmpty)
+          ? cipherText
+          : await EchoCipher.openOrNull(key, cipherText);
+      if (clear == null) return null;
+      return AssembledLine(number: 0, text: clear);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -122,10 +185,10 @@ class SupabaseConstellationRepository implements ConstellationRepository {
   }
 
   @override
-  Future<List<AssembledLine>?> consume(String id) async {
+  Future<List<AssembledLine>?> read(String id) async {
     try {
       final result = await _client.rpc(
-        'consume_constellation',
+        'read_constellation',
         params: {'p_constellation_id': id},
       );
       if (result == null) return null;
@@ -183,16 +246,30 @@ class LocalConstellationRepository implements ConstellationRepository {
   }
 
   @override
-  Future<int> contribute({
+  Future<ContributeResult> contribute({
     required String constellationId,
     required String text,
   }) async {
     final c = _constellations.firstWhere((c) => c.meta.id == constellationId);
+    // The classic rule: the contributor continues the preceding line.
+    final previous = c.lines.isEmpty
+        ? null
+        : AssembledLine(number: c.lines.length, text: c.lines.last);
     c.lines.add(text);
     if (c.lines.length >= c.meta.target) {
       c.closed = true;
     }
-    return c.lines.length;
+    return ContributeResult(count: c.lines.length, previous: previous);
+  }
+
+  @override
+  Future<AssembledLine?> peekPrevious(String constellationId) async {
+    final c = _constellations.firstWhere(
+      (c) => c.meta.id == constellationId,
+      orElse: () => throw StateError('unknown constellation'),
+    );
+    if (c.lines.isEmpty) return null;
+    return AssembledLine(number: c.lines.length, text: c.lines.last);
   }
 
   @override
@@ -200,10 +277,11 @@ class LocalConstellationRepository implements ConstellationRepository {
       [for (final c in _constellations) c.currentMeta];
 
   @override
-  Future<List<AssembledLine>?> consume(String id) async {
+  Future<List<AssembledLine>?> read(String id) async {
     final c = _constellations.firstWhere((c) => c.meta.id == id);
-    if (!c.closed || c.consumed || c.lines.isEmpty) return null;
-    c.consumed = true;
+    // An artifact: finished poems are read whole, by anyone, as many
+    // times as the sky passes by — nothing is consumed.
+    if (!c.closed || c.lines.isEmpty) return null;
     return [
       for (var i = 0; i < c.lines.length; i++)
         AssembledLine(number: i + 1, text: c.lines[i]),
@@ -217,13 +295,12 @@ class _DemoConstellation {
   final ConstellationMeta meta;
   final List<String> lines = [];
   bool closed = false;
-  bool consumed = false;
 
   ConstellationMeta get currentMeta => ConstellationMeta(
         id: meta.id,
         seedX: meta.seedX,
         seedY: meta.seedY,
-        state: consumed ? 'CONSUMED' : (closed ? 'CLOSED' : 'OPEN'),
+        state: closed ? 'CLOSED' : 'OPEN',
         lineCount: lines.length,
         target: meta.target,
       );

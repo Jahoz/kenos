@@ -442,6 +442,33 @@ distance à l'œil ne comptait pas. Tout cela est mort.
   toute une soirée). Portes : 171 tests Dart, e2e 18 ✓, analyze 0,
   déployé et vérifié live.
 
+## V3.13 — Le cadavre exquis, règle classique ✅ (arbitrage Hugo, livré 2026-09-03)
+
+Retour utilisateur : « on doit voir au moins la ligne qui nous
+précède ; les constellations finies doivent être accessibles à ceux
+qui ont participé, et à la manière des artefacts aux autres. » La
+règle surréaliste originelle, en fait — et une âme assouplie,
+arbitrée :
+
+- **La ligne qui précède** : `peek_previous_line` montre la queue du
+  poème (UNE ligne, scellée, clé libérée de l'escrow, ouverte sur
+  l'appareil) AVANT d'écrire ; `contribute_line` renvoie compte +
+  précédente. Jamais le tout — on enchaîne, c'est tout.
+- **Le poème refermé est un artefact** : `read_constellation` le
+  livre à TOUS (contributeurs inclus), re-lisible comme les
+  Vestiges, jamais consommé. `consume_constellation` reste en alias
+  non destructif — les clients déjà déployés guérissent seuls.
+- **L'artefact vit une lune** : purge CLOSED > 30 j (`closed_at`),
+  OPEN > 7 j inchangé. L'éther oublie, même ses plus beaux poèmes.
+- Ce qui reste sacré : pendant l'écriture personne ne voit le tout,
+  zéro push, zéro compteur vivant, zéro plaintext serveur.
+- Copies à la vérité : feuille de contribution (« LA LIGNE QUI
+  PRÉCÈDE »), panneau de lecture (« UN POÈME D'ÉTRANGERS — IL
+  RESTE, REFERMÉ »), Miroir, voile une-fois, L'Aube, landing.
+  Gates : 107 invariants pgTAP (âmes inversées épinglées :
+  contributeur-lit, artefact-survit, alias-non-destructif, purge
+  lune), 176 tests Dart, e2e 18/18.
+
 ## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — **GELÉ, arbitrage Hugo 2026-09-02** : on va au bout du Cadavre Exquis et des Symphonies d'abord)
 
 Créer une mini-galaxie invitable (amis, collègues), vivant en parallèle

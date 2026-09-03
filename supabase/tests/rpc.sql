@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(82);
+select plan(93);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -646,20 +646,54 @@ reset role;
 update public.kenos_constellations set target_lines = 4
   where id = tests.constellation_seed_by('first');
 
--- d2 contributes line 1: sees the COUNT, never the fragments.
+-- V3.13: contribute returns a jsonb bundle; stash helpers capture it.
+reset role;
+create table if not exists tests.contribute_bundle (bundle jsonb);
+truncate tests.contribute_bundle;
+grant usage on schema tests to authenticated;
+grant select, insert, truncate on table tests.contribute_bundle to authenticated;
+
+-- d2 contributes line 1: the bundle carries the count — and NO
+-- preceding line (the poem opens with them).
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d2","role":"authenticated"}', true);
+insert into tests.contribute_bundle (bundle)
+  select public.contribute_line(tests.constellation_seed_by('first'), 'première ligne aveugle', '');
 select is(
-  public.contribute_line(tests.constellation_seed_by('first'), 'première ligne aveugle', ''),
-  1,
+  (select bundle ->> 'count' from tests.contribute_bundle),
+  '1',
   'contribution 1 returns the count (not the lines)'
 );
+select is(
+  (select jsonb_typeof(bundle -> 'previous') from tests.contribute_bundle),
+  'null',
+  'the first contributor has no preceding line — they open the poem'
+);
+truncate tests.contribute_bundle;
+
 -- Blind: the map never exposes text.
 select is(
   (select line_count from public.fetch_constellations(0, 0, 1, 1)
     where id = tests.constellation_seed_by('first')),
   1,
   'the map sees the count, zero text columns'
+);
+
+-- The tail of the poem, to continue it: the peeker sees exactly ONE
+-- line — the last — never the whole.
+select is(
+  (select result ->> 'text' from (
+    select public.peek_previous_line(tests.constellation_seed_by('first')) as result
+  ) q),
+  'première ligne aveugle',
+  'peek_previous_line shows the tail — exactly one line, to continue it'
+);
+select is(
+  (select jsonb_typeof(result -> 'key') from (
+    select public.peek_previous_line(tests.constellation_seed_by('first')) as result
+  ) q),
+  'null',
+  'peek on a legacy plaintext line: no key beside it'
 );
 
 -- d2 cannot contribute twice to the same corpse.
@@ -669,10 +703,30 @@ select throws_ok(
   'one line per stranger'
 );
 
--- d3, d4, d5 contribute — the corpse auto-closes at its target.
+-- d3 contributes line 2 — and SEES the preceding line: the classic
+-- surrealist rule. One continues; nobody sees the whole.
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d3","role":"authenticated"}', true);
-select public.contribute_line(tests.constellation_seed_by('first'), 'troisième', '');
+insert into tests.contribute_bundle (bundle)
+  select public.contribute_line(tests.constellation_seed_by('first'), 'troisième', '');
+select is(
+  (select bundle ->> 'count' from tests.contribute_bundle),
+  '2',
+  'contribution 2 counts two lines'
+);
+select is(
+  (select bundle -> 'previous' ->> 'text' from tests.contribute_bundle),
+  'première ligne aveugle',
+  'the contributor SEES the preceding line — the classic rule'
+);
+select is(
+  (select jsonb_typeof(bundle -> 'previous' -> 'key') from tests.contribute_bundle),
+  'null',
+  'legacy plaintext line: no key beside it'
+);
+truncate tests.contribute_bundle;
+
+-- d4, d5 contribute — the corpse auto-closes at its target.
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d4","role":"authenticated"}', true);
 select is(
@@ -693,16 +747,19 @@ select is(
   'the corpse auto-closes at its target'
 );
 
--- THE SOUL: the contributor never reads the whole.
+-- THE NEW SOUL (arbitrage 2026-09-03): the contributor reads the
+-- finished poem too — the artifact belongs to its strangers.
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d2","role":"authenticated"}', true);
-select throws_ok(
-  $$select public.consume_constellation(tests.constellation_seed_by('first'))$$,
-  'P0001', 'KENOS_CONTRIBUTOR_BARRED',
-  'a contributor NEVER reads the whole they helped write'
+select is(
+  (select jsonb_array_length(result -> 'lines') from (
+    select public.read_constellation(tests.constellation_seed_by('first')) as result
+  ) q),
+  4,
+  'a contributor reads the finished poem — the artifact belongs to its strangers'
 );
 
--- A stranger reads it whole, once — then it is gone.
+-- A stranger reads the SAME artifact — re-readable, like the vestiges.
 reset role;
 insert into auth.users (id, email, aud, role) values
   ('00000000-0000-4000-8000-0000000000d6', 'd6@t.kenos', 'authenticated', 'authenticated');
@@ -710,15 +767,15 @@ set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d6","role":"authenticated"}', true);
 select is(
   (select jsonb_array_length(result -> 'lines') from (
-    select public.consume_constellation(tests.constellation_seed_by('first')) as result
+    select public.read_constellation(tests.constellation_seed_by('first')) as result
   ) q),
   4,
-  'the single reader gets all 4 lines, assembled'
+  'a stranger reads the same artifact — for all, again and again'
 );
 select is(
   tests.constellation_exists('first'),
-  0::bigint,
-  'the read corpse is destroyed — it never returns'
+  1::bigint,
+  'the read corpse REMAINS — an artifact, not a memory'
 );
 
 -- An OPEN corpse cannot be read.
@@ -732,20 +789,34 @@ select is(
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d6","role":"authenticated"}', true);
 select throws_ok(
-  $$select public.consume_constellation(tests.constellation_seed_by('second'))$$,
+  $$select public.read_constellation(tests.constellation_seed_by('second'))$$,
   'P0001', 'KENOS_STILL_OPEN',
   'an open corpse cannot be read whole'
 );
 
--- Purge: open corpses older than 7 days go back to the void.
+-- Purge: open corpses > 7 days go back to the void; a closed corpse
+-- is an artifact for a moon — then the ether forgets.
 reset role;
 update public.kenos_constellations set created_at = now() - interval '8 days'
   where id = tests.constellation_seed_by('second');
 select public.kenos_purge();
 select is(
-  (select count(*) from public.kenos_constellations),
+  tests.constellation_exists('first'),
+  1::bigint,
+  'kenos_purge keeps recent artifacts (closed corpses stay)'
+);
+select is(
+  tests.constellation_exists('second'),
   0::bigint,
   'kenos_purge sweeps stale open corpses'
+);
+update public.kenos_constellations set closed_at = now() - interval '31 days'
+  where id = tests.constellation_seed_by('first');
+select public.kenos_purge();
+select is(
+  tests.constellation_exists('first'),
+  0::bigint,
+  'the artifact lives a moon — then the ether forgets'
 );
 
 -- ── V3.11a — the SEALED corpse: the winner gets ciphertext + key ────────
@@ -798,9 +869,22 @@ select public.contribute_line(
   'AAECAwQFBgcICQ==', 'a2Vub3Mta2V5LXRlc3Q=');
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000f2","role":"authenticated"}', true);
-select public.contribute_line(
-  tests.constellation_at(0.7, 0.7),
-  'AAECAwQFBgcIR0xP', 'a2Vub3Mta2V5LXRlc3Q=');
+truncate tests.contribute_bundle;
+insert into tests.contribute_bundle (bundle)
+  select public.contribute_line(
+    tests.constellation_at(0.7, 0.7),
+    'AAECAwQFBgcIR0xP', 'a2Vub3Mta2V5LXRlc3Q=');
+select is(
+  (select bundle -> 'previous' ->> 'text' from tests.contribute_bundle),
+  'AAECAwQFBgcICQ==',
+  'sealed preceding line: text IS the ciphertext, untouched'
+);
+select is(
+  (select bundle -> 'previous' ->> 'key' from tests.contribute_bundle),
+  'a2Vub3Mta2V5LXRlc3Q=',
+  'sealed preceding line: the key leaves the escrow for the contributor, once'
+);
+truncate tests.contribute_bundle;
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000f3","role":"authenticated"}', true);
 select public.contribute_line(
@@ -830,6 +914,12 @@ select is(
   (select bundle -> 'lines' -> 0 ->> 'key' from tests.sealed_bundle),
   'a2Vub3Mta2V5LXRlc3Q=',
   'sealed corpse: the key travels beside it, unsealed from escrow exactly once'
+);
+-- 82 — the alias heals deployed clients WITHOUT destroying the artifact.
+select is(
+  (select count(*) from public.kenos_constellations where seed_x = 0.7::float8),
+  1::bigint,
+  'alias consume_constellation reads without destroying — the artifact stays'
 );
 
 -- ── V3.10 — the Excerpts: sealed cultural doors ─────────────────────────

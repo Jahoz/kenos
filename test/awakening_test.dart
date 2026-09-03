@@ -61,7 +61,8 @@ void main() {
     final lines = stats.awakeningLines();
     expect(lines.first, contains('constellation'));
     expect(lines.first, contains('refermée'));
-    expect(lines.last, contains('quelqu\'un d\'autre'));
+    expect(lines.last, contains('lisible'),
+        reason: 'V3.13 : le poème refermé est un artefact qui attend');
   });
 
   test('le sas ne se rouvre pas pour ce qui a déjà été vu', () {

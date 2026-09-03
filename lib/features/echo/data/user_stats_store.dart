@@ -87,7 +87,7 @@ class UserStats {
     if (constellationsTouched > 0) {
       return [
         'Une constellation que tu as touchée s\'est refermée.',
-        'Tu ne la liras jamais — quelqu\'un d\'autre l\'a eue entière.',
+        'Le poème des inconnus t\'attend — refermé, lisible.',
       ];
     }
     if (totalEchosSent > 0) {

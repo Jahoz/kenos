@@ -413,10 +413,9 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                               child: Center(
                                 child: Text(
                                   'Des inconnus y écriront une ligne chacun,\n'
-                                  'sans jamais voir le tout.\n'
-                                  'Refermé, un seul d\'entre eux le lira entier —\n'
-                                  'puis il n\'existera plus.\n\n'
-                                  'Jamais toi.',
+                                  'chacun voyant seulement la ligne qui le\n'
+                                  'précède. Refermé, le poème devient un\n'
+                                  'artefact : lisible par tous — toi aussi.',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontFamily: AppFonts.serifItalic,
@@ -445,7 +444,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                             ),
                             const SizedBox(height: 14),
                             Text(
-                              'TU NE LIRAS JAMAIS CE POÈME',
+                              'TU LE LIRAS REFERMÉ — JAMAIS EN TRAIN DE SE FAIRE',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontFamily: AppFonts.mono,

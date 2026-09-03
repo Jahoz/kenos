@@ -114,11 +114,14 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
 - ROSE (`#F43F5E`/`#FB7185`) est réservé à la destruction, jamais sélectionnable.
 - **Purge** : `kenos_purge()` (échos > 30 j, audit > 1 j, réceptions non
   lues > 30 j) — câblage `pg_cron` fourni commenté dans la migration 0004.
-- **Constellations (cadavre exquis)** : lignes scellées sur l'appareil,
-  `contribute_line` ne renvoie JAMAIS les fragments (le compte seul),
-  `consume_constellation` = lecture unique par un non-contributeur
-  uniquement (`KENOS_CONTRIBUTOR_BARRED`), bundle ciphertext + clé
-  (parité `consume_echo`, ouvert sur l'appareil — V3.11a).
+- **Constellations (cadavre exquis)** : lignes scellées sur l'appareil.
+  V3.13 (règle classique, arbitrage Hugo 2026-09-03) : `peek_previous_line`
+  montre la ligne qui précède (une seule, scellée, ouverte sur l'appareil),
+  `contribute_line` renvoie compte + précédente (bundle ciphertext + clé),
+  `read_constellation` = le poème REFERMÉ est un artefact — lisible par
+  tous (contributeurs inclus), re-lisible, jamais consommé ;
+  `consume_constellation` reste en alias (les clients déployés guérissent).
+  Purge : OPEN > 7 j, CLOSED > 30 j (l'artefact vit une lune).
 - **Extraits culturels (V3.10)** : la référence Spotify/YouTube voyage
   scellée sous la clé de l'écho (le serveur borne le scellé 32-512,
   ne voit jamais l'ID) ; l'URL lancée est TOUJOURS reconstruite

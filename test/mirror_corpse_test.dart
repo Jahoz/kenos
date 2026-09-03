@@ -95,15 +95,18 @@ class FakeConstellationRepository implements ConstellationRepository {
   }
 
   @override
-  Future<int> contribute({
+  Future<ContributeResult> contribute({
     required String constellationId,
     required String text,
   }) async =>
-      1;
+      const ContributeResult(count: 1);
+
+  @override
+  Future<AssembledLine?> peekPrevious(String constellationId) async => null;
 
   @override
   Future<List<ConstellationMeta>> fetchVisible() async => const [];
 
   @override
-  Future<List<AssembledLine>?> consume(String id) async => null;
+  Future<List<AssembledLine>?> read(String id) async => null;
 }
