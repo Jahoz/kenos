@@ -55,7 +55,7 @@ lib/
 make dev                   # Mode démo local (aucun backend requis)
 make dev-local             # PWA release sur l'éther local seedé (:4308) — JAMAIS juger la perf sur `flutter run` (debug, 5-20× plus lent)
 make analyze               # 0 issue
-make test                  # 184 tests (chiffrement, culling, contrôleurs, UI)
+make test                  # 185 tests (chiffrement, culling, contrôleurs, UI)
 make db-reset && make db-test  # Migrations + 96 invariants pgTAP
 make db-seed-load && make db-load-report  # Montée en charge : seed 30 j (scellés LISIBLES, ~12k lignes) + rapport
 make db-verify-load           # Preuve e2e : consommer un écho seedé, l'ouvrir sur l'appareil

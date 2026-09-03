@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/constellations/data/constellation_repository.dart';
+import 'package:kenos/features/constellations/domain/note_phrase.dart';
 import 'package:kenos/features/constellations/presentation/constellation_sheets.dart';
 import 'package:kenos/features/create_echo/presentation/mirror_screen.dart';
 
@@ -19,6 +20,9 @@ void main() {
 
   OutlinedButton buttonOf(WidgetTester tester, String label) =>
       tester.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, label));
+
+  Finder buttonOfFinder(WidgetTester tester, String label) =>
+      find.widgetWithText(OutlinedButton, label);
 
   testWidgets('Miroir : texte vide ou blanc → SCELLER & LANCER mort',
       (tester) async {
@@ -72,6 +76,38 @@ void main() {
     await tester.tapAt(tester.getCenter(pad));
     await tester.pump();
     expect(buttonOf(tester, 'DONNER LA PHRASE').onPressed, isNotNull);
+  });
+
+  testWidgets(
+      'Compositeur précis : haut = cristallin, bas = grave, à la position exacte',
+      (tester) async {
+    await tester.pumpSheet(repo, ConstellationKind.melody);
+    await tester.pump(const Duration(milliseconds: 600));
+
+    final padRect = tester.getRect(find.byKey(const Key('song_composer_pad')));
+    // Top edge = the highest note of the scale; bottom = the lowest.
+    // (The first version divided by the PANEL's height — every note
+    // landed off-pitch. This pins the pad's own geometry.)
+    await tester.tapAt(Offset(padRect.center.dx, padRect.top + 2));
+    await tester.pump();
+    await tester.tapAt(Offset(padRect.center.dx, padRect.bottom - 2));
+    await tester.pump();
+
+    expect(buttonOf(tester, 'DONNER LA PHRASE').onPressed, isNotNull);
+    await tester.tap(buttonOfFinder(tester, 'DONNER LA PHRASE'));
+    await tester.pump();
+    // The ack SnackBar must fully expire before the test ends (its
+    // dismissal timer starts once its entry animation settled).
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(seconds: 1));
+
+    // The phrase sealed to the ether carries the exact notes.
+    expect(repo.lines, hasLength(1));
+    final phrase = NotePhrase.tryParse(repo.lines.single);
+    expect(phrase, isNotNull);
+    expect(phrase!.notes.first, greaterThan(15),
+        reason: 'le haut du pad est cristallin');
+    expect(phrase.notes.last, lessThan(4), reason: 'le bas du pad est grave');
   });
 }
 

@@ -76,7 +76,10 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
 
   /// SONG mode: the composer's draft (note indices into the waves'
   /// pentatonic scale).
-  final List<int> _draft = [];
+  List<int> _draft = [];
+
+  /// The composer pad, addressable for EFFACER.
+  final GlobalKey<_ComposerPadState> _padKey = GlobalKey<_ComposerPadState>();
 
   static const _maxLength = 140;
 
@@ -260,68 +263,15 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
                   ),
               const SizedBox(height: 22),
               if (_isSong) ...[
-                // The composer: tap the void, the note lands where the
-                // finger fell (bottom = low, top = crystalline — the
-                // waves' own mapping). ≤ 8 notes.
-                SizedBox(
-                  width: 260,
-                  height: 170,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTapUp: (details) {
-                      if (_draft.length >= NotePhrase.maxNotes) return;
-                      final box =
-                          context.findRenderObject() as RenderBox?;
-                      final size = box?.size ?? const Size(260, 170);
-                      final local = details.localPosition;
-                      final note = WaveMath.noteForY(
-                        (local.dy / size.height).clamp(0.0, 1.0),
-                      );
-                      setState(() => _draft.add(note));
-                      unawaited(_playNote(note));
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.hairlineStrong),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Stack(
-                        children: [
-                          for (final (i, n) in _draft.indexed)
-                            Align(
-                              alignment: Alignment(
-                                -1 + 2 * (i / (NotePhrase.maxNotes - 1)),
-                                1 - 2 * (n / (WaveMath.noteCount - 1)),
-                              ),
-                              child: Container(
-                                width: 10,
-                                height: 10,
-                                margin: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppColors.fade(
-                                    AppColors.cyan,
-                                    0.4 + 0.5 * (i / NotePhrase.maxNotes),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          if (_draft.isEmpty)
-                            const Center(
-                              child: Text(
-                                'TOUCHE LE VIDE — CHAQUE TOUCHE EST UNE NOTE',
-                                style: TextStyle(
-                                  fontFamily: AppFonts.mono,
-                                  fontSize: 7.5,
-                                  letterSpacing: 2,
-                                  color: Color(0x40F4F4F6),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
+                // The composer: tap the void, the note lands EXACTLY
+                // where the finger fell — bottom = low, top =
+                // crystalline (the waves' own mapping), the dot's hue
+                // from the tap's horizontal band (the symphonies'
+                // palette: purple left → cyan right).
+                _ComposerPad(
+                  key: _padKey,
+                  onChanged: (notes) => setState(() => _draft = notes),
+                  onPlayNote: (note) => unawaited(_playNote(note)),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -335,7 +285,10 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
                     TextButton(
                       onPressed: _draft.isEmpty
                           ? null
-                          : () => setState(() => _draft.clear()),
+                          : () {
+                              _padKey.currentState?.clear();
+                              setState(() => _draft = []);
+                            },
                       child: const Text('EFFACER'),
                     ),
                   ],
@@ -393,6 +346,117 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The song composer pad: tap the void, the note lands EXACTLY where
+/// the finger fell. The note comes from the tap's height (bottom =
+/// low, top = crystalline — the waves' own mapping), the dot's HUE
+/// from its horizontal band (the symphonies' palette: purple left →
+/// cyan right), so a phrase reads like a little wave-field.
+///
+/// Size comes from a LayoutBuilder — the first version divided by the
+/// PANEL's render box instead of the pad's, and every note landed
+/// off-pitch (the décalage). Never again: the pad is its own widget,
+/// its geometry its own truth.
+class _ComposerPad extends StatefulWidget {
+  const _ComposerPad({super.key, required this.onChanged, required this.onPlayNote});
+
+  final ValueChanged<List<int>> onChanged;
+  final void Function(int note) onPlayNote;
+
+  @override
+  State<_ComposerPad> createState() => _ComposerPadState();
+}
+
+class _ComposerPadState extends State<_ComposerPad> {
+  static const padWidth = 260.0;
+  static const padHeight = 170.0;
+
+  final List<({int note, double x, double y})> _spots = [];
+
+  List<int> get notes => [for (final s in _spots) s.note];
+
+  void clear() => setState(_spots.clear);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: padWidth,
+      height: padHeight,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = Size(
+            constraints.maxWidth == double.infinity
+                ? padWidth
+                : constraints.maxWidth,
+            constraints.maxHeight == double.infinity
+                ? padHeight
+                : constraints.maxHeight,
+          );
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapUp: (details) {
+              if (_spots.length >= NotePhrase.maxNotes) return;
+              // Normalized IN the pad, by the pad's own constraints.
+              final x = (details.localPosition.dx / size.width)
+                  .clamp(0.0, 1.0);
+              final y = (details.localPosition.dy / size.height)
+                  .clamp(0.0, 1.0);
+              final note = WaveMath.noteForY(y);
+              setState(() => _spots.add((note: note, x: x, y: y)));
+              widget.onPlayNote(note);
+              widget.onChanged(notes);
+            },
+            child: Container(
+              key: const Key('song_composer_pad'),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.hairlineStrong),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // EXACT placement: the dot sits where the finger
+                  // fell — 5 px half-size so the center aligns.
+                  for (final (i, s) in _spots.indexed)
+                    Positioned(
+                      left: s.x * size.width - 5,
+                      top: s.y * size.height - 5,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          // The symphonies' hue grammar: the band the
+                          // note was born in. Later notes breathe
+                          // brighter (the phrase gains confidence).
+                          color: AppColors.fade(
+                            WavePalette.hueFor(WaveMath.hueForX(s.x)),
+                            0.45 + 0.55 * (i + 1) / NotePhrase.maxNotes,
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (_spots.isEmpty)
+                    const Center(
+                      child: Text(
+                        'TOUCHE LE VIDE — CHAQUE TOUCHE EST UNE NOTE',
+                        style: TextStyle(
+                          fontFamily: AppFonts.mono,
+                          fontSize: 7.5,
+                          letterSpacing: 2,
+                          color: Color(0x40F4F4F6),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

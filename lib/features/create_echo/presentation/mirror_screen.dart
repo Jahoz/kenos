@@ -364,20 +364,25 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
               // Normal case: the column fills the screen exactly
               // (Expanded works). Keyboard open: the fixed rows scroll
               // away and the editor keeps its readable window.
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
-                  // Full-bleed sky, readable measure: the editor stands
-                  // in a centered column on wide windows.
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: AppLayout.contentMaxWidth,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(26, 18, 26, 26),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
+              child: Center(
+                child: ConstrainedBox(
+                  constraints:
+                      BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    // Full-bleed sky, readable measure: the editor
+                    // stands CENTERED in its column on wide windows —
+                    // without the Center, the tight scroll constraints
+                    // beat the maxWidth and the column pins itself to
+                    // the left edge (the Aube's bug, same family).
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: AppLayout.contentMaxWidth,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(26, 18, 26, 26),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
                           Row(
                             children: [
                               Text(
@@ -598,7 +603,8 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

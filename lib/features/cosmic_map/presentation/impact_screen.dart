@@ -31,11 +31,18 @@ class ImpactScreen extends ConsumerWidget {
       ),
       body: stats.when(
         data: (userStats) => SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(26),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+          // Wide screens: the ledger keeps its readable measure,
+          // centered — same grammar as the Aube and the Mirror.
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: 560,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(26),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                 const SizedBox(height: 20),
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
@@ -123,7 +130,9 @@ class ImpactScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-              ],
+                  ],
+                ),
+              ),
             ),
           ),
         ),
