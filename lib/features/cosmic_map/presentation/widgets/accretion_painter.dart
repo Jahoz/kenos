@@ -17,10 +17,17 @@ class AccretionPainter extends CustomPainter {
     required this.viewport,
     required this.now,
     required this.reducedMotion,
-  });
+  })  : _center = camera.center,
+        _zoom = camera.zoom;
 
   final List<AccretionMote> motes;
   final TravelCamera camera;
+
+  /// Camera VALUES captured at construction (see SystemPainter — the
+  /// mutable camera instance can never differ from itself, and the
+  /// falls must follow the eye at frame rate).
+  final Offset _center;
+  final double _zoom;
   final Size viewport;
   final DateTime now;
   final bool reducedMotion;
@@ -76,7 +83,11 @@ class AccretionPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(AccretionPainter oldDelegate) =>
-      oldDelegate.now != now || oldDelegate.motes.length != motes.length;
+      oldDelegate.now != now ||
+      oldDelegate.motes.length != motes.length ||
+      oldDelegate._center != _center ||
+      oldDelegate._zoom != _zoom ||
+      oldDelegate.viewport != viewport;
 }
 
 /// Convenience: does anything still fall? (Cheap ticker gate.)

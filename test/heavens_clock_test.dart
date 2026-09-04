@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/cosmic_map/application/motion_service.dart';
+import 'package:kenos/features/cosmic_map/application/travel_camera.dart';
 import 'package:kenos/features/cosmic_map/presentation/map_screen.dart';
 import 'package:kenos/features/cosmic_map/presentation/widgets/system_painter.dart';
 import 'package:kenos/features/echo/data/echo_providers.dart';
@@ -54,5 +55,34 @@ void main() {
     expect(after!.now.isAfter(t0), isTrue,
         reason:
             "l'horloge des cieux bat seule — la fluidité n'attend pas le doigt");
+  });
+  testWidgets('contrat de repeint : l\'œil bougé repeint, même horloge',
+      (tester) async {
+    final camera = TravelCamera();
+    final t = DateTime.now();
+    final still = SystemPainter(
+      camera: camera,
+      viewport: const Size(390, 844),
+      now: t,
+      reducedMotion: false,
+    );
+    final sameStill = SystemPainter(
+      camera: camera,
+      viewport: const Size(390, 844),
+      now: t,
+      reducedMotion: false,
+    );
+    expect(still.shouldRepaint(sameStill), isFalse,
+        reason: 'rien ne bouge, rien ne repeint');
+
+    camera.panByWorld(const Offset(0.2, 0.1));
+    final moved = SystemPainter(
+      camera: camera,
+      viewport: const Size(390, 844),
+      now: t,
+      reducedMotion: false,
+    );
+    expect(still.shouldRepaint(moved), isTrue,
+        reason: 'l\'œil a bougé — les cieux repeignent, horloge identique ou non');
   });
 }

@@ -20,9 +20,18 @@ class SystemPainter extends CustomPainter {
     required this.now,
     required this.reducedMotion,
     this.echoes = const [],
-  });
+  })  : _center = camera.center,
+        _zoom = camera.zoom;
 
   final TravelCamera camera;
+
+  /// Camera VALUES captured at construction: the camera object is a
+  /// single mutable instance — comparing it to itself never fires. The
+  /// painter must repaint whenever the eye actually moved (V3.12c fix:
+  /// the heavens' own clock made the stale-`now` comparison visible as
+  /// judder between beats).
+  final Offset _center;
+  final double _zoom;
   final Size viewport;
   final DateTime now;
   final bool reducedMotion;
@@ -328,7 +337,9 @@ class SystemPainter extends CustomPainter {
   bool shouldRepaint(SystemPainter oldDelegate) =>
       oldDelegate.now != now ||
       oldDelegate.reducedMotion != reducedMotion ||
-      oldDelegate.camera.center != camera.center;
+      oldDelegate._center != _center ||
+      oldDelegate._zoom != _zoom ||
+      oldDelegate.viewport != viewport;
 }
 
 /// Screen rectangle of a planet's tap target (for « voyager vers »).
