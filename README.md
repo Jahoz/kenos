@@ -256,3 +256,9 @@ si l'on relâche.
 
 La feuille de route vivante (V3+ : Vestiges, Extraits, Aube, clusters
 gelés) vit dans [`docs/ROADMAP_V3.md`](docs/ROADMAP_V3.md).
+
+## Licence
+
+Code **source-available** sous [PolyForm Noncommercial 1.0.0](LICENSE.md) :
+lis, fork, apprends — jamais de réutilisation commerciale. Le sanctuaire
+est transparent par contrat, pas revendable.
