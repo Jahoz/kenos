@@ -580,6 +580,37 @@ que l'éther ne connaît pas encore. Trouvés en voyageant (arcs lents
 déterministes, 0,62-0,74 UA du vide). Zéro migration : la mythologie
 vit client, le thème→orbite reste la clé sacrée du Miroir. 7 tests.
 
+## V3.15 — Le Bouclier de Trace ✅ (livré 2026-09-04)
+
+L'IA au service de l'âme, pas contre elle. Le contenu scellé
+(échos, constellations, chansons) est structurellement invisible —
+AES-256-GCM sur l'appareil, par design, pour toujours. La TRACE est
+la seule contenu utilisateur en clair que l'éther voie jamais :
+c'est précisément là que la modération Mistral (`mistral-moderation-
+latest`, free tier, 11 catégories) intervient.
+
+- **Edge Function `trace-shield`** : proxy vers la modération Mistral
+  (clé en secret serveur, jamais dans le client). Seuils calibrés
+  sur sondage live (fuites réelles = 1.0, traces saines ≤ 0.05) :
+  `pii > 0.8`, `selfharm > 0.85`. **Fail-open par contrat** : clé
+  absente, réseau mort, JSON cassé → la trace passe, le bouclier est
+  un invité, jamais une porte.
+- **PII = l'anonymat est le contrat** : l'app AVERTIT, jamais ne
+  bloque — « Ce que tu t'apprêtes à laisser semble porter des
+  données personnelles… l'anonymat, lui, ne revient pas. »
+  LAISSER QUAND MÊME / REPRENDRE MA LIGNE. Protéger l'âme de l'app
+  au moment exact où l'humain la menace lui-même.
+- **Selfharm = un moment de soin, jamais une censure** : le cri
+  appartient à celle ou celui qui l'a écrit. « Tu n'es pas obligé·e
+  de la porter seul·e — le 3114 (national, 24h/24, gratuit) écoute,
+  et le 15 en urgence. » LAISSER LA TRACE / REPRENDRE MA LIGNE.
+- Démo/hors-ligne : le bouclier ne s'appelle même pas. Chaque
+  drapeau ne s'affiche qu'une fois par session d'écriture.
+
+Gates : 5 tests (décodage fail-open, types lâches sans faux positif,
+sans session = passage), déployé et vérifié live sur les trois cas
+(PII levé, saine passe, selfharm levé).
+
 ## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — **GELÉ, arbitrage Hugo 2026-09-02** : on va au bout du Cadavre Exquis et des Symphonies d'abord)
 
 Créer une mini-galaxie invitable (amis, collègues), vivant en parallèle

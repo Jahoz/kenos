@@ -20,6 +20,7 @@ import '../../../../core/widgets/hud.dart';
 import '../../../../core/widgets/scramble_text.dart';
 import '../../../echo/data/echo_providers.dart';
 import '../../../echo/data/echo_repository.dart';
+import '../../../echo/data/trace_shield.dart';
 import '../../../echo/domain/echo.dart';
 import '../../../echo/domain/echo_excerpt.dart';
 import '../../../echo/domain/echo_media.dart';
@@ -270,6 +271,29 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     final text = _traceInput.text.trim();
     if (text.isEmpty || text.length > _maxTrace) return;
     setState(() => _sending = true);
+
+    // The Trace Shield (V3.15): the line is the only clear content
+    // the ether ever sees — one quiet look before it drifts. PII =
+    // the writer is burning their own anonymity (warn, never block);
+    // selfharm = a real pain (a care moment, never censorship). Any
+    // failure of the shield lets the trace pass untouched.
+    final verdict = await TraceShield.read(text);
+    if (!mounted) return;
+    if (verdict.pii && !_piiAcknowledged) {
+      setState(() => _sending = false);
+      final proceed = await _warnAnonymity();
+      if (!mounted || !proceed) return;
+      _piiAcknowledged = true;
+      setState(() => _sending = true);
+    }
+    if (verdict.selfharm && !_careAcknowledged) {
+      setState(() => _sending = false);
+      final proceed = await _offerCare();
+      if (!mounted || !proceed) return;
+      _careAcknowledged = true;
+      setState(() => _sending = true);
+    }
+
     try {
       await ref
           .read(mapControllerProvider.notifier)
@@ -283,6 +307,129 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
       // Silence is also an answer: close without guilt.
     }
     if (mounted) Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  bool _piiAcknowledged = false;
+  bool _careAcknowledged = false;
+
+  /// ANONYMITY WARNING — non-blocking: the contract is anonymity, and
+  /// choosing belongs to the one who writes. The shield only makes
+  /// the choice visible at the moment it can still be unmade.
+  Future<bool> _warnAnonymity() async {
+    final proceed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: AppColors.voidBlack,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: AppColors.fade(AppColors.pureLight, 0.18)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'TON ANONYMAT EST LE CONTRAT',
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 10,
+                    letterSpacing: 3,
+                    color: AppColors.fade(AppColors.teal, 0.85),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Ce que tu t\'apprêtes à laisser semble porter des données '
+                  'personnelles.\n\nElles dériveront avec ta trace, lisibles '
+                  'par un inconnu — et l\'anonymat, lui, ne revient pas.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.serifItalic,
+                    fontSize: 14,
+                    height: 1.75,
+                    color: AppColors.fade(AppColors.pureLight, 0.75),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('LAISSER QUAND MÊME'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('REPRENDRE MA LIGNE'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    return proceed ?? false;
+  }
+
+  /// CARE MOMENT — non-blocking: the cry belongs to the one who wrote
+  /// it. The shield never censors; it makes sure the writer knows
+  /// they don't have to carry it alone.
+  Future<bool> _offerCare() async {
+    final proceed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: AppColors.voidBlack,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: AppColors.fade(AppColors.pureLight, 0.18)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'AVANT QUE ÇA DÉRIVE',
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 10,
+                    letterSpacing: 3,
+                    color: AppColors.fade(AppColors.teal, 0.85),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Ce que tu écris semble porter une vraie douleur.\n\n'
+                  'Tu n\'es pas obligé·e de la porter seul·e — le 3114 '
+                  '(national, 24h/24, gratuit) écoute, et le 15 en urgence.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.serifItalic,
+                    fontSize: 14,
+                    height: 1.75,
+                    color: AppColors.fade(AppColors.pureLight, 0.75),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('LAISSER LA TRACE'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('REPRENDRE MA LIGNE'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    return proceed ?? false;
   }
 
   void _leave() {

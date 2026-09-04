@@ -134,6 +134,13 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
   sur l'appareil), la chanson refermée se traverse : lecture
   séquentielle, chaque phrase spatialisée à sa station d'angle d'or
   (flutter_soloud, repli assets cuits).
+- **Bouclier de trace (V3.15)** : la trace est la SEULE contenu clair
+  vue par l'éther ; l'Edge Function `trace-shield` la lit via Mistral
+  moderation (clé en secret serveur, fail-open par contrat). PII →
+  avertissement non-bloquant (l'anonymat est le contrat, choisir
+  appartient à l'auteur) ; selfharm → moment de soin avec ressources
+  (3114/15), jamais une censure. Le contenu scellé reste
+  structurelement invisible, pour toujours.
 - **Extraits culturels (V3.10)** : la référence Spotify/YouTube voyage
   scellée sous la clé de l'écho (le serveur borne le scellé 32-512,
   ne voit jamais l'ID) ; l'URL lancée est TOUJOURS reconstruite
