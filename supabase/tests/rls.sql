@@ -1,7 +1,7 @@
 -- KENOS security tests — access control as an authenticated client.
 -- These tests actively try to cheat; every attempt must fail.
 begin;
-select plan(14);
+select plan(16);
 
 -- Seed: one echo owned by a test author, created outside client reach.
 insert into auth.users (id, email, aud, role)
@@ -82,6 +82,18 @@ select throws_ok(
   'select * from public.kenos_echo_reports',
   42501, 'permission denied for table kenos_echo_reports',
   'kenos_echo_reports invisible to clients'
+);
+
+-- The Observatory ledger is as sealed as every other journal.
+select throws_ok(
+  'select * from public.kenos_metrics_daily',
+  42501, 'permission denied for table kenos_metrics_daily',
+  'kenos_metrics_daily invisible to clients'
+);
+select throws_ok(
+  $$insert into public.kenos_metrics_daily (day) values (current_date)$$,
+  42501, 'permission denied for table kenos_metrics_daily',
+  'direct INSERT into the metrics ledger denied'
 );
 
 -- The map RPC: metadata yes, text impossible (and the retired view is gone).

@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(106);
+select plan(128);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -894,7 +894,14 @@ delete from public.kenos_vestiges where id like 't-vest-%';
 
 -- Purge: open corpses > 7 days go back to the void; a closed corpse
 -- is an artifact for a moon — then the ether forgets.
+-- The gardener/curator wipes above emptied the sky: re-seed the two
+-- rings this scenario needs (deterministic direct writes — postgres
+-- tooling, outside client reach). Without them the scenario kept
+-- referencing rows deleted by the V3.14b wipe.
 reset role;
+insert into public.kenos_constellations (seed_x, seed_y, target_lines, state, kind, closed_at)
+values (0.5, 0.11, 4, 'CLOSED', 'POEM', now()),
+       (0.5, 0.22, 4, 'OPEN', 'POEM', null);
 update public.kenos_constellations set created_at = now() - interval '8 days'
   where id = tests.constellation_seed_by('second');
 select public.kenos_purge();
@@ -1089,6 +1096,243 @@ select is(
    from (select public.consume_echo(tests.echo_by_text('porte scellée de e7')) as bundle) q),
   true,
   'the winner gets the sealed door reference and its kind'
+);
+
+-- ── V3.16 — The Observatory: contentless usage counters + guardian gate ──
+-- Fresh hands (c7/c8, m901-m907) so the frozen-transaction clocks (the
+-- 5 s / 20 s cadences read now(), which never advances inside one tx)
+-- cannot interfere with earlier cases.
+reset role;
+insert into auth.users (id, email, aud, role) values
+  ('00000000-0000-4000-8000-0000000000c7', 'c7@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000c8', 'c8@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-000000000901', 'm901@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-000000000902', 'm902@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-000000000903', 'm903@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-000000000904', 'm904@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-000000000905', 'm905@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-000000000906', 'm906@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-000000000907', 'm907@t.kenos', 'authenticated', 'authenticated');
+
+-- Definer helper: the consumed echo id, readable from authenticated
+-- blocks (tests.consumed_ids itself is out of client reach).
+create or replace function tests.consumed_id_by_tag(p_tag text) returns uuid
+language sql security definer set search_path = public, tests as $$
+  select echo_id from tests.consumed_ids where tag = p_tag
+$$;
+grant execute on function tests.consumed_id_by_tag(text) to authenticated;
+
+-- 80 — the counter whitelist: no dynamic SQL, no invented kinds.
+select throws_ok(
+  $$select public.kenos_metrics_touch('bogus')$$,
+  'P0001', 'KENOS_METRICS_BAD_KIND',
+  'the metrics bump refuses unknown kinds'
+);
+
+-- 81 — every user birth is counted, and nothing else about it.
+select is(
+  coalesce((select m.new_users from public.kenos_metrics_daily m where m.day = current_date), 0),
+  (select count(*)::int from auth.users),
+  'every user birth counted, contentless'
+);
+
+-- Snapshots live in a temp table (read/written as postgres around the
+-- authenticated actions) so assertions are exact deltas, whatever the
+-- earlier cases did on the same day.
+create temp table metrics_probe_snap (k text primary key, v integer);
+
+-- 82 — one launch (the live 8-param path), one counted launch.
+insert into metrics_probe_snap (k, v)
+select 'launched', coalesce((select m.echoes_launched from public.kenos_metrics_daily m where m.day = current_date), 0);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000c7","role":"authenticated"}', true);
+select * from public.launch_echo('observatoire sonde', '', 0.42, 0.52, 0.9, 'TEAL', null, null);
+reset role;
+select is(
+  coalesce((select m.echoes_launched from public.kenos_metrics_daily m where m.day = current_date), 0),
+  (select v from metrics_probe_snap where k = 'launched') + 1,
+  'launch_echo bumps the daily launched counter exactly once'
+);
+
+-- 83 — one atomic consumption, one counted burn (same transaction).
+insert into metrics_probe_snap (k, v)
+select 'consumed', coalesce((select m.echoes_consumed from public.kenos_metrics_daily m where m.day = current_date), 0);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000c8","role":"authenticated"}', true);
+select tests.consume_by_text('observatoire sonde');
+reset role;
+select is(
+  coalesce((select m.echoes_consumed from public.kenos_metrics_daily m where m.day = current_date), 0),
+  (select v from metrics_probe_snap where k = 'consumed') + 1,
+  'consume_echo bumps the daily consumed counter exactly once'
+);
+
+-- 84/85/86 — a trace is counted once; the one-shot second call never counts.
+insert into metrics_probe_snap (k, v)
+select 'traces', coalesce((select m.traces_left from public.kenos_metrics_daily m where m.day = current_date), 0);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000c8","role":"authenticated"}', true);
+select is(
+  public.leave_trace(tests.consumed_id_by_tag('observatoire sonde'), 'merci, étoile'),
+  true,
+  'the reader leaves one trace'
+);
+select is(
+  public.leave_trace(tests.consumed_id_by_tag('observatoire sonde'), 'remplacement'),
+  false,
+  'a trace already left can never be replaced'
+);
+reset role;
+select is(
+  coalesce((select m.traces_left from public.kenos_metrics_daily m where m.day = current_date), 0),
+  (select v from metrics_probe_snap where k = 'traces') + 1,
+  'leave_trace counted exactly once — the one-shot rule holds'
+);
+
+-- 87 — a report is counted when filed, not when refused.
+insert into metrics_probe_snap (k, v)
+select 'reports', coalesce((select m.reports_filed from public.kenos_metrics_daily m where m.day = current_date), 0);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000c8","role":"authenticated"}', true);
+select public.report_echo(tests.consumed_id_by_tag('observatoire sonde'), 'OTHER');
+reset role;
+select is(
+  coalesce((select m.reports_filed from public.kenos_metrics_daily m where m.day = current_date), 0),
+  (select v from metrics_probe_snap where k = 'reports') + 1,
+  'report_echo bumps the daily report counter exactly once'
+);
+
+-- 88 — the phoenix rebirth is counted too.
+insert into metrics_probe_snap (k, v)
+select 'rebound', coalesce((select m.echoes_rebound from public.kenos_metrics_daily m where m.day = current_date), 0);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000c8","role":"authenticated"}', true);
+select * from tests.rebound_by_text('observatoire sonde', 0, 'phoenix métrique', '');
+reset role;
+select is(
+  coalesce((select m.echoes_rebound from public.kenos_metrics_daily m where m.day = current_date), 0),
+  (select v from metrics_probe_snap where k = 'rebound') + 1,
+  'rebound_echo bumps the daily rebirth counter exactly once'
+);
+
+-- 89/90/91 — a full corpse: seed, lines, and the closing day it deserves.
+-- The target is random (4..7): the probe contributes as fresh strangers
+-- until the constellation closes, then the deltas tell the truth.
+create or replace function tests.metrics_corpse_probe()
+returns integer
+language plpgsql security definer set search_path = public, tests as $$
+declare
+    cid uuid;
+    target int;
+    n int := 0;
+begin
+    select id into cid from public.seed_constellation(0.31, 0.13, 'POEM') s;
+    select target_lines into target from public.kenos_constellations where id = cid;
+    while n < target loop
+        n := n + 1;
+        perform set_config(
+            'request.jwt.claims',
+            format('{"sub":"00000000-0000-4000-8000-%s","role":"authenticated"}',
+                   lpad((900 + n)::text, 12, '0')),
+            true
+        );
+        perform public.contribute_line(cid, 'ligne de sonde ' || n, '');
+    end loop;
+    return target;
+end;
+$$;
+grant execute on function tests.metrics_corpse_probe() to authenticated;
+
+insert into metrics_probe_snap (k, v)
+select 'seeded', coalesce((select m.corpses_seeded from public.kenos_metrics_daily m where m.day = current_date), 0);
+insert into metrics_probe_snap (k, v)
+select 'lines', coalesce((select m.lines_contributed from public.kenos_metrics_daily m where m.day = current_date), 0);
+insert into metrics_probe_snap (k, v)
+select 'closed', coalesce((select m.corpses_closed from public.kenos_metrics_daily m where m.day = current_date), 0);
+-- The random target (4..7) is captured through the GUC-only claims:
+-- the definer probe reads request.jwt.claims whatever the invoking role.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000c7","role":"authenticated"}', true);
+insert into metrics_probe_snap (k, v)
+select 'probe_target', tests.metrics_corpse_probe();
+reset role;
+select is(
+  coalesce((select m.corpses_seeded from public.kenos_metrics_daily m where m.day = current_date), 0),
+  (select v from metrics_probe_snap where k = 'seeded') + 1,
+  'seed_constellation bumps the seeded counter exactly once'
+);
+select is(
+  coalesce((select m.lines_contributed from public.kenos_metrics_daily m where m.day = current_date), 0)
+    - (select v from metrics_probe_snap where k = 'lines'),
+  (select v from metrics_probe_snap where k = 'probe_target'),
+  'every contributed line counted, contentless'
+);
+select is(
+  coalesce((select m.corpses_closed from public.kenos_metrics_daily m where m.day = current_date), 0)
+    - (select v from metrics_probe_snap where k = 'closed'),
+  1,
+  'the closing line bumps the corpse counter exactly once'
+);
+
+-- ── The guardian gate ───────────────────────────────────────────────────
+-- anon cannot even resolve the function (existence proof, like smoke_prod).
+set local role anon;
+select throws_ok(
+  $$select public.admin_fetch_metrics()$$,
+  42501, 'permission denied for function admin_fetch_metrics',
+  'anon cannot even resolve the observatory RPC'
+);
+reset role;
+
+-- A mere stranger: refused.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000c8","role":"authenticated"}', true);
+select throws_ok(
+  $$select public.admin_fetch_metrics()$$,
+  '42501', 'KENOS_FORBIDDEN',
+  'a mere stranger cannot read the observatory'
+);
+
+-- user_metadata is user-editable: it must NEVER authorize anything.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000c8","role":"authenticated","user_metadata":{"role":"admin"}}', true);
+select throws_ok(
+  $$select public.admin_fetch_metrics()$$,
+  '42501', 'KENOS_FORBIDDEN',
+  'a forged user_metadata claim authorizes nothing'
+);
+
+-- The guardian: app_metadata (operator-set, not user-editable).
+-- tests.user_count: the expected population, read through a definer
+-- (auth.users itself is out of any client's reach).
+reset role;
+create or replace function tests.user_count() returns integer
+language sql security definer set search_path = public as $$
+  select count(*)::int from auth.users
+$$;
+grant execute on function tests.user_count() to authenticated;
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000c8","role":"authenticated","app_metadata":{"role":"admin"}}', true);
+select is(jsonb_exists(public.admin_fetch_metrics(), 'series'), true, 'the guardian reads the spectrum');
+select is(jsonb_exists(public.admin_fetch_metrics(), 'live'), true, 'the guardian reads the live state');
+select is(jsonb_exists(public.admin_fetch_metrics(), 'sectors'), true, 'the guardian reads the sector grid');
+select is(jsonb_exists(public.admin_fetch_metrics(), 'derived'), true, 'the guardian reads the derived ratios');
+select is(
+  (public.admin_fetch_metrics() -> 'live' ->> 'users_total')::int,
+  tests.user_count(),
+  'users_total is the whole population, contentless'
+);
+select is(
+  jsonb_array_length(public.admin_fetch_metrics() -> 'series'),
+  30,
+  'the spectrum spans thirty days by default'
+);
+reset role;
+
+-- The purge folds distinct readers BEFORE burning the 1-day journal.
+select public.kenos_purge();
+select is(
+  (select m.active_readers from public.kenos_metrics_daily m where m.day = current_date),
+  (select count(distinct r.reader_id)::int from public.kenos_reads r where r.read_at::date = current_date),
+  'the purge folds distinct readers into the daily row before the journal burns'
 );
 
 select * from finish();
