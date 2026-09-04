@@ -112,8 +112,8 @@ catalog iOS, pur stdlib).
 
 ```bash
 make analyze     # flutter analyze — 0 issue
-make test        # 162 tests Dart : chiffrement, culling, contrôleurs, parcours UI
-make db-test     # 96 invariants SQL (pgTAP) : RPC + tentatives d'effraction RLS
+make test        # 226 tests Dart : chiffrement, culling, contrôleurs, parcours UI
+make db-test     # 146 invariants SQL (pgTAP) : RPC + tentatives d'effraction RLS
 make e2e         # boucle complète sur le PostgREST local réel (18 vérifications)
 ```
 

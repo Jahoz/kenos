@@ -22,9 +22,9 @@ Kept in `AGENTS.md` and `docs/SECURITY.md` — the short version:
 ```bash
 make dev         # run the app (demo mode without credentials)
 make analyze     # must be 0 issue
-make test        # Dart suite (162 tests)
+make test        # Dart suite (226 tests)
 make db-reset    # recreate the local Supabase DB from migrations
-make db-test     # pgTAP suite (96 SQL invariants)
+make db-test     # pgTAP suite (146 SQL invariants)
 make e2e         # full loop over the real local PostgREST (18 checks)
 make build-web   # release web build — compiles the fragment shader
 ```
@@ -61,4 +61,5 @@ without it.
 | `test/constellation_figure_test.dart` | golden-angle figure: determinism, distinct stations, growth |
 | `test/spatial_wave_test.dart` | pitch mirror, stereo pan, distance gain, engine fallback |
 | `test/door_dialog_keyboard_test.dart` | one editing host: dialog handover, Mirror text intact |
-| `supabase/tests/*.sql` | 96 invariants (RPC behavior, RLS break-ins, sealed corpse) |
+| `test/observatory_gate_test.dart` | guardian threshold: refused words, shapes only, revoked rank, demo parity |
+| `supabase/tests/*.sql` | 146 invariants (RPC behavior, RLS break-ins, sealed corpse, contentless metrics) |

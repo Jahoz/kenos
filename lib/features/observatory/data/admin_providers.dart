@@ -10,8 +10,15 @@ import 'supabase_admin_repository.dart';
 /// backend semantics of the threshold and the shapes).
 final adminRepositoryProvider = Provider<AdminRepository>((ref) {
   final boot = ref.watch(bootstrapProvider);
+  final AdminRepository repo;
   if (boot.supabaseConfigured) {
-    return SupabaseAdminRepository();
+    final guardian = SupabaseAdminRepository();
+    repo = guardian;
+    // Release the dedicated guardian client when the provider dies —
+    // the celestial client is not ours to touch.
+    ref.onDispose(guardian.dispose);
+  } else {
+    repo = LocalAdminRepository();
   }
-  return LocalAdminRepository();
+  return repo;
 });

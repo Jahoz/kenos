@@ -69,6 +69,14 @@ class LocalAdminRepository implements AdminRepository {
       );
     }
 
+    // Demo sector pressure: a deterministic scatter (tiny LCG), not an
+    // arithmetic lattice — the sky never draws visible grid lines.
+    var seed = 42;
+    int draw() {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed;
+    }
+
     return AdminMetrics(
       series: series,
       live: LiveCounts(
@@ -81,11 +89,7 @@ class LocalAdminRepository implements AdminRepository {
       ),
       sectors: List.generate(
         22,
-        (i) => SectorCell(
-          x: (i * 5) % 8,
-          y: (i * 3) % 8,
-          count: 2 + (i * 11) % 23,
-        ),
+        (i) => SectorCell(x: draw() % 8, y: draw() % 8, count: 2 + draw() % 22),
       ),
       derived: DerivedMetrics(
         medianDriftSeconds: 3842,

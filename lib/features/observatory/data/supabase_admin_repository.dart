@@ -50,6 +50,13 @@ class SupabaseAdminRepository implements AdminRepository {
     }
   }
 
+  /// Releases the dedicated client (provider teardown). The celestial
+  /// client in `Supabase.instance` is not ours to touch.
+  void dispose() {
+    _client?.dispose();
+    _client = null;
+  }
+
   @override
   Future<AdminMetrics> fetchMetrics({int days = 30}) async {
     if (!isSignedIn) throw GuardianAuthException('no_session');

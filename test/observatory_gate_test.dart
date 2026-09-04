@@ -70,6 +70,17 @@ void main() {
       expect(find.text('LA GRILLE DES SECTEURS'), findsOneWidget);
     });
 
+    testWidgets('RAFRAÎCHIR asks the ether again — never live', (tester) async {
+      final repo = _FakeRepo();
+      await _pump(tester, repo: repo);
+      await _cross(tester, 'gardien@kenos.local', 'le long secret');
+      expect(repo.fetches, 1);
+      await tester.tap(find.text('RAFRAÎCHIR'));
+      await tester.pumpAndSettle();
+      expect(repo.fetches, 2);
+      expect(find.text('L\'ÉTAT DU CIEL'), findsOneWidget);
+    });
+
     testWidgets('a revoked rank closes the sky', (tester) async {
       await _pump(tester, repo: _ForbiddenRepo());
       await _cross(tester, 'gardien@kenos.local', 'le long secret');
@@ -155,6 +166,8 @@ AdminMetrics _metrics({bool silent = false}) => AdminMetrics(
 );
 
 class _FakeRepo implements AdminRepository {
+  int fetches = 0;
+
   @override
   bool get isSignedIn => _in;
   bool _in = false;
@@ -166,7 +179,10 @@ class _FakeRepo implements AdminRepository {
   Future<void> signOut() async => _in = false;
 
   @override
-  Future<AdminMetrics> fetchMetrics({int days = 30}) async => _metrics();
+  Future<AdminMetrics> fetchMetrics({int days = 30}) async {
+    fetches++;
+    return _metrics();
+  }
 }
 
 class _RefusingRepo implements AdminRepository {

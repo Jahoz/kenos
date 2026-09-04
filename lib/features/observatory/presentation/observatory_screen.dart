@@ -109,6 +109,22 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
         ),
         centerTitle: true,
         elevation: 0,
+        // Manual recalibration only — no live counters, in the sky's
+        // spirit: the guardian asks, the ether answers.
+        actions: [
+          if (_phase == _Phase.data || _phase == _Phase.silent)
+            TextButton(
+              onPressed: _load,
+              child: Text(
+                'RAFRAÎCHIR',
+                style: TextStyle(
+                  fontFamily: AppFonts.mono,
+                  fontSize: 9,
+                  letterSpacing: 2,
+                ),
+              ),
+            ),
+        ],
       ),
       body: switch (_phase) {
         _Phase.threshold => GuardianGatePanel(
@@ -209,41 +225,24 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
                 const SizedBox(height: 34),
                 _sectionLabel('L\'ÉTAT DU CIEL'),
                 const SizedBox(height: 14),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _MeasureCard(
-                      label: 'Échos à la dérive',
-                      value: m.live.echoesDrifting,
-                      color: AppColors.teal,
-                    ),
-                    _MeasureCard(
-                      label: 'Voyageurs',
-                      value: m.live.usersTotal,
-                      color: AppColors.indigo,
-                    ),
-                    _MeasureCard(
-                      label: 'Anneaux ouverts',
-                      value: m.live.constellationsOpen,
-                      color: AppColors.purple,
-                    ),
-                    _MeasureCard(
-                      label: 'Poèmes achevés',
-                      value: m.live.constellationsClosed,
-                      color: AppColors.indigo,
-                    ),
-                    _MeasureCard(
-                      label: 'Vestiges vivants',
-                      value: m.live.vestigesLive,
-                      color: AppColors.ember,
-                    ),
-                    _MeasureCard(
-                      label: 'Signalements',
-                      value: m.live.reportsOpen,
-                      color: AppColors.cyan,
-                    ),
-                  ],
+                // Two measures per row on every phone, one honest
+                // ceiling on tablets — never a squeeze.
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cardWidth = ((constraints.maxWidth - 12) / 2).clamp(
+                      96.0,
+                      176.0,
+                    );
+                    return Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        for (final card in _measures(m))
+                          SizedBox(width: cardWidth, child: card),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 38),
                 _sectionLabel('LE SPECTRE — 30 JOURS'),
@@ -263,7 +262,7 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
                     fontFamily: AppFonts.serifItalic,
                     fontSize: 12,
                     height: 1.7,
-                    color: AppColors.fade(AppColors.pureLight, 0.45),
+                    color: AppColors.fade(AppColors.pureLight, 0.55),
                   ),
                 ),
                 const SizedBox(height: 38),
@@ -313,6 +312,39 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
     );
   }
 
+  List<Widget> _measures(AdminMetrics m) => [
+    _MeasureCard(
+      label: 'Échos à la dérive',
+      value: m.live.echoesDrifting,
+      color: AppColors.teal,
+    ),
+    _MeasureCard(
+      label: 'Voyageurs',
+      value: m.live.usersTotal,
+      color: AppColors.indigo,
+    ),
+    _MeasureCard(
+      label: 'Anneaux ouverts',
+      value: m.live.constellationsOpen,
+      color: AppColors.purple,
+    ),
+    _MeasureCard(
+      label: 'Poèmes achevés',
+      value: m.live.constellationsClosed,
+      color: AppColors.indigo,
+    ),
+    _MeasureCard(
+      label: 'Vestiges vivants',
+      value: m.live.vestigesLive,
+      color: AppColors.ember,
+    ),
+    _MeasureCard(
+      label: 'Signalements',
+      value: m.live.reportsOpen,
+      color: AppColors.cyan,
+    ),
+  ];
+
   Widget _sectionLabel(String text) => Text(
     text,
     style: TextStyle(
@@ -350,7 +382,7 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
   );
 
   Widget _derivedLine(String label, String value) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.only(bottom: 16),
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -400,35 +432,37 @@ class _MeasureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 150,
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.fade(color, 0.3), width: 1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: AppFonts.mono,
-              fontSize: 9,
-              letterSpacing: 1,
-              color: AppColors.fade(color, 0.6),
+    return Semantics(
+      label: '$label : $value',
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.fade(color, 0.3), width: 1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: AppFonts.mono,
+                fontSize: 9,
+                letterSpacing: 1,
+                color: AppColors.fade(color, 0.6),
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value.toString(),
-            style: TextStyle(
-              fontFamily: AppFonts.serif,
-              fontSize: 26,
-              color: color,
+            const SizedBox(height: 6),
+            Text(
+              value.toString(),
+              style: TextStyle(
+                fontFamily: AppFonts.serif,
+                fontSize: 26,
+                color: color,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

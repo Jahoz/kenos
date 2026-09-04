@@ -47,7 +47,9 @@ class _SpectrumPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
-    final h = size.height - _labelSpace;
+    // Label row + a breath of headroom so tall bars never kiss the
+    // section above.
+    final h = size.height - _labelSpace - 6;
     final n = series.length;
     if (n == 0 || w <= 0 || h <= 0) return;
 
@@ -66,7 +68,7 @@ class _SpectrumPainter extends CustomPainter {
     }
 
     final slot = w / n;
-    final barW = math.max(1.0, slot * 0.30);
+    final barW = math.max(1.0, slot * 0.26);
     final teal = Paint()..color = AppColors.fade(AppColors.teal, 0.85);
     final indigo = Paint()..color = AppColors.fade(AppColors.indigo, 0.85);
 
@@ -76,28 +78,29 @@ class _SpectrumPainter extends CustomPainter {
       if (day.launched > 0) {
         final barH = day.launched / max * h;
         canvas.drawRect(
-          Rect.fromLTWH(cx - barW - 0.5, h - barH, barW, barH),
+          Rect.fromLTWH(cx - barW - 1.0, h - barH, barW, barH),
           teal,
         );
       }
       if (day.consumed > 0) {
         final barH = day.consumed / max * h;
-        canvas.drawRect(Rect.fromLTWH(cx + 0.5, h - barH, barW, barH), indigo);
+        canvas.drawRect(Rect.fromLTWH(cx + 1.0, h - barH, barW, barH), indigo);
       }
     }
 
+    // Date anchors: inset from the edges — never flush, never clipped.
     _label(
       canvas,
       _shortDay(series.first.day),
-      Offset(0, h + 3),
-      width: w / 3,
+      Offset(4, h + 5),
+      width: w / 3 - 4,
       align: TextAlign.left,
     );
     _label(
       canvas,
       _shortDay(series.last.day),
-      Offset(w * 2 / 3, h + 3),
-      width: w / 3,
+      Offset(w * 2 / 3, h + 5),
+      width: w / 3 - 4,
       align: TextAlign.right,
     );
   }
@@ -132,9 +135,7 @@ class _SpectrumPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SpectrumPainter old) =>
-      old.series.length != series.length ||
-      old.series.isNotEmpty &&
-          series.isNotEmpty &&
-          (old.series.first.day != series.first.day ||
-              old.series.last.launched != series.last.launched);
+      // The series list is rebuilt only when the ledger reloads; every
+      // rebuild of the same metrics reuses the identical instance.
+      !identical(old.series, series);
 }

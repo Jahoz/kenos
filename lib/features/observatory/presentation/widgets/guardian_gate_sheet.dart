@@ -121,6 +121,16 @@ class _GuardianGatePanelState extends State<GuardianGatePanel> {
                   height: 48,
                   child: OutlinedButton(
                     onPressed: widget.busy ? null : () => _submit(),
+                    // The sole CTA of the threshold carries its own
+                    // light: full-contrast text on a teal hairline,
+                    // legible on the dimmest OLED.
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.pureLight,
+                      side: BorderSide(
+                        color: AppColors.fade(AppColors.teal, 0.45),
+                        width: 1,
+                      ),
+                    ),
                     child: Text(
                       widget.busy ? '…' : 'FRANCHIR LE SEUIL',
                       style: TextStyle(
