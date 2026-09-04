@@ -79,9 +79,18 @@
       border-bottom: 1px solid var(--hairline);
     }
     .bar { max-width: 980px; margin: 0 auto; padding: 16px 28px; display: flex; justify-content: space-between; align-items: center; }
+    .bar-right { display: flex; align-items: center; gap: 26px; }
     .wordmark { font-family: var(--serif); letter-spacing: .5em; font-size: 15px; color: var(--light); text-decoration: none; }
     .wordmark span { color: var(--teal); }
     .tag { font-size: 9px; letter-spacing: .3em; color: rgba(244,244,246,.4); text-transform: uppercase; }
+    .support-link {
+      font-size: 9px; letter-spacing: .3em; text-transform: uppercase;
+      color: rgba(244,244,246,.4); text-decoration: none;
+      padding-bottom: 2px; border-bottom: 1px solid transparent;
+      transition: color .3s, border-color .3s;
+    }
+    .support-link:hover { color: var(--cyan); border-bottom-color: rgba(34, 211, 238, .45); }
+    @media (max-width: 640px) { .tag { display: none; } }
 
     /* ── Hero ── */
     .hero { padding: 130px 0 110px; text-align: center; }
@@ -173,6 +182,11 @@
     .rule { display: grid; grid-template-columns: 60px 1fr; gap: 18px; padding: 26px 0; border-bottom: 1px solid var(--hairline); }
     .rule .idx { color: var(--teal); font-size: 11px; letter-spacing: .2em; padding-top: 4px; }
     .rule p { font-family: var(--serif); font-style: italic; font-size: 19px; line-height: 1.6; color: rgba(244,244,246,.88); }
+    .rule-foot {
+      margin-top: 34px; font-size: 9px; letter-spacing: .25em;
+      text-transform: uppercase; color: rgba(244,244,246,.3); line-height: 2.1;
+    }
+    .rule-foot b { color: rgba(34, 211, 238, .55); font-weight: 400; }
 
     /* ── Roadmap ── */
     .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
@@ -201,7 +215,10 @@
   <header>
     <div class="bar">
       <a class="wordmark" href="#">KEN<span>O</span>S</a>
-      <span class="tag">L'anti-réseau social</span>
+      <div class="bar-right">
+        <span class="tag">L'anti-réseau social</span>
+        <a class="support-link" href="https://github.com/sponsors/Jahos" target="_blank" rel="noopener">Soutenir ↗</a>
+      </div>
     </div>
   </header>
 
@@ -273,9 +290,9 @@
     <!-- ═══════════ L'UNIVERS ═══════════ -->
     <section class="hairline-t reveal">
       <span class="kicker">03 / L'univers</span>
-      <h2 style="font-size:clamp(30px,4.5vw,44px); text-transform:none;">Six territoires<br>dans le vide</h2>
+      <h2 style="font-size:clamp(30px,4.5vw,44px); text-transform:none;">Neuf territoires<br>dans le vide</h2>
       <p style="margin:22px 0 40px; max-width:560px; font-size:12px; color:rgba(244,244,246,.55);">
-        Le geste fondateur a grandi en monde habitable. Tout ce qui suit
+        Le geste fondateur a grandi en monde habité. Tout ce qui suit
         est réel, live, et respecte la même loi : une seule lecture, jamais de retour.
       </p>
       <div class="cards">
@@ -296,9 +313,10 @@
         <div class="card">
           <span class="num">TERRITOIRE 03</span>
           <h3>Les comètes</h3>
-          <p>Une pensée lue peut être relancée : elle repart, re-scellée
-             pour un seul nouveau lecteur, et sa traînée traverse toutes
-             les orbites. Le nombre de porteurs est public, jamais les mots.</p>
+          <p>Une pensée lue peut renaître : relancée, elle repart
+             re-scellée pour un seul nouveau lecteur — et sa traînée de
+             phénix traverse toutes les orbites. Le nombre de porteurs
+             est public, jamais les mots.</p>
         </div>
         <div class="card">
           <span class="num">TERRITOIRE 04</span>
@@ -313,17 +331,43 @@
         </div>
         <div class="card">
           <span class="num">TERRITOIRE 05</span>
+          <h3>Le système nommé</h3>
+          <p>Sept corps portent un nom. La Lune apaise, Vénus recueille
+             les aveux à voix basse, Polaris éclaire — fixe au cœur du
+             ciel tournant. Quatre errants dérivent plus loin, muets :
+             rien n'orbite ici. <strong>Pas encore.</strong></p>
+        </div>
+        <div class="card">
+          <span class="num">TERRITOIRE 06</span>
+          <h3>Le reliquaire</h3>
+          <p>Un artefact lu peut être gardé dans <strong>ton</strong> ciel :
+             sept objets au plus, marqués d'une braise, au-delà de la
+             lune. Le huitième rend le plus ancien au vide. Ce que tu as
+             lu laisse une cicatrice de sept jours — jamais un octet ne
+             quitte ton appareil.</p>
+        </div>
+        <div class="card">
+          <span class="num">TERRITOIRE 07</span>
           <h3>Les ondes</h3>
           <p>La symphonie spatialisée : chaque onde née près de toi
              s'entend à sa place dans le champ stéréo, puis s'éteint en
              soixante secondes. Aucun mot, que du son.</p>
         </div>
         <div class="card">
-          <span class="num">TERRITOIRE 06</span>
-          <h3>Vestiges &amp; portes</h3>
-          <p>Des éclats de culture curatée dérivent dans le vide, à
-             re-lire en les croisant. Et une confidence peut porter une
-             voix empruntée — un morceau, un extrait — scellé avec elle.</p>
+          <span class="num">TERRITOIRE 08</span>
+          <h3>Les portes</h3>
+          <p>Une confidence peut porter une voix empruntée — un morceau,
+             un extrait — scellé avec elle. À la révélation, trente
+             secondes s'offrent dans la fenêtre ; la porte se referme
+             quand l'écho meurt.</p>
+        </div>
+        <div class="card">
+          <span class="num">TERRITOIRE 09</span>
+          <h3>Les vestiges</h3>
+          <p>La culture dérive dans le vide : éclats d'astronomie,
+             étymologies, haïkus — et de vrais poèmes du domaine public,
+             signés. <strong>Rimbaud, Verlaine, Baudelaire.</strong>
+             Le curateur les sème ; un vestige se relit toujours.</p>
         </div>
       </div>
     </section>
@@ -367,6 +411,7 @@
       <div class="rule"><span class="idx">R.01</span><p>Aucun profil, aucun nom, aucune trace. Ce que tu lances ici n'a pas de retour.</p></div>
       <div class="rule"><span class="idx">R.02</span><p>Chaque écho ne peut être lu qu'une seule fois, par une seule personne — jamais toi.</p></div>
       <div class="rule"><span class="idx">R.03</span><p>Rien à gagner. Pas de likes, pas de commentaires. On donne pour se libérer.</p></div>
+      <p class="rule-foot">Scellé <b>AES-256-GCM</b> sur ton appareil — lecture unique <b>atomique</b>, côté serveur — zéro donnée personnelle — le bouclier avertit, il ne censure jamais — le gardien compte les étoiles, <b>jamais les mots</b>.</p>
     </section>
 
     <!-- ═══════════ L'ÉTAT DU CIEL ═══════════ -->
@@ -382,14 +427,15 @@
         <div class="step done">
           <span class="when">Livré</span>
           <h4>L'univers entier</h4>
-          <p>Voyage, champ de réception, comètes, constellations, ondes
-             spatialisées, vestiges et portes culturelles.</p>
+          <p>Voyage, comètes-phénix, constellations-chansons, système
+             nommé, reliquaire, ondes spatialisées, culture signée.</p>
         </div>
         <div class="step now">
           <span class="when">Maintenant</span>
-          <h4>Vivre l'app</h4>
-          <p>Conditions réelles : casque pour la stéréo, constellations
-             multi-joueurs, portes musicales. Le ressenti décide.</p>
+          <h4>Le ciel vivant</h4>
+          <p>Le ciel se rafraîchit sans qu'on le demande, les mains qui
+             ont donné portent leur marque, le bouclier de trace veille
+             sur l'anonymat. À éprouver en conditions réelles.</p>
         </div>
         <div class="step later">
           <span class="when">Plus loin</span>

@@ -702,9 +702,12 @@ options (dons, IAP offrande, cosmétiques, affiliation musicale écartée).
 
 - **GitHub Sponsors** (`github.com/sponsors/Jahos`) : 0 % de commission,
   ponctuel ou mensuel. Section « 07 / Entretenir le vide » ajoutée au
-  mini-site (`site/index.html`) + lien discret en pied de page —
-  composants existants uniquement (kicker, callout, btn), identité
-  registry intacte.
+  mini-site (`site/index.html`), lien en pied de page + lien sobre dans
+  le header sticky (toujours accessible au scroll, quasi muet par défaut,
+  teal au survol ; tagline masquée < 640 px) — composants existants
+  uniquement, identité registry intacte. **Refusé** : tout CTA flottant
+  persistant (bandeau/bouton sticky) — le pattern caritatif agressif
+  contredit le contrat zen ; le header sticky suffit à la permanence.
 - **Transparence** : les sommes financisent l'hébergement de l'éther ;
   ce ne sont pas des dons fiscaux (pas d'association). Le soutien se vit
   hors du sanctuaire — l'éther ne sait jamais qui donne.
@@ -721,6 +724,29 @@ options (dons, IAP offrande, cosmétiques, affiliation musicale écartée).
 - **Hébergement du site** : la page de soutien est « commerciale » au
   sens du tier Vercel Hobby — migration à arbitrer vers Cloudflare
   Pages / GitHub Pages avant promotion active du lien.
+
+## V3.18 — La landing rafraîchie (2026-09-04)
+
+« On a fait pas mal de choses… il faut que ça claque. » Le one-pager
+disait six territoires ; l'éther en vit neuf. Vérité produit d'abord —
+chaque phrase correspond à une livraison réelle :
+
+- **Univers : 6 → 9 territoires** (grille 3×3) : ajout du **Système
+  nommé** (V3.12 — Lune/Vénus/Polaris + errants muets) et du
+  **Reliquaire** (mémoire de sept jours locale, sept objets marqués
+  braise) ; **Portes** et **Vestiges** séparés (crédits poésie domaine
+  public — Rimbaud, Verlaine, Baudelaire) ; comètes rafraîchies
+  (traînée phénix V3.12c).
+- **Le Seuil gagne une ligne de garanties** : Ether Seal AES-256-GCM,
+  lecture unique atomique, zéro donnée personnelle, bouclier qui
+  avertit sans censurer, « le gardien compte les étoiles, jamais les
+  mots » (V3.15/V3.16 en une phrase).
+- **L'état du ciel actualisé** : univers entier livré / ciel vivant
+  maintenant (refresh silencieux, mains marquées V3.18-app, bouclier) /
+  cercles privés gelés inchangés.
+- Composants existants uniquement — aucune nouveauté visuelle
+  importée ; tokens registry intacts (teal/cyan pour la donnée, la
+  braise n'apparaît qu'en mots).
 
 ## 4. Règles inchangées (rappel)
 
