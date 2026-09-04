@@ -473,14 +473,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           fit: StackFit.expand,
                           children: [
                             // The heavens: black hole + planets, behind stars.
-                            RepaintBoundary(
-                              child: CustomPaint(
-                                painter: SystemPainter(
-                                  camera: _camera,
-                                  viewport: _viewport,
-                                  now: epoch,
-                                  reducedMotion: context.wantsReducedMotion,
-                                  echoes: echoes.valueOrNull ?? const <Echo>[],
+                            // The heavens' clock: the sky drifts on its
+                            // OWN heartbeat, not only when the eye
+                            // moves (V3.12c — global fluidity).
+                            _HeavensClock(
+                              builder: (context, heavensAt) => RepaintBoundary(
+                                child: CustomPaint(
+                                  painter: SystemPainter(
+                                    camera: _camera,
+                                    viewport: _viewport,
+                                    now: heavensAt,
+                                    reducedMotion: context.wantsReducedMotion,
+                                    echoes:
+                                        echoes.valueOrNull ?? const <Echo>[],
+                                  ),
                                 ),
                               ),
                             ),
@@ -498,62 +504,67 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               ),
                             // The Vestiges: carved shards of culture, static
                             // in the void, tappable for a re-readable reveal.
+                            // Their tumble rides the heavens' clock too —
+                            // culture drifts even when the eye rests.
                             if (_vestiges.isNotEmpty)
-                              LayoutBuilder(
-                                builder: (context, c) => Stack(
-                                  children: [
-                                    for (final v in _vestiges)
-                                      Builder(
-                                        builder: (context) {
-                                          // Nothing rests upon the
-                                          // black hole (V3.12b).
-                                          final sp = _camera.worldToScreen(
-                                            KenosSystem.outsideTheHole(
-                                              Offset(v.offsetX, v.offsetY),
-                                            ),
-                                            Size(c.maxWidth, c.maxHeight),
-                                          );
-                                          if (sp.dx < -30 ||
-                                              sp.dx > c.maxWidth + 30 ||
-                                              sp.dy < -30 ||
-                                              sp.dy > c.maxHeight + 30) {
-                                            return const SizedBox.shrink();
-                                          }
-                                          return Positioned(
-                                            left: sp.dx - 16,
-                                            top: sp.dy - 16,
-                                            width: 32,
-                                            height: 32,
-                                            child: GestureDetector(
-                                              behavior: HitTestBehavior.opaque,
-                                              onTap: () async {
-                                                await showVestigeSheet(
-                                                  context,
-                                                  vestige: v,
-                                                );
-                                                if (mounted) {
-                                                  setState(() {});
-                                                }
-                                              },
-                                              child: CustomPaint(
-                                                painter: VestigePainter(
-                                                  rotation:
-                                                      VestigeMath.rotationAt(
-                                                        v.id,
-                                                        context.wantsReducedMotion
-                                                            ? epoch
-                                                            : DateTime.now(),
-                                                      ),
-                                                  color: AppColors.pureLight,
-                                                  pulse: 0,
-                                                  read: v.isRead,
+                              _HeavensClock(
+                                builder: (context, vestigeAt) => LayoutBuilder(
+                                  builder: (context, c) => Stack(
+                                    children: [
+                                      for (final v in _vestiges)
+                                        Builder(
+                                          builder: (context) {
+                                            // Nothing rests upon the
+                                            // black hole (V3.12b).
+                                            final sp = _camera.worldToScreen(
+                                              KenosSystem.outsideTheHole(
+                                                Offset(v.offsetX, v.offsetY),
+                                              ),
+                                              Size(c.maxWidth, c.maxHeight),
+                                            );
+                                            if (sp.dx < -30 ||
+                                                sp.dx > c.maxWidth + 30 ||
+                                                sp.dy < -30 ||
+                                                sp.dy > c.maxHeight + 30) {
+                                              return const SizedBox.shrink();
+                                            }
+                                            return Positioned(
+                                              left: sp.dx - 16,
+                                              top: sp.dy - 16,
+                                              width: 32,
+                                              height: 32,
+                                              child: GestureDetector(
+                                                behavior:
+                                                    HitTestBehavior.opaque,
+                                                onTap: () async {
+                                                  await showVestigeSheet(
+                                                    context,
+                                                    vestige: v,
+                                                  );
+                                                  if (mounted) {
+                                                    setState(() {});
+                                                  }
+                                                },
+                                                child: CustomPaint(
+                                                  painter: VestigePainter(
+                                                    rotation:
+                                                        VestigeMath.rotationAt(
+                                                          v.id,
+                                                          context.wantsReducedMotion
+                                                              ? epoch
+                                                              : DateTime.now(),
+                                                        ),
+                                                    color: AppColors.pureLight,
+                                                    pulse: 0,
+                                                    read: v.isRead,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                  ],
+                                            );
+                                          },
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             // The Constellations: exquisite corpses. OPEN =
@@ -631,13 +642,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             ),
                             // V3.12b — the falls: what dies here spirals
                             // into the black hole, above the stars.
-                            CustomPaint(
-                              painter: AccretionPainter(
-                                motes: ref.watch(accretionProvider),
-                                camera: _camera,
-                                viewport: _viewport,
-                                now: epoch,
-                                reducedMotion: reduced,
+                            _HeavensClock(
+                              builder: (context, fallAt) => CustomPaint(
+                                painter: AccretionPainter(
+                                  motes: ref.watch(accretionProvider),
+                                  camera: _camera,
+                                  viewport: _viewport,
+                                  now: fallAt,
+                                  reducedMotion: reduced,
+                                ),
                               ),
                             ),
                           ],
@@ -1576,4 +1589,42 @@ class _ConstellationPainter extends CustomPainter {
       old.closed != closed ||
       old.lineCount != lineCount ||
       old.target != target;
+}
+
+/// V3.12c — the heavens' own heartbeat: the sky (planets, wanderers,
+/// the beacon's breath, the falls, the vestiges' tumble) drifts on a
+/// gentle clock of its own — never waiting for the eye to move.
+/// ~12 fps is imperceptibly fluid for celestial speeds and cheap
+/// under the RepaintBoundary; « réduire les animations » stills it.
+class _HeavensClock extends StatefulWidget {
+  const _HeavensClock({required this.builder});
+
+  final Widget Function(BuildContext, DateTime) builder;
+
+  @override
+  State<_HeavensClock> createState() => _HeavensClockState();
+}
+
+class _HeavensClockState extends State<_HeavensClock> {
+  DateTime _now = DateTime.now();
+  Timer? _beat;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!platformDisablesAnimations()) {
+      _beat = Timer.periodic(const Duration(milliseconds: 80), (_) {
+        if (mounted) setState(() => _now = DateTime.now());
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _beat?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _now);
 }
