@@ -779,6 +779,10 @@ select is(
 );
 
 -- An OPEN corpse cannot be read.
+reset role;
+-- V3.20 — the seed guard cadence (one ring / 2 min per hand) holds
+-- for d1 too: the fixture bends, not the rule.
+update public.kenos_constellations set created_at = now() - interval '3 minutes';
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d1","role":"authenticated"}', true);
 select is(
@@ -1012,6 +1016,12 @@ select is(
   true,
   'a public seed returns no key — the void has no door'
 );
+reset role;
+-- V3.20 — same hand, second ring within the 2-minute breath: the
+-- fixture backdates, the guard holds.
+update public.kenos_constellations set created_at = now() - interval '3 minutes';
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000e5","role":"authenticated"}', true);
 select is(
   (select public.contribute_line(
      (select id from public.seed_constellation(0.91::float8, 0.91::float8, 'POEM', false)),
@@ -1023,6 +1033,9 @@ select is(
 -- ── V3.14b — the Gardener & the Curator ─────────────────────────────────
 -- Wipe every corpse first (deterministic garden).
 reset role;
+-- V3.20 — clear the lingering stranger: the gardener runs claimless
+-- (the cron path), the seed guard stamps only JWT-backed hands.
+select set_config('request.jwt.claims', '', true);
 delete from public.kenos_constellations;
 select is(
   public.kenos_garden_seed(14, 5),
@@ -1059,12 +1072,17 @@ select is(
 update public.kenos_constellations
    set curated_by = 'TEST POET', state = 'CLOSED', closed_at = now()
  where id = (select id from public.kenos_constellations limit 1);
+-- V3.20 — claims were cleared for the claimless gardener above; the
+-- map probe needs a stranger's eye back.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d6","role":"authenticated"}', true);
 select is(
   (select curated_by from public.fetch_constellations(0, 0, 1, 1)
     where state = 'CLOSED' limit 1),
   'TEST POET',
   'the map sees the attribution — the reading will name the poet'
 );
+reset role;
 delete from public.kenos_constellations;
 
 -- ── V3.14c — the Vestiges cross the ether ──────────────────────────────
@@ -1127,6 +1145,9 @@ delete from public.kenos_vestiges where id like 't-ml-%';
 -- tooling, outside client reach). Without them the scenario kept
 -- referencing rows deleted by the V3.14b wipe.
 reset role;
+-- V3.20 — claimless by contract (postgres tooling, outside client
+-- reach): lingering stranger claims would stamp the fixture.
+select set_config('request.jwt.claims', '', true);
 insert into public.kenos_constellations (seed_x, seed_y, target_lines, state, kind, closed_at)
 values (0.5, 0.11, 4, 'CLOSED', 'POEM', now()),
        (0.5, 0.22, 4, 'OPEN', 'POEM', null);

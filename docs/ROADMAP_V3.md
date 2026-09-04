@@ -834,6 +834,41 @@ Dart (+20 : parité démo de la porte, forme du lien, les états du
 seuil, le parcours Seuil→salon, le panneau de partage, le choix du
 public), analyze 0, e2e 28/28 (+10 sur l'éther local réel).
 
+## V3.20 — Le garde-semeur et le faucheur (2026-09-06)
+
+Le produit est public : l'audit anti-spam de lancement a montré un
+socle réel (1 écho / 20 s, 1 lecture / 5 s, 3 vagues / 5 s, une
+ligne par main par anneau, longueurs bornées serveur) — et deux
+failles. Toutes deux colmatées :
+
+- **Le garde-semeur** (trigger `BEFORE INSERT` sur
+  `kenos_constellations`) : l'ancienne cadence ne comptait que les
+  anneaux où l'appelant avait ÉCRIT — un script qui ne faisait que
+  semer échappait à toute limite. Le trigger tamponne `seeder_id`
+  (JWT serveur, jamais servi : `fetch_constellations` liste ses
+  colonnes) et impose **1 semis / 2 min par main** et **5 anneaux
+  ouverts par main** (en refermer un libère la place). Les mains de
+  l'éther (jardiner, curater, migrations — sans JWT) sont exemptées ;
+  être trigger le rend insensible aux réécritures futures de
+  `seed_constellation`. Les anneaux survivent à leur semeur
+  (`on delete set null`).
+- **Le faucheur** : `kenos_purge` concentrait toutes les règles de
+  rétention mais personne ne l'appelait jamais. pg_cron maintenant :
+  `kenos-purge` chaque heure (:17) et `kenos-garden` chaque jour
+  (07:30 UTC, remet le champ d'anneaux à 14). Le spam a désormais un
+  fossoyeur automatique.
+- Roadmap+ (au chaud) : **CAPTCHA sur l'entrée anonyme** (réglage
+  dashboard Supabase, hCaptcha/Turnstile) — toutes les limites sont
+  par compte, créer N comptes multiplie tout par N ; Supabase bride
+  les signups par IP (~30/min) mais rien ne prouve l'humanité.
+  À envisager si le trafic monte ou au premier incident.
+
+Gates : +15 invariants pgTAP (`seed_guard.sql` : le trou bouché, la
+cadence, le plafond, la place libérée, l'exemption sans claims,
+l'absence de fuite du semeur) ; fixtures `rpc.sql` pliées à la
+cadence (backdating selon la convention du fichier, mains de l'éther
+sans claims). Suite pgTAP complète verte.
+
 ## 4. Règles inchangées (rappel)
 
 - Single-read atomique, Ether Seal, RPC-only, ROSE destructif,
