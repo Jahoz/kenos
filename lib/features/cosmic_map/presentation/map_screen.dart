@@ -722,12 +722,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
                             ),
                             // The Vestiges: carved shards of culture, static
                             // in the void, tappable for a re-readable reveal.
-                            // Their tumble rides the heavens' clock too —
-                            // culture drifts even when the eye rests.
+                            // Their tumble rides their own CALM clock
+                            // (V3.17c: 64 shards repainting at the heavens'
+                            // 12.5 Hz beat was a third of the wide view's
+                            // paint bill) and the whole stack owns ONE
+                            // RepaintBoundary — culture drifts even when
+                            // the eye rests, cheaply.
                             if (vestigesShown.isNotEmpty)
-                              _HeavensClock(
-                                builder: (context, vestigeBeat) => LayoutBuilder(
-                                  builder: (context, c) => Stack(
+                              RepaintBoundary(
+                                child: _HeavensClock(
+                                  period: const Duration(milliseconds: 250),
+                                  builder: (context, vestigeBeat) =>
+                                      LayoutBuilder(
+                                builder: (context, c) => Stack(
                                     children: [
                                       for (final v in vestigesShown)
                                         Builder(
@@ -801,6 +808,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                     ],
                                   ),
                                 ),
+                              ),
                               ),
                             // The Constellations: exquisite corpses. OPEN =
                             //    contribute a blind line; CLOSED = read it
@@ -1373,6 +1381,15 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
           final diameter =
               ParallaxMath.starDiameter(z) * eyeScale;
           final hit = diameter + 26; // comfortable touch target
+          // The reception field: near = ALIVE (breathing, the 4 Hz
+          // swell rides only the eye's neighbourhood), far = a glimmer
+          // — it still drifts at frame rate via StarShift, but its
+          // core never repaints for breath (V3.17c: 180 stars swelling
+          // 4×/s was most of the wide view's raster bill).
+          final reception = ParallaxMath.receptionIntensity(
+            eye: widget.camera.center,
+            star: world,
+          );
           // Fresh base for this frame: the drift accumulates from HERE.
           final shift = _shifts.putIfAbsent(
             echo.id,
@@ -1401,13 +1418,12 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
                       key: ValueKey('star-${echo.id}'),
                       echo: echo,
                       z: z,
-                      breathAt: _reduced ? null : _breathAt,
+                      breathAt: (_reduced || reception <= 0)
+                          ? null
+                          : _breathAt,
                       // The reception field: near = alive, far = a glimmer
                       // to approach. Sealed anchors ignore it (widget-side).
-                      reception: ParallaxMath.receptionIntensity(
-                        eye: widget.camera.center,
-                        star: world,
-                      ),
+                      reception: reception,
                     ),
                   ),
                 ),
@@ -1935,9 +1951,18 @@ class _ConstellationPainter extends CustomPainter {
 /// ~12 fps is imperceptibly fluid for celestial speeds and cheap
 /// under the RepaintBoundary; « réduire les animations » stills it.
 class _HeavensClock extends StatefulWidget {
-  const _HeavensClock({required this.builder});
+  const _HeavensClock({
+    required this.builder,
+    this.period = const Duration(milliseconds: 80),
+  });
 
   final Widget Function(BuildContext, DateTime) builder;
+
+  /// The beat. The heavens themselves need their 80 ms (orbits must
+  /// glide); slow-decorating riders (the vestiges' tumble) pass a
+  /// calmer one — a shard rotating at 4 Hz reads exactly like 12.5 Hz,
+  /// at a third of the repaint price.
+  final Duration period;
 
   @override
   State<_HeavensClock> createState() => _HeavensClockState();
@@ -1951,7 +1976,7 @@ class _HeavensClockState extends State<_HeavensClock> {
   void initState() {
     super.initState();
     if (!platformDisablesAnimations()) {
-      _beat = Timer.periodic(const Duration(milliseconds: 80), (_) {
+      _beat = Timer.periodic(widget.period, (_) {
         if (mounted) setState(() => _now = DateTime.now());
       });
     }

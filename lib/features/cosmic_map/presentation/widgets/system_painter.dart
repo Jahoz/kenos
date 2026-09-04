@@ -52,9 +52,20 @@ class SystemPainter extends CustomPainter {
     // bodies did not, and the wheel felt dead.
     final bodyScale = ParallaxMath.zoomScale(_zoom);
 
+    // Viewport culling (V3.17c): a blurred body off-screen still pays
+    // its full raster price on web — a circle plus its margin is
+    // drawn only when it can touch the traveller's window.
+    bool onScreen(Offset c, double r) =>
+        c.dx + r >= -40 &&
+        c.dx - r <= size.width + 40 &&
+        c.dy + r >= -40 &&
+        c.dy - r <= size.height + 40;
+
     // ── The black hole: darker than the void itself ────────────────────
     final bh = world(KenosSystem.blackHole);
     final bhRadius = viewport.shortestSide / 12 * bodyScale;
+    final bhVisible = onScreen(bh, bhRadius * 1.6);
+    if (bhVisible) {
 
     // Gravitational lensing: a faint rose-tinted accretion ring — the
     // destruction color's only legitimate celestial object, whispering
@@ -85,6 +96,7 @@ class SystemPainter extends CustomPainter {
         ..strokeWidth = 0.8
         ..color = AppColors.fade(AppColors.roseText, 0.22),
     );
+    } // black hole culled
 
     // ── The named anchors (V3.12) ─────────────────────────────────────
     // Each intention's world has its own glyph and its own lane: a
@@ -97,6 +109,8 @@ class SystemPainter extends CustomPainter {
       final p = world(KenosSystem.planetPosition(i, epoch));
       final bodyR = viewport.shortestSide / 34 * bodyScale;
       final ringR = bodyR * 1.75;
+      final bodyVisible = onScreen(p, bodyR * 2.5);
+      if (!bodyVisible) continue;
 
       // The lane: each planet its own circle — never doubled, never
       // smeared. Polaris has none: it holds still.
@@ -262,6 +276,7 @@ class SystemPainter extends CustomPainter {
     final wandererR = viewport.shortestSide / 72 * bodyScale;
     for (var i = 0; i < celestialWanderers.length; i++) {
       final w = world(CelestialMath.wandererPosition(i, now));
+      if (!onScreen(w, wandererR * 2.5)) continue;
       final body = Paint()..color = AppColors.fade(AppColors.pureLight, 0.4);
       final limb = Paint()
         ..style = PaintingStyle.stroke
