@@ -77,6 +77,7 @@ rpc_probe_payload() {
     read_constellation)       echo '{"p_constellation_id":""}' ;;
     fetch_vestiges)           echo '{}' ;;
     has_contributed)          echo '{"p_constellation_id":""}' ;;
+    fetch_invited_constellation) echo '{"p_token":""}' ;;
     consume_constellation)    echo '{"p_constellation_id":""}' ;;
     emit_frequency)           echo '{"p_x":0,"p_y":0,"p_note_index":0,"p_hue_index":0}' ;;
     fetch_nearby_frequencies) echo '{"p_x":0,"p_y":0,"p_radius":0.01}' ;;
