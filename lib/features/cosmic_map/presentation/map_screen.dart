@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -501,6 +502,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
       body: Listener(
         onPointerDown: (_) =>
             unawaited(ref.read(audioControllerProvider).ensureStarted()),
+        // Desktop: the wheel zooms, anchored under the cursor — the
+        // mouse's pinch. Up = closer, down = further; smooth enough
+        // for trackpads (small deltas), strong enough for notches.
+        onPointerSignal: (signal) {
+          if (signal is PointerScrollEvent) {
+            _glide?.cancel();
+            _camera.zoomBy(
+              math.pow(1.0015, -signal.scrollDelta.dy).toDouble(),
+              _screenToWorld(signal.position),
+            );
+          }
+        },
         child: Stack(
           fit: StackFit.expand,
           children: [
