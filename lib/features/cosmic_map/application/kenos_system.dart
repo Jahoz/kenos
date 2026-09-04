@@ -88,7 +88,11 @@ class KenosSystem {
   /// its identity (stable per echo, spread across a band).
   static double _echoOrbitRadius(Echo echo) {
     final h = (echo.id.hashCode & 0x7fffffff) % 1000;
-    return 0.045 + 0.075 * (h / 999);
+    // The band clears the enlarged bodies (ring span ~0.05 world) and
+    // keeps the farthest echo inside the known ether (0.37 + 0.13 =
+    // 0.50 from the heart). No echoes through the rings, none lost
+    // past the fetch's bounds (V3.12c — collision-free skies).
+    return 0.08 + 0.05 * (h / 999);
   }
 
   /// Orbital period from the radius: inner thoughts whirl faster —
@@ -96,7 +100,9 @@ class KenosSystem {
   /// (15–60 s per orbit: you SEE the drift if you linger).
   static Duration _echoPeriod(Echo echo) {
     final r = _echoOrbitRadius(echo);
-    return Duration(seconds: (90 * r / 0.08).round().clamp(25, 75));
+    // Linear across the band: 25 s inside, 75 s at the rim.
+    final t = (r - 0.08) / 0.05;
+    return Duration(milliseconds: (25000 + 50000 * t).round());
   }
 
   /// Planet index for an echo: its intent decides its gravity. The

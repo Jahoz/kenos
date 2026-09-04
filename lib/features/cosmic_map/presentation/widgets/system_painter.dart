@@ -108,7 +108,7 @@ class SystemPainter extends CustomPainter {
       // The echo lanes: where this world's thoughts whirl — two
       // breaths of circles travelling with the planet.
       if (i != 2) {
-        for (final lane in [0.045, 0.12]) {
+        for (final lane in [0.08, 0.13]) {
           canvas.drawCircle(
             p,
             lane * worldScale,

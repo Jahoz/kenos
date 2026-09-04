@@ -12,6 +12,8 @@ import '../../../../core/haptics/kenos_haptics.dart';
 import '../../../../core/widgets/scramble_text.dart';
 import '../../../echo/domain/echo.dart';
 import '../../../echo/domain/reception.dart';
+import '../../application/accretion.dart';
+import '../../application/kenos_system.dart';
 import '../../application/reception_controller.dart';
 
 /// Bottle-in-the-sea signal, author side: tap your sealed echo to learn
@@ -77,8 +79,14 @@ class _ReceptionPanelState extends ConsumerState<ReceptionPanel>
     if (_closing) return;
     _closing = true;
     if (burn && widget.reception != null) {
-      // The signal burns — one look, then the void.
+      // The signal burns — one look, then the void. And the burn the
+      // USER chose plays the fall: the sealed echo's star spirals
+      // into the black hole from where it still orbits.
       KenosHaptics.pulse(KenosPulse.burn);
+      ref.read(accretionProvider.notifier).feed(
+            KenosSystem.echoPosition(widget.echo, DateTime.now()),
+            tint: widget.echo.theme.core,
+          );
       await ref
           .read(receptionControllerProvider.notifier)
           .burn(widget.echo.id);
