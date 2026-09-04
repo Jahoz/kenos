@@ -657,24 +657,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                         return Stack(
                           fit: StackFit.expand,
                           children: [
-                            // The heavens: black hole + planets, behind stars.
-                            // The heavens' clock: the sky drifts on its
-                            // OWN heartbeat, not only when the eye
-                            // moves (V3.12c — global fluidity).
-                            _HeavensClock(
-                              builder: (context, heavensAt) => RepaintBoundary(
-                                child: CustomPaint(
-                                  painter: SystemPainter(
-                                    camera: _camera,
-                                    viewport: _viewport,
-                                    now: heavensAt,
-                                    reducedMotion: context.wantsReducedMotion,
-                                    echoes:
-                                        echoes.valueOrNull ?? const <Echo>[],
-                                  ),
-                                ),
-                              ),
-                            ),
                             // The reader's trail: hollow points where lights
                             // dissolved — local, contentless, fading.
                             if (scars.isNotEmpty)
@@ -687,6 +669,57 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                   ),
                                 ),
                               ),
+                            // The lights first (V3.17b): echoes drift as
+                            // the deepest living layer — the heavens
+                            // above them eclipse what crosses a body.
+                            echoes.when(
+                              data: (list) => list.isEmpty
+                                  ? const _CalmEther()
+                                  : _ParallaxStarLayer(
+                                      echoes: list,
+                                      camera: _camera,
+                                    ),
+                              loading: () => const _Centered(
+                                'CALIBRATION DE L\'ÉTHER…',
+                                color: AppColors.teal,
+                              ),
+                              error: (e, _) => _UnreachableEther(
+                                onRetry: () {
+                                  ref.invalidate(sessionReadyProvider);
+                                  ref.invalidate(mapControllerProvider);
+                                },
+                              ),
+                            ),
+                            // The heavens: black hole + planets + wanderers,
+                            // ABOVE the lights (V3.17b — the eclipse fix):
+                            // a body occludes a light, never the other way
+                            // — an echo drifting over Polaris passes BEHIND
+                            // her disc now, and the black hole truly
+                            // swallows what crosses it (its oldest
+                            // comment finally true). IgnorePointer: a
+                            // childless full-screen CustomPaint claims
+                            // hit-tests and would starve the stars'
+                            // holds beneath it (the V3.12b lesson).
+                            // The heavens' clock: the sky drifts on its
+                            // OWN heartbeat, not only when the eye
+                            // moves (V3.12c).
+                            _HeavensClock(
+                              builder: (context, heavensAt) => RepaintBoundary(
+                                child: IgnorePointer(
+                                  child: CustomPaint(
+                                    painter: SystemPainter(
+                                      camera: _camera,
+                                      viewport: _viewport,
+                                      now: heavensAt,
+                                      reducedMotion:
+                                          context.wantsReducedMotion,
+                                      echoes: echoes.valueOrNull ??
+                                          const <Echo>[],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                             // The Vestiges: carved shards of culture, static
                             // in the void, tappable for a re-readable reveal.
                             // Their tumble rides the heavens' clock too —
@@ -844,24 +877,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                   ],
                                 ),
                               ),
-                            echoes.when(
-                              data: (list) => list.isEmpty
-                                  ? const _CalmEther()
-                                  : _ParallaxStarLayer(
-                                      echoes: list,
-                                      camera: _camera,
-                                    ),
-                              loading: () => const _Centered(
-                                'CALIBRATION DE L\'ÉTHER…',
-                                color: AppColors.teal,
-                              ),
-                              error: (e, _) => _UnreachableEther(
-                                onRetry: () {
-                                  ref.invalidate(sessionReadyProvider);
-                                  ref.invalidate(mapControllerProvider);
-                                },
-                              ),
-                            ),
                             // V3.12b — the falls: what dies here spirals
                             // into the black hole, above the stars —
                             // and NEVER intercepts a pointer: a
