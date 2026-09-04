@@ -21,7 +21,14 @@ void main() {
       for (var i = 0; i < KenosSystem.planets.length; i++) {
         final p = KenosSystem.planetPosition(i, t0);
         final dist = (p - KenosSystem.blackHole).distance;
-        expect(dist, closeTo(KenosSystem.planetOrbit, 1e-9));
+        // V3.12: each anchor rides its OWN lane — Polaris (i=2) holds
+        // still at its fixed distance; the two others at their own.
+        if (i == 2) {
+          expect(dist, closeTo(0.32, 1e-9), reason: 'Polaris ne bouge pas');
+        } else {
+          expect(dist, closeTo(KenosSystem.orbitRadiusOf(i), 1e-9),
+              reason: 'chaque monde a sa propre piste');
+        }
       }
     });
 
@@ -95,7 +102,7 @@ void main() {
         if (d < minD) minD = d;
         if (d > maxD) maxD = d;
       }
-      expect(maxD, greaterThan(KenosSystem.planetOrbit),
+      expect(maxD, greaterThan(KenosSystem.outerOrbit),
           reason: 'l\'aphélie dépasse les planètes');
       expect(minD, lessThan(0.20),
           reason: 'le périhélie frôle le vide');

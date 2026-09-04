@@ -18,11 +18,23 @@ class KenosSystem {
   /// The black hole sits at the heart of the known ether.
   static const Offset blackHole = Offset(0.5, 0.5);
 
-  /// Orbital radius of each planet around the void (world units).
-  static const double planetOrbit = 0.32;
+  /// Each anchor rides its OWN lane (V3.12): the Moon closer and
+  /// livelier, Venus wider and slower — the tracks never smear into
+  /// one another, conjunctions stay rare. Polaris rides none.
+  static double orbitRadiusOf(int index) =>
+      switch (index) { 0 => 0.26, _ => 0.37 };
 
-  /// One full planetary revolution (~40 min): the sky visibly drifts
-  /// while you watch — eternal is not motionless.
+  /// Each lane has its own tempo.
+  static Duration _periodOf(int index) => switch (index) {
+        0 => const Duration(minutes: 30),
+        _ => const Duration(minutes: 55),
+      };
+
+  /// The outermost planetary lane — beyond it only comets and
+  /// wanderers travel.
+  static double get outerOrbit => orbitRadiusOf(1);
+
+  /// One full revolution of the innermost lane (legacy reference).
   static const Duration planetPeriod = Duration(minutes: 40);
 
   /// Base angles (radians) spread the three intents apart at epoch.
@@ -42,11 +54,12 @@ class KenosSystem {
     // (V3.12 — the named heavens).
     if (index == 2) return CelestialMath.polaris;
     final phase =
-        (at.millisecondsSinceEpoch + _epoch) / planetPeriod.inMilliseconds;
+        (at.millisecondsSinceEpoch + _epoch) / _periodOf(index).inMilliseconds;
     final angle = 2 * math.pi * (phase + index / planets.length);
+    final radius = orbitRadiusOf(index);
     return Offset(
-      blackHole.dx + planetOrbit * math.cos(angle),
-      blackHole.dy + planetOrbit * math.sin(angle),
+      blackHole.dx + radius * math.cos(angle),
+      blackHole.dy + radius * math.sin(angle),
     );
   }
 
@@ -108,7 +121,7 @@ class KenosSystem {
 
   static double _cometAphelion(Echo echo) {
     final h = echo.id.hashCode & 0x7fffffff;
-    return planetOrbit + 0.12 + 0.05 * (h % 7);
+    return outerOrbit + 0.10 + 0.05 * (h % 7);
   }
 
   static double _cometOrientation(Echo echo) {

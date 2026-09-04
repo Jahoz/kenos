@@ -60,11 +60,7 @@ class SystemPainter extends CustomPainter {
 
     // The event horizon: pure absence, a disc blacker than the
     // background — painted opaque so even stars behind are swallowed.
-    canvas.drawCircle(
-      bh,
-      bhRadius,
-      Paint()..color = const Color(0xFF000000),
-    );
+    canvas.drawCircle(bh, bhRadius, Paint()..color = const Color(0xFF000000));
     // A hairline of nothing-but-edge so the disc reads on the void.
     canvas.drawCircle(
       bh,
@@ -76,25 +72,51 @@ class SystemPainter extends CustomPainter {
     );
 
     // ── The named anchors (V3.12) ─────────────────────────────────────
-    // Each intention's world has its own glyph: a crescent Moon, a
-    // ringed Venus, the fixed beacon Polaris. Worlds are bodies, stars
-    // are lights — never confused.
+    // Each intention's world has its own glyph and its own lane: a
+    // cratered crescent Moon on the inner track, a doubly ringed
+    // Venus on the outer, the fixed beacon Polaris above. Worlds are
+    // bodies with structure, stars are lights — never confused.
+    final worldScale = viewport.shortestSide / camera.viewExtent;
     for (var i = 0; i < KenosSystem.planets.length; i++) {
       final theme = KenosSystem.planets[i];
       final p = world(KenosSystem.planetPosition(i, epoch));
-      final bodyR = viewport.shortestSide / 46;
+      final bodyR = viewport.shortestSide / 40;
       final ringR = bodyR * 1.75;
 
-      // Orbit path around the void — Polaris has none: it holds still.
+      // The lane: each planet its own circle — never doubled, never
+      // smeared. Polaris has none: it holds still.
       if (i != 2) {
-        final orbitPaint = Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 0.6
-          ..color = AppColors.fade(theme.halo, 0.05);
         canvas.drawCircle(
           world(KenosSystem.blackHole),
-          KenosSystem.planetOrbit / camera.viewExtent * viewport.shortestSide,
-          orbitPaint,
+          KenosSystem.orbitRadiusOf(i) * worldScale,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.7
+            ..color = AppColors.fade(theme.halo, 0.07),
+        );
+      }
+
+      // The echo lanes: where this world's thoughts whirl — two
+      // breaths of circles travelling with the planet.
+      if (i != 2) {
+        for (final lane in [0.045, 0.12]) {
+          canvas.drawCircle(
+            p,
+            lane * worldScale,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 0.5
+              ..color = AppColors.fade(theme.halo, 0.05),
+          );
+        }
+      } else {
+        canvas.drawCircle(
+          p,
+          0.08 * worldScale,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.5
+            ..color = AppColors.fade(theme.halo, 0.06),
         );
       }
 
@@ -108,17 +130,35 @@ class SystemPainter extends CustomPainter {
       );
 
       switch (i) {
-        case 0: // La Lune — a crescent: what wanes, what returns.
+        case 0: // La Lune — cratered, matte, a waning crescent.
           canvas.drawCircle(
             p,
             bodyR,
-            Paint()..color = AppColors.fade(theme.core, 0.5),
+            Paint()..color = AppColors.fade(theme.core, 0.55),
+          );
+          // The shadow disc carving the crescent.
+          canvas.drawCircle(
+            p.translate(-bodyR * 0.42, -bodyR * 0.24),
+            bodyR * 0.94,
+            Paint()..color = AppColors.voidBlack.withValues(alpha: 0.78),
+          );
+          // Craters on the lit limb — three, quietly placed.
+          final crater = Paint()
+            ..color = AppColors.voidBlack.withValues(alpha: 0.35);
+          canvas.drawCircle(
+            p.translate(bodyR * 0.38, bodyR * 0.12),
+            bodyR * 0.16,
+            crater,
           );
           canvas.drawCircle(
-            p.translate(-bodyR * 0.38, -bodyR * 0.22),
-            bodyR * 0.92,
-            Paint()
-              ..color = AppColors.voidBlack.withValues(alpha: 0.72),
+            p.translate(bodyR * 0.22, bodyR * 0.42),
+            bodyR * 0.11,
+            crater,
+          );
+          canvas.drawCircle(
+            p.translate(bodyR * 0.50, -bodyR * 0.22),
+            bodyR * 0.09,
+            crater,
           );
           canvas.drawCircle(
             p,
@@ -126,24 +166,32 @@ class SystemPainter extends CustomPainter {
             Paint()
               ..style = PaintingStyle.stroke
               ..strokeWidth = 1.1
-              ..color = AppColors.fade(theme.halo, 0.7),
+              ..color = AppColors.fade(theme.halo, 0.8),
           );
-        case 1: // Vénus — the ringed world of confided love.
+        case 1: // Vénus — the doubly ringed world of confided love.
           canvas.save();
           canvas.translate(p.dx, p.dy);
-          canvas.rotate(-0.42 + 0.35);
+          canvas.rotate(-0.42);
+          canvas.drawOval(
+            Rect.fromCircle(center: Offset.zero, radius: ringR * 1.18),
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 0.8
+              ..color = AppColors.fade(theme.halo, 0.18),
+          );
+          canvas.rotate(0.18);
           canvas.drawOval(
             Rect.fromCircle(center: Offset.zero, radius: ringR),
             Paint()
               ..style = PaintingStyle.stroke
-              ..strokeWidth = 1.4
-              ..color = AppColors.fade(theme.halo, 0.30),
+              ..strokeWidth = 1.5
+              ..color = AppColors.fade(theme.halo, 0.45),
           );
           canvas.restore();
           canvas.drawCircle(
             p,
             bodyR,
-            Paint()..color = AppColors.fade(theme.core, 0.55),
+            Paint()..color = AppColors.fade(theme.core, 0.6),
           );
           canvas.drawCircle(
             p,
@@ -151,47 +199,103 @@ class SystemPainter extends CustomPainter {
             Paint()
               ..style = PaintingStyle.stroke
               ..strokeWidth = 1.2
-              ..color = AppColors.fade(theme.halo, 0.75),
+              ..color = AppColors.fade(theme.halo, 0.85),
           );
-        case 2: // Polaris — the beacon: a point, a cross of rays.
+        case 2: // Polaris — the beacon: rays, a breathing core, no lane.
+          // A ~4.8 s breath, derived from the shared clock.
+          final pulse =
+              0.5 +
+              0.5 * math.sin(epoch.millisecondsSinceEpoch / 4800 * 2 * math.pi);
           final ray = Paint()
-            ..strokeWidth = 1.0
-            ..color = AppColors.fade(theme.halo, 0.55);
-          final rl = bodyR * 2.6;
+            ..strokeWidth = 1.1
+            ..color = AppColors.fade(theme.halo, 0.35 + 0.3 * pulse);
+          final rl = bodyR * (2.4 + 0.9 * pulse);
           canvas.drawLine(p.translate(-rl, 0), p.translate(rl, 0), ray);
           canvas.drawLine(p.translate(0, -rl), p.translate(0, rl), ray);
+          final drl = bodyR * (1.3 + 0.5 * pulse);
+          for (final diag in [
+            math.pi / 4,
+            -math.pi / 4,
+            3 * math.pi / 4,
+            -3 * math.pi / 4,
+          ]) {
+            canvas.drawLine(
+              p.translate(drl * math.cos(diag), drl * math.sin(diag)),
+              p.translate(
+                -drl * math.cos(diag) * 0.35,
+                -drl * math.sin(diag) * 0.35,
+              ),
+              ray,
+            );
+          }
           canvas.drawCircle(
             p,
-            bodyR * 0.55,
-            Paint()..color = AppColors.fade(theme.core, 0.9),
+            bodyR * 0.6,
+            Paint()..color = AppColors.fade(theme.core, 0.85 + 0.1 * pulse),
           );
           canvas.drawCircle(
             p,
-            bodyR * 0.55,
+            bodyR * 0.6,
             Paint()
-              ..color = AppColors.fade(theme.halo, 0.35)
-              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+              ..color = AppColors.fade(theme.halo, 0.25 + 0.2 * pulse)
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
           );
       }
     }
 
-    // ── The wanderers (V3.12): named far bodies on slow arcs ──────────
+    // ── The wanderers (V3.12): named far bodies, each its silhouette ──
+    final wandererR = viewport.shortestSide / 85;
     for (var i = 0; i < celestialWanderers.length; i++) {
       final w = world(CelestialMath.wandererPosition(i, now));
-      final r = viewport.shortestSide / 110;
-      canvas.drawCircle(
-        w,
-        r,
-        Paint()..color = AppColors.fade(AppColors.pureLight, 0.34),
-      );
-      canvas.drawCircle(
-        w,
-        r,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 0.8
-          ..color = AppColors.fade(AppColors.cyan, 0.5),
-      );
+      final body = Paint()..color = AppColors.fade(AppColors.pureLight, 0.4);
+      final limb = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.9
+        ..color = AppColors.fade(AppColors.cyan, 0.55);
+      switch (i) {
+        case 0: // Pluton — the heart on its flank.
+          canvas.drawCircle(w, wandererR, body);
+          canvas.drawCircle(
+            w.translate(wandererR * 0.28, wandererR * 0.30),
+            wandererR * 0.34,
+            Paint()..color = AppColors.fade(AppColors.cyan, 0.45),
+          );
+          canvas.drawCircle(w, wandererR, limb);
+        case 1: // Triton — half-lit: the retrograde exile.
+          canvas.drawCircle(w, wandererR, body);
+          canvas.drawCircle(
+            w.translate(-wandererR * 0.45, wandererR * 0.2),
+            wandererR * 0.92,
+            Paint()..color = AppColors.voidBlack.withValues(alpha: 0.7),
+          );
+          canvas.drawCircle(w, wandererR, limb);
+        case 2: // Europe — the cracked ice over a warm sea.
+          canvas.drawCircle(w, wandererR, body);
+          final crack = Paint()
+            ..strokeWidth = 0.6
+            ..color = AppColors.fade(AppColors.cyan, 0.5);
+          canvas.drawLine(
+            w.translate(-wandererR * 0.7, -wandererR * 0.1),
+            w.translate(wandererR * 0.7, wandererR * 0.3),
+            crack,
+          );
+          canvas.drawLine(
+            w.translate(-wandererR * 0.2, wandererR * 0.7),
+            w.translate(wandererR * 0.3, -wandererR * 0.7),
+            crack,
+          );
+          canvas.drawCircle(w, wandererR, limb);
+        case 3: // Titan — the haze: a blurred wide shroud.
+          canvas.drawCircle(
+            w,
+            wandererR * 1.7,
+            Paint()
+              ..color = AppColors.fade(AppColors.pureLight, 0.12)
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7),
+          );
+          canvas.drawCircle(w, wandererR, body);
+          canvas.drawCircle(w, wandererR, limb);
+      }
     }
 
     // ── Lineage constellations ──────────────────────────────────────
@@ -265,11 +369,11 @@ int wandererHitTest({
 }) {
   for (var i = 0; i < celestialWanderers.length; i++) {
     if (wandererTapRect(
-          index: i,
-          camera: camera,
-          viewport: viewport,
-          now: now,
-        ).contains(screenPoint)) {
+      index: i,
+      camera: camera,
+      viewport: viewport,
+      now: now,
+    ).contains(screenPoint)) {
       return i;
     }
   }
@@ -285,11 +389,11 @@ int planetHitTest({
 }) {
   for (var i = 0; i < KenosSystem.planets.length; i++) {
     if (planetTapRect(
-          index: i,
-          camera: camera,
-          viewport: viewport,
-          now: now,
-        ).contains(screenPoint)) {
+      index: i,
+      camera: camera,
+      viewport: viewport,
+      now: now,
+    ).contains(screenPoint)) {
       return i;
     }
   }
