@@ -14,6 +14,7 @@ import '../../../../core/widgets/hud.dart';
 import '../../../echo/data/echo_repository.dart';
 import '../../../echo/domain/echo.dart';
 import '../../../echo/domain/reception.dart';
+import '../../application/accretion.dart';
 import '../../application/kenos_system.dart';
 import '../../application/map_controller.dart';
 import '../../application/read_scar_controller.dart';
@@ -194,6 +195,12 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
 
   void _intercepted() {
     KenosHaptics.pulse(KenosPulse.intercepted);
+    // Someone else had it: the star still falls into the black hole —
+    // its thought is gone from this sky too (V3.12b).
+    ref.read(accretionProvider.notifier).feed(
+          KenosSystem.echoPosition(_echo, DateTime.now()),
+          tint: _echo.theme.core,
+        );
     _toast('CET ÉCHO S\'EST DISSOUS AILLEURS.');
   }
 
@@ -203,6 +210,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   }
 
   void _onPointerDown(PointerDownEvent event) {
+    debugPrint('[diag] down');
     if (_busy) return;
     if (_echo.isMine) {
       // Sealed echo: consult the bottle-in-the-sea signal (never the

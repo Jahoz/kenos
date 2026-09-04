@@ -19,6 +19,7 @@ import '../../constellations/presentation/constellation_sheets.dart';
 import '../../echo/data/echo_providers.dart';
 import '../../echo/domain/echo.dart';
 import '../../echo/domain/read_scar.dart';
+import '../application/accretion.dart';
 import '../application/celestial_bodies.dart';
 import '../application/kenos_system.dart';
 import '../application/map_controller.dart';
@@ -26,6 +27,7 @@ import '../application/motion_service.dart';
 import '../application/read_scar_controller.dart';
 import '../application/reception_controller.dart';
 import '../application/travel_camera.dart';
+import 'widgets/accretion_painter.dart';
 import 'widgets/awakening_sas.dart';
 import 'widgets/background_painters.dart';
 import 'widgets/celestial_plaque.dart';
@@ -503,8 +505,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                     for (final v in _vestiges)
                                       Builder(
                                         builder: (context) {
+                                          // Nothing rests upon the
+                                          // black hole (V3.12b).
                                           final sp = _camera.worldToScreen(
-                                            Offset(v.offsetX, v.offsetY),
+                                            KenosSystem.outsideTheHole(
+                                              Offset(v.offsetX, v.offsetY),
+                                            ),
                                             Size(c.maxWidth, c.maxHeight),
                                           );
                                           if (sp.dx < -30 ||
@@ -561,7 +567,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                       Builder(
                                         builder: (context) {
                                           final sp = _camera.worldToScreen(
-                                            Offset(cst.seedX, cst.seedY),
+                                            KenosSystem.outsideTheHole(
+                                              Offset(cst.seedX, cst.seedY),
+                                            ),
                                             Size(c.maxWidth, c.maxHeight),
                                           );
                                           if (sp.dx < -46 ||
@@ -619,6 +627,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                   ref.invalidate(sessionReadyProvider);
                                   ref.invalidate(mapControllerProvider);
                                 },
+                              ),
+                            ),
+                            // V3.12b — the falls: what dies here spirals
+                            // into the black hole, above the stars.
+                            CustomPaint(
+                              painter: AccretionPainter(
+                                motes: ref.watch(accretionProvider),
+                                camera: _camera,
+                                viewport: _viewport,
+                                now: epoch,
+                                reducedMotion: reduced,
                               ),
                             ),
                           ],

@@ -24,6 +24,8 @@ import '../../../echo/data/trace_shield.dart';
 import '../../../echo/domain/echo.dart';
 import '../../../echo/domain/echo_excerpt.dart';
 import '../../../echo/domain/echo_media.dart';
+import '../../application/accretion.dart';
+import '../../application/kenos_system.dart';
 import '../../application/map_controller.dart';
 /// Reveal modal: glassmorphism, visual decryption, a 10-second reading
 /// window, then dissolution — and the bottle-in-the-sea echo: the reader
@@ -254,6 +256,12 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         KenosPulse.burn,
         reduceMotion: platformDisablesAnimations(),
       );
+      // V3.12b — accretion: the burned thought falls into the black
+      // hole, from where it orbitted when the reader caught it.
+      ref.read(accretionProvider.notifier).feed(
+            KenosSystem.echoPosition(widget.echo, DateTime.now()),
+            tint: widget.echo.theme.core,
+          );
       // The borrowed voice burns with the echo it travelled with.
       _silencePreview();
     }

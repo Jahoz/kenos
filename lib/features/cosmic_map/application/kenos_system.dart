@@ -18,6 +18,25 @@ class KenosSystem {
   /// The black hole sits at the heart of the known ether.
   static const Offset blackHole = Offset(0.5, 0.5);
 
+  /// Nothing RESTS upon the black hole (V3.12b): vestiges and corpses
+  /// are held outside this world radius, deterministically — the
+  /// central object is the app's throat, not a parking spot. Orbiting
+  /// echoes and grazing comets are exempt: they move, they don't rest.
+  static const double blackHoleExclusion = 0.15;
+
+  /// Gently nudges a resting position outside the hole's horizon,
+  /// along its own radius. Idempotent, deterministic, poetic: what is
+  /// too heavy to fall in simply rests at the edge.
+  static Offset outsideTheHole(Offset p) {
+    final d = p - blackHole;
+    final dist = d.distance;
+    if (dist >= blackHoleExclusion) return p;
+    if (dist < 1e-9) {
+      return Offset(blackHole.dx, blackHole.dy - blackHoleExclusion);
+    }
+    return blackHole + d / dist * blackHoleExclusion;
+  }
+
   /// Each anchor rides its OWN lane (V3.12): the Moon closer and
   /// livelier, Venus wider and slower — the tracks never smear into
   /// one another, conjunctions stay rare. Polaris rides none.

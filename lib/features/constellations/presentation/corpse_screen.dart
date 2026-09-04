@@ -11,6 +11,7 @@ import '../../../core/constants/app_fonts.dart';
 import '../../../core/constants/app_layout.dart';
 import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/widgets/hud.dart';
+import '../../cosmic_map/application/kenos_system.dart';
 import '../../cosmic_map/application/travel_camera.dart';
 import '../data/constellation_repository.dart';
 
@@ -40,9 +41,17 @@ class _CorpseScreenState extends ConsumerState<CorpseScreen> {
     try {
       final eye = ref.read(travelPositionProvider);
       final rng = Random();
+      // Never seed upon the black hole: the corpse rests outside
+      // the central horizon (V3.12b).
+      final seed = KenosSystem.outsideTheHole(
+        Offset(
+          (eye.dx + (rng.nextDouble() - 0.5) * 0.12).clamp(0.05, 0.95),
+          (eye.dy + (rng.nextDouble() - 0.5) * 0.12).clamp(0.05, 0.95),
+        ),
+      );
       final meta = await ref.read(constellationRepositoryProvider).seed(
-            (eye.dx + (rng.nextDouble() - 0.5) * 0.12).clamp(0.05, 0.95),
-            (eye.dy + (rng.nextDouble() - 0.5) * 0.12).clamp(0.05, 0.95),
+            seed.dx,
+            seed.dy,
             kind: kind,
           );
       unawaited(

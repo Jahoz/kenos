@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/constellations/data/constellation_repository.dart';
 import 'package:kenos/features/constellations/presentation/corpse_screen.dart';
+import 'package:kenos/features/cosmic_map/application/kenos_system.dart';
 import 'package:kenos/features/cosmic_map/application/travel_camera.dart';
 
 /// The corpse has its own door (OUVRIR UN CADAVRE on the map) and its
@@ -56,7 +57,7 @@ void main() {
     expect(find.text('RENONCER'), findsOneWidget);
   });
 
-  testWidgets('larguer un poème : anneau près de l\'œil, id au pop',
+  testWidgets('semer un poème : anneau près de l\'œil, id au pop',
       (tester) async {
     await pumpCorpse(tester);
 
@@ -64,14 +65,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repo.seeds, hasLength(1));
-    expect(repo.seeds.single.dx, inExclusiveRange(0.44, 0.56));
-    expect(repo.seeds.single.dy, inExclusiveRange(0.44, 0.56));
+    // V3.12b: seeding while looking at the black hole still never
+    // rests upon it — the corpse is held just outside the horizon,
+    // in the eye's neighbourhood.
+    final seedDist = (Offset(repo.seeds.single.dx, repo.seeds.single.dy) -
+            KenosSystem.blackHole)
+        .distance;
+    expect(seedDist, greaterThan(KenosSystem.blackHoleExclusion - 1e-9),
+        reason: 'jamais sur le trou noir');
+    expect(seedDist,
+        lessThan(KenosSystem.blackHoleExclusion + 0.2),
+        reason: 'mais dans le quartier de l\'œil');
     expect(repo.lastKind, ConstellationKind.poem);
     expect(repo.poppedWith, 'corpse-fresh');
     expect(find.byType(CorpseScreen), findsNothing);
   });
 
-  testWidgets('larguer une chanson : le genre voyage', (tester) async {
+  testWidgets('semer une chanson : le genre voyage', (tester) async {
     await pumpCorpse(tester);
 
     await tester.tap(find.text('SEMER UNE CHANSON'));
