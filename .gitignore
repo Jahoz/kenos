@@ -60,3 +60,4 @@ supabase/.branches/
 # Agent tool state
 .mimosa/
 .video_agent/
+.zcode/

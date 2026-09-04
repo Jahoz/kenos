@@ -46,7 +46,8 @@ lib/
     ├── cosmic_map/      # application (MapController, caméra de voyage) + presentation
     ├── create_echo/     # Le Miroir : formulation, fragments, portes culturelles
     ├── constellations/  # Cadavre exquis : lignes à l'aveugle, figure angle d'or
-    └── frequencies/     # Symphonie spatialisée (oscillateurs + repli assets)
+    ├── frequencies/     # Symphonie spatialisée (oscillateurs + repli assets)
+    └── observatory/     # L'Observatoire (V3.16) : seuil du gardien, formes sans contenu
 ```
 
 ## Commands
@@ -55,8 +56,8 @@ lib/
 make dev                   # Mode démo local (aucun backend requis)
 make dev-local             # PWA release sur l'éther local seedé (:4308) — JAMAIS juger la perf sur `flutter run` (debug, 5-20× plus lent)
 make analyze               # 0 issue
-make test                  # 189 tests (chiffrement, culling, contrôleurs, UI)
-make db-reset && make db-test  # Migrations + 96 invariants pgTAP
+make test                  # 238 tests (chiffrement, culling, contrôleurs, UI)
+make db-reset && make db-test  # Migrations + 147 invariants pgTAP
 make db-seed-load && make db-load-report  # Montée en charge : seed 30 j (scellés LISIBLES, ~12k lignes) + rapport
 make db-verify-load           # Preuve e2e : consommer un écho seedé, l'ouvrir sur l'appareil
 make db-wipe-load              # Reset clean du seed (data réelle + KEK intacts)
@@ -147,6 +148,16 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
   canoniquement depuis un parse strict — jamais la chaîne brute.
   `door-preview` (Edge Function) ne connaît que l'ID de piste nu,
   jamais l'écho ni le texte.
+- **Observatoire (V3.16)** : le dashboard gardien est CONTENTLESS par
+  construction — `kenos_metrics_daily` ne stocke que des compteurs,
+  bumpés dans la transaction des RPC de cycle de vie (aucune nouvelle
+  lecture, l'atomicité sacrée est intacte). Le RPC `admin_fetch_metrics`
+  ne rend que des agrégats (série, live, heatmap 8×8, dérivés) ; le
+  gate lit `app_metadata` UNIQUEMENT (`user_metadata` est falsifiable,
+  épinglé refusé en pgTAP) ; la session gardien vit sur un second
+  client Supabase (la session anonyme céleste n'est jamais touchée) et
+  ne persiste nulle part. Compte-rendu opérateur :
+  `supabase/snippets/create_guardian.sql`.
 
 ## Design Boundary
 

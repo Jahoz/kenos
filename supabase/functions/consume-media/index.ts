@@ -46,7 +46,11 @@ export default {
       return Response.json(bundle);
     }
     if (typeof kind !== "string") {
-      return Response.json({ error: "invalid media metadata" }, { status: 410 });
+      // Corrupt metadata (only a modified client could produce it).
+      // The read is already spent: the words ship, the fragment alone
+      // dissolves — never a total loss.
+      delete bundle.media_path;
+      return Response.json(bundle);
     }
     // External doors (V3.10) carry a sealed reference, not a storage
     // object: pass it through untouched — only the winner's device,
@@ -57,15 +61,23 @@ export default {
       return Response.json({ ...bundle, media_ref: ref });
     }
     if (!(kind in maxMediaBytesByKind)) {
-      return Response.json({ error: "invalid media metadata" }, { status: 410 });
+      // Same law as above: the single read cannot be retried, so a
+      // broken fragment never takes the sealed text down with it.
+      delete bundle.media_path;
+      return Response.json(bundle);
     }
 
     const { data: object, error: downloadError } = await ctx.supabaseAdmin.storage
       .from("echo-media")
       .download(path);
     if (downloadError || !object || object.size > maxMediaBytesByKind[kind]) {
+      // The echo burned inside consume_echo and can never be re-read:
+      // a transient storage failure must not swallow the winner's
+      // words. The sealed text ships; only the fragment dissolves
+      // (the orphaned object is swept by kenos_purge).
       console.error("Media unavailable after atomic consumption", downloadError);
-      return Response.json({ error: "media unavailable" }, { status: 410 });
+      delete bundle.media_path;
+      return Response.json(bundle);
     }
     const bytes = new Uint8Array(await object.arrayBuffer());
     const { error: removeError } = await ctx.supabaseAdmin.storage

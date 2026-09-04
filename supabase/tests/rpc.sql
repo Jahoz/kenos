@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(128);
+select plan(131);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -1334,6 +1334,52 @@ select is(
   (select count(distinct r.reader_id)::int from public.kenos_reads r where r.read_at::date = current_date),
   'the purge folds distinct readers into the daily row before the journal burns'
 );
+
+-- ── Media orphans: the ledger sees only the debt, never the living ────
+-- Two encrypted fragments older than a day; only the second belongs
+-- to a still-drifting echo. SQL deletes from storage.objects are
+-- blocked by storage.protect_delete on purpose; the sweep lives in
+-- the sweep-media edge function (Storage API, service key), and its
+-- eyes are THIS ledger: kenos_list_media_orphans, service-role only
+-- (object names embed author ids — never for clients).
+insert into storage.objects (id, bucket_id, name, created_at)
+values (gen_random_uuid(), 'echo-media',
+        '00000000-0000-4000-8000-0000000000a1/77-IMAGE.bin',
+        now() - interval '2 days'),
+       (gen_random_uuid(), 'echo-media',
+        '00000000-0000-4000-8000-0000000000a1/78-IMAGE.bin',
+        now() - interval '2 days');
+insert into public.echoes (author_id, encrypted_text, coord_x, coord_y, coord_z,
+                           color_theme, media_kind, media_path)
+values ('00000000-0000-4000-8000-0000000000a1', 'media-keep', 0.5, 0.5, 0.9,
+        'TEAL', 'IMAGE', '00000000-0000-4000-8000-0000000000a1/78-IMAGE.bin');
+
+-- 129 — the ledger lists exactly the orphan:
+select is(
+  public.kenos_list_media_orphans(),
+  array['00000000-0000-4000-8000-0000000000a1/77-IMAGE.bin'],
+  'the orphan ledger lists exactly the unreferenced fragment, never a live echo''s media'
+);
+
+select public.kenos_purge();
+
+-- 130 — after the purge, the live echo's media is untouched:
+select is(
+  (select count(*) from storage.objects
+    where name = '00000000-0000-4000-8000-0000000000a1/78-IMAGE.bin'),
+  1::bigint,
+  'a live echo keeps its media: neither the ledger nor the purge may touch it'
+);
+
+-- 131 — clients can never read the ledger (names embed author ids):
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000b2","role":"authenticated"}', true);
+select throws_ok(
+  $$select public.kenos_list_media_orphans()$$,
+  '42501', 'permission denied for function kenos_list_media_orphans',
+  'the orphan ledger is service-role only'
+);
+reset role;
 
 select * from finish();
 rollback;

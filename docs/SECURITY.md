@@ -60,9 +60,17 @@ hand over the echo to be useful at all).
 - **Storage and Postgres do not share a transaction**: PostgreSQL still
   guarantees the winning single read through `FOR UPDATE SKIP LOCKED`,
   but an unavailable object after that commit cannot be retried without
-  violating the one-read rule. An upload abandoned before `launch_echo`
-  can also leave an encrypted orphan. Operations must periodically delete
-  `echo-media` objects older than 30 days which have no matching live echo.
+  violating the one-read rule. `consume-media` therefore never lets a
+  media failure take the sealed text down with it: the winner keeps
+  the words, only the fragment dissolves. Orphaned fragments (an
+  upload abandoned before `launch_echo`, or a consume hiccup) are
+  swept outside SQL: the storage catalog is write-protected
+  (`storage.protect_delete`), so `kenos_list_media_orphans`
+  (service-role only — names embed author ids) lists objects older
+  than a day with no live echo, and the `sweep-media` edge function
+  (service key) drains that list through the Storage API. A live
+  echo's media never enters the list; schedule the sweeper beside
+  `kenos_purge` (same pg_cron note as below).
 
 ### Operational notes
 
@@ -71,6 +79,19 @@ hand over the echo to be useful at all).
   different keys.
 - `launch_echo` / `consume_echo` pin `search_path = public, extensions`:
   pgcrypto lives in `extensions` on Supabase. Yes, this was a bug once.
+- Edge functions (`trace-shield`, `door-preview`) carry a best-effort,
+  per-worker courtesy cap keyed by the validated JWT `sub` (15/min):
+  over the cap the shield answers its pass verdict and the door
+  answers `{ url: null }` — third-party spend stays bounded and the
+  fail-open contract stays intact. All their outbound endpoints are
+  fixed constants; request data never shapes a request target.
+- The Trace Shield's contract extends to creation, where the ether is
+  structurally blind: the Mirror and a corpse's poem line run a
+  device-side PII guard (`PiiGuard`: French/international phone
+  numbers, emails) BEFORE sealing — the same anonymity threshold
+  (`warnAnonymityLoss`), warn-never-block, zero network. The server
+  cannot warn about content it cannot read; only the author's device
+  can, before the seal exists.
 - Legacy echoes (pre-migration, `key_seal = ''`) pass through as
   plaintext with `key: null` — the client treats a null key as
   "not sealed".
@@ -84,10 +105,10 @@ once the extension is available on the project.
 
 ## Testing the promises
 
-- `supabase/tests/rpc.sql` — 35 RPC invariants (atomicity, escrow
-  round-trip, sector floor bins, own-echo exclusion, purge, rate
-  limits). `make db-test`.
-- `supabase/tests/rls.sql` — 13 active break-in attempts (column
+- `supabase/tests/rpc.sql` — 130 RPC invariants (atomicity, escrow
+  round-trip, sector floor bins, own-echo exclusion, purge incl. media
+  orphan sweep, rate limits). `make db-test`.
+- `supabase/tests/rls.sql` — 16 active break-in attempts (column
   opacity, no writes, RPC-only everywhere, anon denied).
 - `scripts/e2e_local.sh` — the full bottle-in-the-sea loop over real
   PostgREST, including cheat attempts. `make e2e`.

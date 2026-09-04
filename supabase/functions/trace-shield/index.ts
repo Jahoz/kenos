@@ -22,10 +22,63 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
 
+// The moderation endpoint is a fixed allowlist of one: no request
+// target is ever shaped by request data.
+const MODERATION_ENDPOINT = "https://api.mistral.ai/v1/moderations";
+
+// Best-effort, per-worker courtesy cap. The shield is optional
+// enrichment: over the cap the caller simply gets the pass verdict
+// (the fail-open contract) without ever reaching Mistral — one user
+// can never burn the shared moderation budget.
+const CAP_WINDOW_MS = 60_000;
+const CAP_MAX = 15;
+const CAP_SEEN = new Map<string, number[]>();
+
+// The caller's stable key for the cap: the JWT `sub` claim, strictly
+// validated as a UUID. Memory-only, never persisted, never a request
+// target; anything unparsable collapses to the shared "anon" bucket.
+function callerKey(req: Request): string {
+  const token = (req.headers.get("Authorization") ?? "").replace(
+    /^Bearer\s+/i,
+    "",
+  );
+  try {
+    const b64 = (token.split(".")[1] ?? "").replace(/-/g, "+").replace(
+      /_/g,
+      "/",
+    );
+    const payload = JSON.parse(
+      atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4)),
+    );
+    const sub = typeof payload.sub === "string" ? payload.sub : "";
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+      .test(sub) ? sub : "anon";
+  } catch {
+    return "anon";
+  }
+}
+
+function courtesyAllows(key: string): boolean {
+  const now = Date.now();
+  const stamps = (CAP_SEEN.get(key) ?? []).filter(
+    (t) => t > now - CAP_WINDOW_MS,
+  );
+  stamps.push(now);
+  CAP_SEEN.set(key, stamps);
+  if (CAP_SEEN.size > 5000) {
+    for (const [k, s] of CAP_SEEN) {
+      if (s.every((t) => t <= now - CAP_WINDOW_MS)) CAP_SEEN.delete(k);
+    }
+  }
+  return stamps.length <= CAP_MAX;
+}
+
 export default {
   fetch: withSupabase({ auth: "user" }, async (req, _ctx) => {
     // Fail-open verdict: nothing suspicious, send away.
     const pass = Response.json({ ok: true, pii: false, selfharm: false });
+
+    if (!courtesyAllows(callerKey(req))) return pass;
 
     const key = Deno.env.get("MISTRAL_API_KEY");
     if (!key) return pass;
@@ -43,7 +96,7 @@ export default {
     if (text.length < 2) return pass;
 
     try {
-      const res = await fetch("https://api.mistral.ai/v1/moderations", {
+      const res = await fetch(MODERATION_ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json; charset=utf-8",
