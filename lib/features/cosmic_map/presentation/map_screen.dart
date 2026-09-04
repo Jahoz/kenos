@@ -13,6 +13,7 @@ import '../../../core/constants/app_layout.dart';
 import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/utils/motion_preferences.dart';
 import '../../../core/utils/parallax_math.dart';
+import '../../../core/widgets/hud.dart';
 import '../../constellations/data/constellation_repository.dart';
 import '../../constellations/domain/constellation_figure.dart';
 import '../../constellations/presentation/constellation_sheets.dart';
@@ -405,6 +406,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       );
       // No reload: the artifact stays, refermé.
     } else {
+      // One line per stranger per corpse: if these hands already
+      // gave, the sky says so — it never re-offers what it must then
+      // refuse (the live prod catch: compose offered, submit denied).
+      if (_artifacts.contributedTo(cst.id)) {
+        showHud(context, 'TA LIGNE EST DÉJÀ DANS CE CORPS.');
+        return;
+      }
       unawaited(
         showContributeSheet(context, ref: ref, constellation: cst).then((_) {
           if (mounted) _loadConstellations();

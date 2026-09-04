@@ -78,20 +78,24 @@ class _ReceptionPanelState extends ConsumerState<ReceptionPanel>
   Future<void> _close({bool burn = false}) async {
     if (_closing) return;
     _closing = true;
+    var fall = false;
     if (burn && widget.reception != null) {
-      // The signal burns — one look, then the void. And the burn the
-      // USER chose plays the fall: the sealed echo's star spirals
-      // into the black hole from where it still orbits.
+      // The signal burns — one look, then the void. The fall plays
+      // when the curtain lifts (this sheet's barrier is opaque: fed
+      // now, the whole spiral would die unseen behind it).
       KenosHaptics.pulse(KenosPulse.burn);
-      ref.read(accretionProvider.notifier).feed(
-            KenosSystem.echoPosition(widget.echo, DateTime.now()),
-            tint: widget.echo.theme.core,
-          );
+      fall = true;
       await ref
           .read(receptionControllerProvider.notifier)
           .burn(widget.echo.id);
     }
     await _dissolve.forward(from: 0);
+    if (fall) {
+      ref.read(accretionProvider.notifier).feed(
+            KenosSystem.echoPosition(widget.echo, DateTime.now()),
+            tint: widget.echo.theme.core,
+          );
+    }
     if (mounted) Navigator.of(context, rootNavigator: true).pop();
   }
 

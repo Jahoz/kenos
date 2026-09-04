@@ -72,6 +72,25 @@ class ContributeResult {
   final AssembledLine? previous;
 }
 
+/// What the ether actually said when a line was refused — the
+/// writer deserves the reason, not a shrug.
+String contributeRefusalMessage(Object error) {
+  final raw = error.toString();
+  if (raw.contains('KENOS_ALREADY_CONTRIBUTED')) {
+    return 'TA PHRASE EST DÉJÀ DANS CE CORPS.';
+  }
+  if (raw.contains('KENOS_RATE_LIMIT')) {
+    return 'LE CIEL SOUFFLE — REVIENS DANS DEUX MINUTES.';
+  }
+  if (raw.contains('KENOS_CLOSED')) {
+    return 'LE POÈME S\'EST REFERMÉ AILLEURS.';
+  }
+  if (raw.contains('KENOS_INVALID_LENGTH')) {
+    return 'LA PHRASE EST TROP LONGUE POUR LE CIEL.';
+  }
+  return 'L\'ÉTHER A REFUSÉ LA LIGNE.';
+}
+
 /// The Exquisite Corpse contract (V3.13 — classic rule): seed,
 /// contribute by continuing the preceding line, read the FINISHED
 /// poem — an artifact, open to everyone (contributors included),

@@ -159,10 +159,10 @@ class VestigePainter extends CustomPainter {
     // finger's courtesy, the drawing never looms (V3.12c — the real
     // disproportion was here, not in the constellations).
     final r = size.shortestSide / 2 - 8;
-    final baseAlpha = kept ? 0.5 : (read ? 0.16 : (0.22 + 0.22 * pulse));
+    final baseAlpha = kept ? 0.5 : (read ? 0.22 : (0.26 + 0.20 * pulse));
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = kept || read ? 0.6 : 0.8
+      ..strokeWidth = kept || read ? 0.7 : 0.8
       ..color = AppColors.fade(kept ? AppColors.ember : color, baseAlpha);
 
     canvas.save();

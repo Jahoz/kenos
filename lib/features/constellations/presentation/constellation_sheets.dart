@@ -14,6 +14,7 @@ import '../../frequencies/domain/kenos_wave.dart';
 import '../data/constellation_repository.dart';
 import '../domain/constellation_figure.dart';
 import '../domain/note_phrase.dart';
+
 /// The Exquisite Corpse panels: contribute a line by continuing the
 /// preceding one (the classic rule — nobody sees the whole while it
 /// writes itself), or read a CLOSED poem — an artifact, open to
@@ -112,12 +113,21 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
     final previous = await ref
         .read(constellationRepositoryProvider)
         .peekPrevious(widget.constellation.id);
-    if (mounted) setState(() { _previous = previous; _peeked = true; });
+    if (mounted) {
+      setState(() {
+        _previous = previous;
+        _peeked = true;
+      });
+    }
   }
 
   /// One note, best-effort: the spatial engine when it lives, the
   /// baked wave asset otherwise. The song never blocks, never throws.
-  Future<void> _playNote(int noteIndex, {double pan = 0, double gain = 0.6}) async {
+  Future<void> _playNote(
+    int noteIndex, {
+    double pan = 0,
+    double gain = 0.6,
+  }) async {
     final spatial = await SpatialWaveAudio.instance.playNote(
       noteIndex,
       pan: pan,
@@ -141,7 +151,9 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
     final holds = phrase.holds;
     final n = phrase.notes.length;
     for (var i = 0; i < n; i++) {
-      unawaited(_playNote(phrase.notes[i], pan: -0.6 + 1.2 * (i / (n - 1).clamp(1, 7))));
+      unawaited(
+        _playNote(phrase.notes[i], pan: -0.6 + 1.2 * (i / (n - 1).clamp(1, 7))),
+      );
       await Future<void>.delayed(Duration(milliseconds: holds[i]));
     }
   }
@@ -156,7 +168,9 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
     if (_sending) return;
     final payload = _isSong
         ? (_draft == null || _draft!.notes.isEmpty ? null : _draft!.encode())
-        : _input.text.trim().isEmpty ? null : _input.text.trim();
+        : _input.text.trim().isEmpty
+        ? null
+        : _input.text.trim();
     if (payload == null) return;
     if (!_isSong && payload.length > _maxLength) return;
 
@@ -183,9 +197,14 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
           .read(constellationRepositoryProvider)
           .contribute(constellationId: widget.constellation.id, text: payload);
       if (!mounted) return;
+      // One line per stranger per corpse, remembered: the sky will
+      // never again OFFER composition to hands that already gave.
       unawaited(
-        ref.read(localEchoStoreProvider).recordConstellationTouched(),
+        ref.read(artifactMemoryProvider).markContributed(
+              widget.constellation.id,
+            ),
       );
+      unawaited(ref.read(localEchoStoreProvider).recordConstellationTouched());
       KenosHaptics.pulse(KenosPulse.seal);
       // The messenger is captured BEFORE the pop: the ack used to
       // look up ScaffoldMessenger through this panel's context AFTER
@@ -199,8 +218,11 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
       debugPrint('[kenos.constellations] contribute refused: $e');
       if (mounted) {
         setState(() => _sending = false);
+        // The writer deserves the ether's actual reason, never a
+        // shrug (the live catch: ALREADY_CONTRIBUTED answered
+        // 'refused' to hands the app itself had re-offered).
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('L\'ÉTHER A REFUSÉ LA LIGNE.')),
+          SnackBar(content: Text(contributeRefusalMessage(e))),
         );
       }
     }
@@ -212,11 +234,11 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
         content: Text(
           count >= widget.constellation.target
               ? _isSong
-                  ? 'PHRASE DONNÉE — LA CHANSON S\'EST REFERMÉE.'
-                  : 'LIGNE DONNÉE — LA CONSTELLATION S\'EST REFERMÉE.'
+                    ? 'PHRASE DONNÉE — LA CHANSON S\'EST REFERMÉE.'
+                    : 'LIGNE DONNÉE — LA CONSTELLATION S\'EST REFERMÉE.'
               : _isSong
-                  ? 'PHRASE DONNÉE — LA CHANSON GRANDIT.'
-                  : 'LIGNE DONNÉE — LE POÈME GRANDIT.',
+              ? 'PHRASE DONNÉE — LA CHANSON GRANDIT.'
+              : 'LIGNE DONNÉE — LE POÈME GRANDIT.',
         ),
       ),
     );
@@ -259,9 +281,7 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
               if (_peeked)
                 if (_previous != null) ...[
                   Text(
-                    _isSong
-                        ? 'LA PHRASE QUI PRÉCÈDE'
-                        : 'LA LIGNE QUI PRÉCÈDE',
+                    _isSong ? 'LA PHRASE QUI PRÉCÈDE' : 'LA LIGNE QUI PRÉCÈDE',
                     style: TextStyle(
                       fontFamily: AppFonts.mono,
                       fontSize: 9,
@@ -320,10 +340,9 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     TextButton(
-                      onPressed:
-                          _draft == null || _draft!.notes.isEmpty
-                              ? null
-                              : () => unawaited(_playPhrase(_draft!)),
+                      onPressed: _draft == null || _draft!.notes.isEmpty
+                          ? null
+                          : () => unawaited(_playPhrase(_draft!)),
                       child: const Text('ÉCOUTER MA PHRASE'),
                     ),
                     TextButton(
@@ -369,7 +388,8 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
               OutlinedButton(
                 // The void gives nothing to the void: an empty line —
                 // written or sung — never leaves the device.
-                onPressed: _sending ||
+                onPressed:
+                    _sending ||
                         (_isSong
                             ? _draft == null || _draft!.notes.isEmpty
                             : _input.text.trim().isEmpty)
@@ -379,13 +399,14 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
                   _sending
                       ? 'DON…'
                       : _isSong
-                          ? 'DONNER LA PHRASE'
-                          : 'DONNER LA LIGNE',
+                      ? 'DONNER LA PHRASE'
+                      : 'DONNER LA LIGNE',
                 ),
               ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+                onPressed: () =>
+                    Navigator.of(context, rootNavigator: true).pop(),
                 child: const Text('GARDER SON SILENCE'),
               ),
               const SizedBox(height: 16),
@@ -407,8 +428,40 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
 /// PANEL's render box instead of the pad's, and every note landed
 /// off-pitch (the décalage). Never again: the pad is its own widget,
 /// its geometry its own truth.
+/// The gesture's thread: a hairline joining the touches in played
+/// order — the rhythm stays readable while every dot keeps its own
+/// place under the finger that made it.
+class _GestureThreadPainter extends CustomPainter {
+  _GestureThreadPainter({required this.taps});
+
+  final List<({int note, int atMs, double x, double y})> taps;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.fade(AppColors.pureLight, 0.18)
+      ..strokeWidth = 0.7
+      ..strokeCap = StrokeCap.round;
+    for (var i = 1; i < taps.length; i++) {
+      canvas.drawLine(
+        Offset(taps[i - 1].x * size.width, taps[i - 1].y * size.height),
+        Offset(taps[i].x * size.width, taps[i].y * size.height),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GestureThreadPainter oldDelegate) =>
+      oldDelegate.taps.length != taps.length;
+}
+
 class _ComposerPad extends StatefulWidget {
-  const _ComposerPad({super.key, required this.onChanged, required this.onPlayNote});
+  const _ComposerPad({
+    super.key,
+    required this.onChanged,
+    required this.onPlayNote,
+  });
 
   /// The whole living draft — notes AND the rhythm the fingers
   /// played. Null when the pad is empty.
@@ -427,7 +480,7 @@ class _ComposerPadState extends State<_ComposerPad> {
   /// it landed (a clock started at the FIRST touch). The intervals
   /// between touches ARE the rhythm — recorded live, sealed with the
   /// phrase, never flattened again.
-  final List<({int note, int atMs, double y})> _taps = [];
+  final List<({int note, int atMs, double x, double y})> _taps = [];
   final Stopwatch _clock = Stopwatch();
 
   NotePhrase? get _phrase {
@@ -444,11 +497,11 @@ class _ComposerPadState extends State<_ComposerPad> {
   }
 
   void clear() => setState(() {
-        _taps.clear();
-        _clock.stop();
-        _clock.reset();
-        widget.onChanged(null);
-      });
+    _taps.clear();
+    _clock.stop();
+    _clock.reset();
+    widget.onChanged(null);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -479,10 +532,25 @@ class _ComposerPadState extends State<_ComposerPad> {
             onTapUp: (details) {
               if (_taps.length >= NotePhrase.maxNotes) return;
               if (!_clock.isRunning && _taps.isEmpty) _clock.start();
-              final y = (details.localPosition.dy / size.height)
-                  .clamp(0.0, 1.0);
+              // The dot lands EXACTLY where the finger touched: the
+              // height is the note (quantized by the scale — a note
+              // IS discrete), the width is the touch's own place. The
+              // RHYTHM stays in the intervals between touches, never
+              // in a displaced score.
+              final y = (details.localPosition.dy / size.height).clamp(
+                0.0,
+                1.0,
+              );
+              final x = (details.localPosition.dx / size.width).clamp(0.0, 1.0);
               final note = WaveMath.noteForY(y);
-              setState(() => _taps.add((note: note, atMs: _clock.elapsedMilliseconds, y: y)));
+              setState(
+                () => _taps.add((
+                  note: note,
+                  atMs: _clock.elapsedMilliseconds,
+                  x: x,
+                  y: y,
+                )),
+              );
               widget.onPlayNote(note);
               widget.onChanged(_phrase);
             },
@@ -495,9 +563,17 @@ class _ComposerPadState extends State<_ComposerPad> {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
+                  // The gesture's own thread: touches joined in the
+                  // order they were played — the rhythm, made visible
+                  // without displacing a single dot.
+                  if (_taps.length >= 2)
+                    CustomPaint(
+                      size: size,
+                      painter: _GestureThreadPainter(taps: _taps),
+                    ),
                   for (final (i, t) in _taps.indexed)
                     Positioned(
-                      left: timeX(i) * size.width - 5,
+                      left: t.x * size.width - 5,
                       top: t.y * size.height - 5,
                       child: Container(
                         width: 10,
@@ -630,7 +706,9 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
   /// at a time, never the whole at once.
   Future<void> _playSong() async {
     if (!mounted || _phrases == null) return;
-    setState(() { _songAlive = true; });
+    setState(() {
+      _songAlive = true;
+    });
     for (var p = 0; p < _phrases!.length; p++) {
       if (!mounted || !_songAlive) return;
       setState(() => _playingPhrase = p);
@@ -655,7 +733,11 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
     if (mounted) setState(() => _playingPhrase = -1);
   }
 
-  Future<void> _playNote(int noteIndex, {double pan = 0, double gain = 0.6}) async {
+  Future<void> _playNote(
+    int noteIndex, {
+    double pan = 0,
+    double gain = 0.6,
+  }) async {
     final spatial = await SpatialWaveAudio.instance.playNote(
       noteIndex,
       pan: pan,
@@ -689,130 +771,137 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
           padding: const EdgeInsets.symmetric(horizontal: 34),
           child: AnimatedBuilder(
             animation: _fade,
-            builder: (context, _) => Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  song != null ? 'CHANSON REFERMÉE' : 'CONSTELLATION REFERMÉE',
-                  style: TextStyle(
-                    fontFamily: AppFonts.mono,
-                    fontSize: 9,
-                    letterSpacing: 4,
-                    color: AppColors.fade(AppColors.teal, 0.75),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                // The figure the strangers drew, complete for one breath:
-                // every star a line, every segment a hand that passed.
-                _CompletedFigure(
-                  figureId: widget.figureId,
-                  starCount: widget.lines.length,
-                  singingPhrase: _playingPhrase,
-                ),
-                const SizedBox(height: 24),
-                if (song != null) ...[
-                  // The song traverses: phrase by phrase, the singing
-                  // station breathing with the sound.
+            builder: (context, _) => SingleChildScrollView(
+              // A closed artifact can carry seven long lines and a
+              // singing figure: on a phone, the poem must SCROLL —
+              // never overflow the sky it lives in.
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Text(
-                    _playingPhrase >= 0
-                        ? 'PHRASE ${_playingPhrase + 1} / ${song.length}'
-                        : 'LA FIGURE CHANTE — CHAQUE PHRASE À SA STATION',
+                    song != null
+                        ? 'CHANSON REFERMÉE'
+                        : 'CONSTELLATION REFERMÉE',
                     style: TextStyle(
                       fontFamily: AppFonts.mono,
-                      fontSize: 8.5,
-                      letterSpacing: 3,
-                      color: _playingPhrase >= 0
-                          ? AppColors.fade(AppColors.cyan, 0.85)
-                          : AppColors.fade(AppColors.pureLight, 0.4),
+                      fontSize: 9,
+                      letterSpacing: 4,
+                      color: AppColors.fade(AppColors.teal, 0.75),
                     ),
                   ),
                   const SizedBox(height: 18),
-                  TextButton(
-                    onPressed: () {
-                      _songAlive = false;
-                      Future<void>.delayed(
-                        const Duration(milliseconds: 200),
-                        _playSong,
-                      );
-                    },
-                    child: const Text('REJOUER LA CHANSON'),
+                  // The figure the strangers drew, complete for one breath:
+                  // every star a line, every segment a hand that passed.
+                  _CompletedFigure(
+                    figureId: widget.figureId,
+                    starCount: widget.lines.length,
+                    singingPhrase: _playingPhrase,
                   ),
-                ] else
-                  for (final line in widget.lines) ...[
-                    Opacity(
-                      opacity:
-                          (1 - (line.number / (widget.lines.length + 1))).clamp(
-                        0.15,
-                        1.0,
-                      ) < _fade.value
-                          ? 1.0
-                          : 0.0,
-                      child: Text(
-                        line.text,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: AppFonts.serifItalic,
-                          fontSize: 17,
-                          height: 1.9,
-                          color: AppColors.fade(
-                            AppColors.pureLight,
-                            0.55 + 0.4 * (1 - line.number / widget.lines.length),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                const SizedBox(height: 26),
-                Text(
-                  widget.curatedBy != null
-                      ? '— ${widget.curatedBy} —'
-                      : song != null
-                          ? 'UNE CHANSON D\'ÉTRANGERS — ELLE RESTE, REFERMÉE'
-                          : 'UN POÈME D\'ÉTRANGERS — IL RESTE, REFERMÉ',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: AppFonts.mono,
-                    fontSize: 8,
-                    letterSpacing: 2,
-                    color: AppColors.fade(AppColors.pureLight, 0.35),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                if (widget.memory != null && widget.keepPosition != null) ...[
-                  if (_keepAck == null &&
-                      !widget.memory!.isKept(widget.figureId))
-                    TextButton(
-                      onPressed: _keep,
-                      child: const Text(
-                        'LE GARDER DANS MON CIEL',
-                        style: TextStyle(
-                          fontFamily: AppFonts.mono,
-                          fontSize: 9,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    )
-                  else if (_keepAck != null)
+                  const SizedBox(height: 24),
+                  if (song != null) ...[
+                    // The song traverses: phrase by phrase, the singing
+                    // station breathing with the sound.
                     Text(
-                      _keepAck!,
-                      textAlign: TextAlign.center,
+                      _playingPhrase >= 0
+                          ? 'PHRASE ${_playingPhrase + 1} / ${song.length}'
+                          : 'LA FIGURE CHANTE — CHAQUE PHRASE À SA STATION',
                       style: TextStyle(
                         fontFamily: AppFonts.mono,
                         fontSize: 8.5,
-                        letterSpacing: 1.5,
-                        color: AppColors.fade(AppColors.ember, 0.75),
+                        letterSpacing: 3,
+                        color: _playingPhrase >= 0
+                            ? AppColors.fade(AppColors.cyan, 0.85)
+                            : AppColors.fade(AppColors.pureLight, 0.4),
                       ),
                     ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 18),
+                    TextButton(
+                      onPressed: () {
+                        _songAlive = false;
+                        Future<void>.delayed(
+                          const Duration(milliseconds: 200),
+                          _playSong,
+                        );
+                      },
+                      child: const Text('REJOUER LA CHANSON'),
+                    ),
+                  ] else
+                    for (final line in widget.lines) ...[
+                      Opacity(
+                        opacity:
+                            (1 - (line.number / (widget.lines.length + 1)))
+                                    .clamp(0.15, 1.0) <
+                                _fade.value
+                            ? 1.0
+                            : 0.0,
+                        child: Text(
+                          line.text,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: AppFonts.serifItalic,
+                            fontSize: 17,
+                            height: 1.9,
+                            color: AppColors.fade(
+                              AppColors.pureLight,
+                              0.55 +
+                                  0.4 * (1 - line.number / widget.lines.length),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  const SizedBox(height: 26),
+                  Text(
+                    widget.curatedBy != null
+                        ? '— ${widget.curatedBy} —'
+                        : song != null
+                        ? 'UNE CHANSON D\'ÉTRANGERS — ELLE RESTE, REFERMÉE'
+                        : 'UN POÈME D\'ÉTRANGERS — IL RESTE, REFERMÉ',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: AppFonts.mono,
+                      fontSize: 8,
+                      letterSpacing: 2,
+                      color: AppColors.fade(AppColors.pureLight, 0.35),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (widget.memory != null && widget.keepPosition != null) ...[
+                    if (_keepAck == null &&
+                        !widget.memory!.isKept(widget.figureId))
+                      TextButton(
+                        onPressed: _keep,
+                        child: const Text(
+                          'LE GARDER DANS MON CIEL',
+                          style: TextStyle(
+                            fontFamily: AppFonts.mono,
+                            fontSize: 9,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      )
+                    else if (_keepAck != null)
+                      Text(
+                        _keepAck!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: AppFonts.mono,
+                          fontSize: 8.5,
+                          letterSpacing: 1.5,
+                          color: AppColors.fade(AppColors.ember, 0.75),
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                  ],
+                  OutlinedButton(
+                    onPressed: () =>
+                        Navigator.of(context, rootNavigator: true).pop(),
+                    child: const Text('RETOURNER AU VIDE'),
+                  ),
+                  const SizedBox(height: 16),
                 ],
-                OutlinedButton(
-                  onPressed: () =>
-                      Navigator.of(context, rootNavigator: true).pop(),
-                  child: const Text('RETOURNER AU VIDE'),
-                ),
-                const SizedBox(height: 16),
-              ],
+              ),
             ),
           ),
         ),
@@ -872,10 +961,8 @@ class _CompletedFigurePainter extends CustomPainter {
         ConstellationFigure.starAt(k, target: starCount, id: figureId),
     ];
 
-    Offset at(Offset unit) => Offset(
-          center.dx + radius * unit.dx,
-          center.dy + radius * unit.dy,
-        );
+    Offset at(Offset unit) =>
+        Offset(center.dx + radius * unit.dx, center.dy + radius * unit.dy);
 
     // The strangers' path, complete.
     if (stars.length >= 2) {
@@ -887,21 +974,14 @@ class _CompletedFigurePainter extends CustomPainter {
         canvas.drawLine(at(stars[k - 1]), at(stars[k]), link);
       }
     }
-    canvas.drawCircle(
-      center,
-      1.2,
-      Paint()..color = AppColors.fade(color, 0.8),
-    );
+    canvas.drawCircle(center, 1.2, Paint()..color = AppColors.fade(color, 0.8));
     for (final (k, unit) in stars.indexed) {
       // The singing phrase's station breathes cyan, larger.
       final singing = k == singingPhrase;
       canvas.drawCircle(
         at(unit),
         singing ? 3.4 : 1.9,
-        Paint()
-          ..color = singing
-              ? AppColors.cyan
-              : AppColors.fade(color, 0.85),
+        Paint()..color = singing ? AppColors.cyan : AppColors.fade(color, 0.85),
       );
       if (singing) {
         canvas.drawCircle(

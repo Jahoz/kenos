@@ -228,12 +228,9 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
           .rebound(source: widget.echo, text: widget.echo.text ?? '');
       if (!mounted) return;
       if (ok) {
-        // The phoenix leaves a rising streak: the thought, re-sealed,
-        // climbs back into the ether for its next reader (V3.12c).
-        ref.read(accretionProvider.notifier).feedRising(
-              KenosSystem.echoPosition(widget.echo, DateTime.now()),
-              tint: widget.echo.theme.core,
-            );
+        // The phoenix's rising streak (V3.12c) — DEFERRED until the
+        // curtain lifts: the barrier would hide every second of it.
+        _pendingFall = (rising: true, tint: widget.echo.theme.core);
       }
       setState(() => _phase = ok ? _Phase.rebounded : _Phase.refused);
       if (ok) {
@@ -243,6 +240,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
       }
     } finally {
       _slinging = false;
+      _playPendingFall();
       if (mounted) Navigator.of(context, rootNavigator: true).pop();
     }
   }
@@ -267,10 +265,9 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
       );
       // V3.12b — accretion: the burned thought falls into the black
       // hole, from where it orbitted when the reader caught it.
-      ref.read(accretionProvider.notifier).feed(
-            KenosSystem.echoPosition(widget.echo, DateTime.now()),
-            tint: widget.echo.theme.core,
-          );
+      // DEFERRED to the curtain's lift: the opaque barrier would
+      // swallow the whole 1.9 s spiral (the live prod report).
+      _pendingFall = (rising: false, tint: widget.echo.theme.core);
       // The borrowed voice burns with the echo it travelled with.
       _silencePreview();
     }
@@ -323,11 +320,18 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     } catch (_) {
       // Silence is also an answer: close without guilt.
     }
+    _playPendingFall();
     if (mounted) Navigator.of(context, rootNavigator: true).pop();
   }
 
   bool _piiAcknowledged = false;
   bool _careAcknowledged = false;
+
+  /// A celestial event (fall or phoenix) waiting for the curtain:
+  /// the modal's opaque barrier hides the sky — feeding the hole
+  /// while the sheet is open plays the whole fall behind the curtain,
+  /// unseen (the live prod report). It plays as the sheet lifts.
+  ({bool rising, Color tint})? _pendingFall;
 
   /// ANONYMITY WARNING — non-blocking: the contract is anonymity, and
   /// choosing belongs to the one who writes. The shield only makes
@@ -402,7 +406,28 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
   }
 
   void _leave() {
+    _playPendingFall();
     Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  /// Releases the deferred celestial event (if any) so it plays in
+  /// the OPEN sky, the very frame the curtain lifts.
+  void _playPendingFall() {
+    final pending = _pendingFall;
+    if (pending == null) return;
+    _pendingFall = null;
+    final origin = KenosSystem.echoPosition(widget.echo, DateTime.now());
+    if (pending.rising) {
+      ref.read(accretionProvider.notifier).feedRising(
+            origin,
+            tint: pending.tint,
+          );
+    } else {
+      ref.read(accretionProvider.notifier).feed(
+            origin,
+            tint: pending.tint,
+          );
+    }
   }
 
   Future<void> _reportEcho() async {

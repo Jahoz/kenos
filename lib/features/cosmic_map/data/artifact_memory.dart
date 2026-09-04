@@ -30,6 +30,7 @@ class ArtifactMemory {
 
   final Map<String, int> _readAt = {};
   final List<KeptArtifact> _kept = [];
+  final Set<String> _contributed = {};
   bool _loaded = false;
 
   /// Loads and prunes (expired read markers die quietly). Call once
@@ -52,6 +53,10 @@ class ArtifactMemory {
         for (final k in (data['kept'] as List? ?? const []))
           KeptArtifact.fromJson((k as Map).cast<String, dynamic>()),
       ]);
+      _contributed.addAll([
+        for (final id in (data['contributed'] as List? ?? const []))
+          id as String,
+      ]);
     } catch (e) {
       debugPrint('[kenos.artifacts] memory corrupted, starting fresh: $e');
     }
@@ -62,6 +67,15 @@ class ArtifactMemory {
 
   Future<void> markRead(String id) async {
     _readAt[id] = DateTime.now().millisecondsSinceEpoch;
+    await _persist();
+  }
+
+  /// One line per stranger per corpse, remembered device-side: the
+  /// map stops OFFERING composition to hands that already gave.
+  bool contributedTo(String id) => _contributed.contains(id);
+
+  Future<void> markContributed(String id) async {
+    _contributed.add(id);
     await _persist();
   }
 
@@ -96,6 +110,7 @@ class ArtifactMemory {
       jsonEncode({
         'read': _readAt,
         'kept': [for (final k in _kept) k.toJson()],
+        'contributed': _contributed.toList(),
       }),
     );
   }
