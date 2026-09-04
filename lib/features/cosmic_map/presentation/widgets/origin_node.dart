@@ -28,12 +28,20 @@ class OriginNode extends ConsumerWidget {
     final motes = math.min(stardust, _maxVisibleMotes);
 
     return Semantics(
-      label: 'Ton nœud d\'origine — $stardust poussière${stardust > 1 ? 's' : ''} d\'étoile',
+      label:
+          'Ton nœud d\'origine — $stardust poussière${stardust > 1 ? 's' : ''} d\'étoile',
       button: true,
       child: GestureDetector(
         onTap: () {
           KenosHaptics.pulse(KenosPulse.themePick, reduceMotion: reduced);
           context.push('/impact');
+        },
+        // The hidden door: a long press on L'Aube opens the guardian's
+        // threshold. Unmarked by design — the sky keeps its secrets,
+        // even its own observation.
+        onLongPress: () {
+          KenosHaptics.pulse(KenosPulse.themePick, reduceMotion: reduced);
+          context.push('/observatoire');
         },
         child: SizedBox(
           width: side,
@@ -112,7 +120,10 @@ class _EmberBreathState extends State<_EmberBreath>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.fade(AppColors.ember, warmth * (0.35 + 0.35 * t)),
+                  color: AppColors.fade(
+                    AppColors.ember,
+                    warmth * (0.35 + 0.35 * t),
+                  ),
                   blurRadius: 22 + 14 * t,
                   spreadRadius: 1 + 4 * t,
                 ),
@@ -172,8 +183,7 @@ class _StardustMoteState extends State<_StardustMote>
         // Deterministic per-mote geometry: the constellation never
         // reshuffles between frames of the same life.
         final seed = (widget.index * 137.508) % 360; // golden angle
-        final angle =
-            (seed + _orbit.value * 360 - 90) * math.pi / 180;
+        final angle = (seed + _orbit.value * 360 - 90) * math.pi / 180;
         final radius = 16.0 + 8.0 * ((widget.index % 3) + 1) / 3 * 2;
         return Positioned(
           left: 32 + radius * math.cos(angle) - 1.5,

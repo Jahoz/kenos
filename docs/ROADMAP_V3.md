@@ -611,6 +611,61 @@ Gates : 5 tests (décodage fail-open, types lâches sans faux positif,
 sans session = passage), déployé et vérifié live sur les trois cas
 (PII levé, saine passe, selfharm levé).
 
+## V3.16 — L'Observatoire ✅ (livré 2026-09-04 — dashboard gardien, idée Hugo)
+
+L'astronome ne lit jamais les messages : il compte les étoiles. Une
+vue d'usage du ciel pour le gardien du projet — **des formes et des
+comptages, jamais de textes ni d'identifiants** (le modèle de menace
+de SECURITY.md reste la loi : le dashboard est contentless par
+construction, comme les rapports).
+
+- **Design Readiness Gate (validé à l'écriture de cette entrée)** :
+  1. *Identité* — réutilisation stricte de l'identité enregistrée kenos
+     (registry portfolio-os) ; aucun design importé d'ailleurs.
+  2. *Jetons* — uniquement AppColors/AppFonts/KenosTheme existants ;
+     ROSE interdit dans l'Observatoire (réservé à la destruction) ;
+     données en teal/cyan/indigo/purple/ember ; Space Mono pour toute
+     donnée, Playfair pour la phrase humaine.
+  3. *Composants signature* — le **Seuil du Gardien** (sheet
+     glassmorphism email+mdp), le **Spectre** (barres quotidiennes
+     30 j), la **Grille des secteurs** (heatmap 8×8).
+  4. *États critiques* — verrouillé (seuil), chargement, vide («
+     l'éther est encore silencieux »), erreur (+ RÉESSAYER),
+     identifiants refusés.
+  5. *Parcours clé* — appuyage long sur L'Aube (OriginNode) → Seuil
+     du Gardien → métriques. Portrait mobile, colonne ≤ 560.
+  6. *A11y* — contrastes des jetons, labels sémantiques, focus
+     ordonné sur le formulaire, cibles ≥ 44 px.
+  7. *MVP vs Roadmap* — voir ci-dessous.
+
+- **MVP** : route cachée `/observatoire` ; authentification **Gardien**
+  (compte Supabase email+mdp dédié, claim `role=admin` dans
+  `app_metadata` — non falsifiable, jamais `user_metadata`) via un
+  **second client Supabase** (la session anonyme céleste n'est jamais
+  touchée) ; RPC `admin_fetch_metrics` (security definer, refus
+  `kenos_forbidden` hors gardien, jsonb 100 % agrégé : série
+  quotidienne, état vivant, heatmap 8×8, dérivés) ; capture durable
+  `kenos_metrics_daily` (un compte/jour) incrémentée **dans la même
+  transaction** que launch/consume/rebound/trace/report/seed/line —
+  aucune nouvelle lecture, `FOR UPDATE SKIP LOCKED` intact ; nouveaux
+  usagers par trigger contentless sur auth.users ; lecteurs actifs
+  pliés idempotemment dans kenos_purge avant la purge 1 j ; mode démo
+  iso-sémantique (LocalAdminRepository).
+- **Roadmap+** : export CSV, temps réel, actions de modération,
+  activation pg_cron du rollup, graphes multi-métriques.
+
+Gates : 144 pgTAP (22 nouveaux : deltas exacts par snapshot sur les
+compteurs, refus anon/lambda/user_metadata-forgé, succès gardien,
+pliure purge), 218 tests Dart (7 nouveaux : seuil refusé/données/rang
+révoqué/éther silencieux/démo déterministe), `flutter analyze` 0,
+advisors 0, e2e local réel GoTrue (compte gardien créé, claim
+promu, connexion mot de passe, RPC, refus 400/403), migration
+20260904043728 poussée au cloud, nightly smoke 25 ✓ / 0 ✗ (probe
+`admin_fetch_metrics` + payloads V3.13/15 manquants réparés au
+passage). Reste à Hugo : créer le Gardien prod (dashboard +
+`supabase/snippets/create_guardian.sql`) et vérifier le seuil sur
+device (cloud + démo).
+
 ## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — **GELÉ, arbitrage Hugo 2026-09-02** : on va au bout du Cadavre Exquis et des Symphonies d'abord)
 
 Créer une mini-galaxie invitable (amis, collègues), vivant en parallèle

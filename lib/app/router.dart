@@ -10,6 +10,7 @@ import '../features/cosmic_map/presentation/map_screen.dart';
 import '../features/create_echo/presentation/mirror_screen.dart';
 import '../features/echo/data/echo_providers.dart';
 import '../features/frequencies/presentation/frequencies_screen.dart';
+import '../features/observatory/presentation/observatory_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 
 /// KENOS routing: fades only, no abrupt screen changes.
@@ -27,37 +28,54 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/',
-        pageBuilder: (context, state) => _fade(context, child: const SizedBox.shrink()),
+        pageBuilder: (context, state) =>
+            _fade(context, child: const SizedBox.shrink()),
       ),
       GoRoute(
         path: '/onboarding',
-        pageBuilder: (context, state) => _fade(context, child: const OnboardingScreen()),
+        pageBuilder: (context, state) =>
+            _fade(context, child: const OnboardingScreen()),
       ),
       GoRoute(
         path: '/space',
-        pageBuilder: (context, state) => _fade(context, child: const MapScreen()),
+        pageBuilder: (context, state) =>
+            _fade(context, child: const MapScreen()),
       ),
       GoRoute(
         path: '/mirror',
-        pageBuilder: (context, state) => _fade(context, child: const MirrorScreen()),
+        pageBuilder: (context, state) =>
+            _fade(context, child: const MirrorScreen()),
       ),
       GoRoute(
         path: '/cadavre',
-        pageBuilder: (context, state) => _fade(context, child: const CorpseScreen()),
+        pageBuilder: (context, state) =>
+            _fade(context, child: const CorpseScreen()),
       ),
       GoRoute(
         path: '/impact',
-        pageBuilder: (context, state) => _fade(context, child: const ImpactScreen()),
+        pageBuilder: (context, state) =>
+            _fade(context, child: const ImpactScreen()),
+      ),
+      // The guardian's hidden door: no link, no label — the threshold
+      // itself decides who crosses (long-press L'Aube on the map).
+      GoRoute(
+        path: '/observatoire',
+        pageBuilder: (context, state) =>
+            _fade(context, child: const ObservatoryScreen()),
       ),
       GoRoute(
         path: '/frequencies',
-        pageBuilder: (context, state) => _fade(context, child: const FrequenciesScreen()),
+        pageBuilder: (context, state) =>
+            _fade(context, child: const FrequenciesScreen()),
       ),
     ],
   );
 });
 
-CustomTransitionPage<void> _fade(BuildContext context, {required Widget child}) {
+CustomTransitionPage<void> _fade(
+  BuildContext context, {
+  required Widget child,
+}) {
   final reduced = context.wantsReducedMotion;
   return CustomTransitionPage<void>(
     child: child,
@@ -65,19 +83,21 @@ CustomTransitionPage<void> _fade(BuildContext context, {required Widget child}) 
     transitionDuration: reduced ? Duration.zero : AppDurations.routeFade,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       // Composite transition: fade + subtle upward drift + scale
-      final curveAnim = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final curveAnim = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+      );
       final scaleAnim = Tween<double>(begin: 0.97, end: 1.0).animate(curveAnim);
-      final offsetAnim = Tween<Offset>(begin: const Offset(0, 0.02), end: Offset.zero)
-          .animate(curveAnim);
-      
+      final offsetAnim = Tween<Offset>(
+        begin: const Offset(0, 0.02),
+        end: Offset.zero,
+      ).animate(curveAnim);
+
       return FadeTransition(
         opacity: curveAnim,
         child: SlideTransition(
           position: offsetAnim,
-          child: ScaleTransition(
-            scale: scaleAnim,
-            child: child,
-          ),
+          child: ScaleTransition(scale: scaleAnim, child: child),
         ),
       );
     },
