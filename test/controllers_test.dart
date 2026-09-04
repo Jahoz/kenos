@@ -200,6 +200,12 @@ class FakeLocalEchoStore implements LocalEchoStore {
   Future<void> markCorpseGuideSeen() async {}
 
   @override
+  Future<bool> hasEyeGuideSeen() async => true;
+
+  @override
+  Future<void> markEyeGuideSeen() async {}
+
+  @override
   Future<UserStats> readStats() async => stats;
 
   @override

@@ -27,6 +27,7 @@ class LocalEchoStore {
   static const _kReceptions = 'kenos.receptions';
   static const _kFreqGuide = 'kenos.freq_guide';
   static const _kCorpseGuide = 'kenos.corpse_guide';
+  static const _kEyeGuide = 'kenos.eye_guide';
   static const _kStats = 'kenos.user_stats';
   static const _kScars = 'kenos.read_scars';
   static const _maxSealed = 50;
@@ -117,6 +118,11 @@ class LocalEchoStore {
       await _read(_kCorpseGuide) == '1';
 
   Future<void> markCorpseGuideSeen() async => _write(_kCorpseGuide, '1');
+
+  /// The wheel whisper seen (one-time, desktop eye only — V3.17).
+  Future<bool> hasEyeGuideSeen() async => await _read(_kEyeGuide) == '1';
+
+  Future<void> markEyeGuideSeen() async => _write(_kEyeGuide, '1');
 
   /// Demo-mode persistence for the bottle-in-the-sea loop.
   Future<List<Reception>> readReceptions() async {    final raw = await _read(_kReceptions);

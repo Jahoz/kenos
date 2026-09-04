@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/parallax_math.dart';
 import '../../../echo/domain/echo.dart';
 import '../../application/celestial_bodies.dart';
 import '../../application/kenos_system.dart';
@@ -46,9 +47,14 @@ class SystemPainter extends CustomPainter {
 
     Offset world(Offset w) => camera.worldToScreen(w, viewport);
 
+    // Bodies grow with the eye (V3.17): a zoom nothing grows through
+    // is a zoom the eye cannot see — the lanes already scaled, the
+    // bodies did not, and the wheel felt dead.
+    final bodyScale = ParallaxMath.zoomScale(_zoom);
+
     // ── The black hole: darker than the void itself ────────────────────
     final bh = world(KenosSystem.blackHole);
-    final bhRadius = viewport.shortestSide / 12;
+    final bhRadius = viewport.shortestSide / 12 * bodyScale;
 
     // Gravitational lensing: a faint rose-tinted accretion ring — the
     // destruction color's only legitimate celestial object, whispering
@@ -89,7 +95,7 @@ class SystemPainter extends CustomPainter {
     for (var i = 0; i < KenosSystem.planets.length; i++) {
       final theme = KenosSystem.planets[i];
       final p = world(KenosSystem.planetPosition(i, epoch));
-      final bodyR = viewport.shortestSide / 34;
+      final bodyR = viewport.shortestSide / 34 * bodyScale;
       final ringR = bodyR * 1.75;
 
       // The lane: each planet its own circle — never doubled, never
@@ -253,7 +259,7 @@ class SystemPainter extends CustomPainter {
     }
 
     // ── The wanderers (V3.12): named far bodies, each its silhouette ──
-    final wandererR = viewport.shortestSide / 72;
+    final wandererR = viewport.shortestSide / 72 * bodyScale;
     for (var i = 0; i < celestialWanderers.length; i++) {
       final w = world(CelestialMath.wandererPosition(i, now));
       final body = Paint()..color = AppColors.fade(AppColors.pureLight, 0.4);
@@ -353,7 +359,8 @@ Rect planetTapRect({
     KenosSystem.planetPosition(index, now),
     viewport,
   );
-  final r = viewport.shortestSide / 34;
+  final r =
+      viewport.shortestSide / 34 * ParallaxMath.zoomScale(camera.zoom);
   return Rect.fromCircle(center: p, radius: r);
 }
 
@@ -368,7 +375,10 @@ Rect wandererTapRect({
     CelestialMath.wandererPosition(index, now),
     viewport,
   );
-  return Rect.fromCircle(center: p, radius: viewport.shortestSide / 28);
+  return Rect.fromCircle(
+    center: p,
+    radius: viewport.shortestSide / 28 * ParallaxMath.zoomScale(camera.zoom),
+  );
 }
 
 /// Which wanderer (if any) sits under a screen tap. -1 = none.

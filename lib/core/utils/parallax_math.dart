@@ -31,6 +31,19 @@ class ParallaxMath {
   /// target grows with it (tight clusters stay tappable).
   static double starDiameter(double z) => 30.0 + 62.0 * z;
 
+  /// The eye's resting zoom — the anchor of [zoomScale]. The launched
+  /// look (TravelCamera's default) must stay scale 1.0: the tuned sky
+  /// and its tests are calibrated to it.
+  static const double eyeBaseZoom = 1.75;
+
+  /// How much celestial BODIES grow as the eye zooms. Zoom moves the
+  /// window (viewExtent) — but a zoom nothing grows through is a zoom
+  /// the eye cannot see: the wheel fired for days before anyone
+  /// believed it (V3.17). Subtle on purpose, stars stay stars, never
+  /// balloons: 1.0 at the resting eye, ≈0.79 zoomed out, ≈2.5 deep.
+  static double zoomScale(double zoom) =>
+      math.pow(zoom / eyeBaseZoom, 0.6).toDouble();
+
   /// Opacity: distant objects fade into the void.
   static double opacityFor(double z) => 0.22 + 0.78 * z;
 

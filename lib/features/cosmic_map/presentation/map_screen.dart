@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -147,6 +148,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _loadConstellations();
     _loadArtifactMemory();
     _readCorpseGuide();
+    _readEyeGuide();
     // The sky breathes: a quiet pull every 90 s — strangers' lines
     // appear on an OPEN map, states settle to the ether's truth. Pull
     // only, never a push; the cadence stays invisible.
@@ -170,6 +172,40 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void _dismissCorpseGuide() {
     setState(() => _showingCorpseGuide = false);
     unawaited(ref.read(localEchoStoreProvider).markCorpseGuideSeen());
+  }
+
+  /// V3.17 — the wheel whisper: desktop eyes have no pinch to teach
+  /// them the zoom. One quiet breath above the gates, once, never
+  /// blocking the map (IgnorePointer), gone on its own.
+  bool _showingEyeWhisper = false;
+  Timer? _eyeWhisperTimer;
+
+  /// The PWA on a desktop OS: the only place a wheel exists. Mobile
+  /// eyes learn the pinch by hand — they never see this whisper.
+  static bool get _isDesktopEye =>
+      kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.macOS ||
+          defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux);
+
+  Future<void> _readEyeGuide() async {
+    if (!_isDesktopEye) return;
+    final seen = await ref.read(localEchoStoreProvider).hasEyeGuideSeen();
+    if (mounted && !seen) {
+      setState(() => _showingEyeWhisper = true);
+      _eyeWhisperTimer = Timer(const Duration(seconds: 8), _dismissEyeWhisper);
+    }
+  }
+
+  void _dismissEyeWhisper() {
+    _eyeWhisperTimer?.cancel();
+    _eyeWhisperTimer = null;
+    // The wheel moved: the whisper taught, it disappears — seen
+    // either way, it never speaks twice.
+    if (_showingEyeWhisper) {
+      setState(() => _showingEyeWhisper = false);
+    }
+    unawaited(ref.read(localEchoStoreProvider).markEyeGuideSeen());
   }
 
   Future<void> _loadVestiges() async {
@@ -205,6 +241,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     WidgetsBinding.instance.removeObserver(this);
     _skyBreath?.cancel();
     _glide?.cancel();
+    _eyeWhisperTimer?.cancel();
     _camera.dispose();
     super.dispose();
   }
@@ -507,6 +544,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
         // for trackpads (small deltas), strong enough for notches.
         onPointerSignal: (signal) {
           if (signal is PointerScrollEvent) {
+            // The eye found the wheel: the whisper has nothing left
+            // to teach (V3.17).
+            if (_showingEyeWhisper) _dismissEyeWhisper();
             _glide?.cancel();
             _camera.zoomBy(
               math.pow(1.0015, -signal.scrollDelta.dy).toDouble(),
@@ -670,11 +710,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                 sp.dy > c.maxHeight + 30) {
                                               return const SizedBox.shrink();
                                             }
+                                            // Shards grow with the eye
+                                            // too (V3.17) — the painter
+                                            // sizes itself to its box.
+                                            final shardSide = 32 *
+                                                ParallaxMath.zoomScale(
+                                                  _camera.zoom,
+                                                );
                                             return Positioned(
-                                              left: sp.dx - 16,
-                                              top: sp.dy - 16,
-                                              width: 32,
-                                              height: 32,
+                                              left: sp.dx - shardSide / 2,
+                                              top: sp.dy - shardSide / 2,
+                                              width: shardSide,
+                                              height: shardSide,
                                               child: GestureDetector(
                                                 behavior:
                                                     HitTestBehavior.opaque,
@@ -743,11 +790,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                               sp.dy > c.maxHeight + 46) {
                                             return const SizedBox.shrink();
                                           }
+                                          // Gates grow with the eye
+                                          // (V3.17): the ring painter
+                                          // reads its box size.
+                                          final gateSide = 46 *
+                                              ParallaxMath.zoomScale(
+                                                _camera.zoom,
+                                              );
                                           return Positioned(
-                                            left: sp.dx - 23,
-                                            top: sp.dy - 23,
-                                            width: 46,
-                                            height: 46,
+                                            left: sp.dx - gateSide / 2,
+                                            top: sp.dy - gateSide / 2,
+                                            width: gateSide,
+                                            height: gateSide,
                                             child: GestureDetector(
                                               behavior: HitTestBehavior.opaque,
                                               onTap: () =>
@@ -1004,6 +1058,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
             if (_showingCorpseGuide)
               Positioned.fill(
                 child: _CorpseGuide(onUnderstood: _dismissCorpseGuide),
+              ),
+            // The wheel whisper (desktop eye, once): a breath above
+            // the gates, never blocking — see _EyeWhisper.
+            if (_showingEyeWhisper)
+              const Positioned(
+                left: 0,
+                right: 0,
+                bottom: 200,
+                child: IgnorePointer(child: _EyeWhisper()),
               ),
           ],
         ),
@@ -1287,7 +1350,13 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
           if (sp.dx < -60 || sp.dx > w + 60 || sp.dy < -60 || sp.dy > h + 60) {
             continue;
           }
-          final diameter = ParallaxMath.starDiameter(z);
+          // The eye's depth grows the light with it (V3.17): the
+          // transform rides the star's cached raster — zooming costs
+          // no repaint, the wheel finally answers the eye.
+          final eyeScale =
+              ParallaxMath.zoomScale(widget.camera.zoom);
+          final diameter =
+              ParallaxMath.starDiameter(z) * eyeScale;
           final hit = diameter + 26; // comfortable touch target
           // Fresh base for this frame: the drift accumulates from HERE.
           final shift = _shifts.putIfAbsent(
@@ -1308,19 +1377,22 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
               // The orbital drift rides the render-level shift; the
               // star's raster (RepaintBoundary below) survives both
               // the pan and the drift — recomposition only.
-              child: StarShift(
-                shift: shift,
-                child: RepaintBoundary(
-                  child: MindfulHoldStar(
-                    key: ValueKey('star-${echo.id}'),
-                    echo: echo,
-                    z: z,
-                    breathAt: _reduced ? null : _breathAt,
-                    // The reception field: near = alive, far = a glimmer
-                    // to approach. Sealed anchors ignore it (widget-side).
-                    reception: ParallaxMath.receptionIntensity(
-                      eye: widget.camera.center,
-                      star: world,
+              child: Transform.scale(
+                scale: eyeScale,
+                child: StarShift(
+                  shift: shift,
+                  child: RepaintBoundary(
+                    child: MindfulHoldStar(
+                      key: ValueKey('star-${echo.id}'),
+                      echo: echo,
+                      z: z,
+                      breathAt: _reduced ? null : _breathAt,
+                      // The reception field: near = alive, far = a glimmer
+                      // to approach. Sealed anchors ignore it (widget-side).
+                      reception: ParallaxMath.receptionIntensity(
+                        eye: widget.camera.center,
+                        star: world,
+                      ),
                     ),
                   ),
                 ),
@@ -1369,6 +1441,41 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
 
 /// The corpses explain themselves once, in the waves' guide grammar:
 /// what the pale rings are, how to give a line, how to launch one.
+/// V3.17 — the wheel whisper: on a desktop eye, one breath to say
+/// the wheel approaches the sky. Pure text, ignored by every pointer,
+/// gone on its own timer or at the first turn of the wheel.
+class _EyeWhisper extends StatelessWidget {
+  const _EyeWhisper();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'L\'ŒIL DU VOYAGEUR',
+          style: TextStyle(
+            fontFamily: AppFonts.mono,
+            fontSize: 9,
+            letterSpacing: 4,
+            color: AppColors.fade(AppColors.teal, 0.7),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Ici, la molette approche le ciel — comme le pincement des doigts.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: AppFonts.serifItalic,
+            fontSize: 14,
+            color: AppColors.fade(AppColors.pureLight, 0.55),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _CorpseGuide extends StatelessWidget {
   const _CorpseGuide({required this.onUnderstood});
 

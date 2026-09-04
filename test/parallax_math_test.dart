@@ -57,6 +57,32 @@ void main() {
     });
   });
 
+  group('ParallaxMath.zoomScale (V3.17 — le zoom que l\'œil voit)', () {
+    test("l'œil au repos ne change rien au ciel lancé", () {
+      expect(ParallaxMath.zoomScale(ParallaxMath.eyeBaseZoom), 1.0);
+    });
+
+    test('zoomer approfondit, dézoomer recule — jamais de renversement', () {
+      final s = ParallaxMath.zoomScale;
+      expect(s(2.5), greaterThan(1.0));
+      expect(s(1.2), lessThan(1.0));
+      // Monotone sur toute la plage de l'œil.
+      var previous = s(1.2);
+      for (var z = 1.3; z <= 8.0; z += 0.1) {
+        final v = s(double.parse(z.toStringAsFixed(1)));
+        expect(v, greaterThan(previous));
+        previous = v;
+      }
+    });
+
+    test('subtil par construction : jamais des ballons', () {
+      // Au zoom maximal (8), un corps ne grossit que ~2,5×.
+      expect(ParallaxMath.zoomScale(8.0), closeTo(2.48, 0.05));
+      // Au zoom minimal (1,2), il rétrécit à peine (~0,8×).
+      expect(ParallaxMath.zoomScale(1.2), closeTo(0.79, 0.02));
+    });
+  });
+
   group('champ de réception', () {
     const eye = Offset(0.5, 0.5);
 
