@@ -144,6 +144,8 @@ List<Map<String, dynamic>> loadExisting(String seedFile) {
       'kind': m.group(2),
       'text': unq(m.group(3)!.trim()),
       'source': unq(m.group(4)!.trim()),
+      'x': double.parse(m.group(5)!),
+      'y': double.parse(m.group(6)!),
     });
   }
   return existing;

@@ -135,6 +135,13 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
   sur l'appareil), la chanson refermée se traverse : lecture
   séquentielle, chaque phrase spatialisée à sa station d'angle d'or
   (flutter_soloud, repli assets cuits).
+- **Vestiges multilingues (V3.16)** : la voix produit reste FR (canon,
+  pour toujours) ; les éclats curatés existent par locale
+  (fetch_vestiges(p_locale), normalisation `fr-FR`→`fr`, repli honnête
+  sur le canon FR). **Loi du produit : le contenu utilisateur n'est
+  JAMAIS traduit** — scellé, il traverse les frontières dans sa
+  langue d'origine. Traducteur : tool/translate_vestiges.dart (Mistral,
+  voix kenos, passe vérif, staging humain).
 - **Bouclier de trace (V3.15)** : la trace est la SEULE contenu clair
   vue par l'éther ; l'Edge Function `trace-shield` la lit via Mistral
   moderation (clé en secret serveur, fail-open par contrat). PII →

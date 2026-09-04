@@ -666,6 +666,34 @@ passage). Reste à Hugo : créer le Gardien prod (dashboard +
 `supabase/snippets/create_guardian.sql`) et vérifier le seuil sur
 device (cloud + démo).
 
+## V3.16 — Les Vestiges multilingues ✅ (livrés 2026-09-04)
+
+Arbitrage Hugo : « on garde KENOS » — la voix produit reste FRANÇAISE,
+canonique, pour toujours. Ce qui traverse les frontières, c'est la
+CULTURE CURATÉE : chaque éclat existe en canon FR + traductions,
+servi selon la langue du device, avec repli honnête sur le français.
+
+- **LA LOI DU PRODUIT** (écrite noir sur blanc) : le contenu
+  utilisateur — échos, constellations, chansons, traces — n'est
+  JAMAIS traduit. Scellé sur l'appareil, il traverse les frontières
+  dans la langue où il a été chuchoté. Comme une vraie bouteille.
+- Migration 0016 : `locale` sur `kenos_vestiges` (PK id+locale),
+  `fetch_vestiges(p_locale)` normalise (`fr-FR` → `fr`) et replie
+  sur le canon FR — le ciel n'est jamais vide.
+- **Traducteur** (`tool/translate_vestiges.dart`) : Mistral traduit
+  le canon dans la voix kenos (sens, pas les mots), passe de
+  vérification, staging humain, SQL upsert. Les positions suivent le
+  canon : une étoile ne bouge pas parce qu'on la lit en anglais.
+  (Première passe : traduction humaine — la clé Mistral avait épuisé
+  son quota du jour, le Semeur reprendra pour le volume.)
+- **L'anglais servi** : 32 éclats EN en prod, vérifiés REST par
+  locale (en = anglais, fr-FR = canon, de = repli français).
+- L'interface reste française (la voix fait le produit). La landing
+  pourra suivre le même schéma plus tard.
+
+Gates : 152 invariants pgTAP (+3 : la locale normalize, le canon FR
+par défaut, le repli honnête), 252 tests Dart, e2e 18/18.
+
 ## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — **GELÉ, arbitrage Hugo 2026-09-02** : on va au bout du Cadavre Exquis et des Symphonies d'abord)
 
 Créer une mini-galaxie invitable (amis, collègues), vivant en parallèle

@@ -56,7 +56,7 @@ insert into public.kenos_vestiges (id, kind, text, source, pos_x, pos_y) values
 ('c019', 'quote', 'Ce n''est pas parce que les choses sont difficiles que nous n''osons pas ; c''est parce que nous n''osons pas qu''elles sont difficiles.', 'Sénèque', 0.76, 0.50),
 ('c020', 'etymology', 'Bouteille — du grec butylon, passé par le latin. À la mer, elle est l''art d''envoyer sans savoir : le pari le plus doux de la navigation.', 'navigation', 0.57, 0.54)
 
-on conflict (id) do update
+on conflict (id, locale) do update
     set kind = excluded.kind,
         text = excluded.text,
         source = excluded.source,

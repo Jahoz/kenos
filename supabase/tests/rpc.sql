@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(133);
+select plan(136);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -891,6 +891,33 @@ select is(
 );
 reset role;
 delete from public.kenos_vestiges where id like 't-vest-%';
+
+-- ── V3.16 — the Vestiges speak the traveler's language ────────────────
+-- Same shard, several languages; the fetch serves the device locale
+-- with an honest French fallback (the library is never empty).
+insert into public.kenos_vestiges (id, kind, text, source, pos_x, pos_y, locale) values
+  ('t-ml-1', 'fact', 'fait français', 'test', 0.5, 0.5, 'fr'),
+  ('t-ml-1', 'fact', 'english fact', 'test', 0.5, 0.5, 'en'),
+  ('t-ml-2', 'quote', 'citation française', 'test', 0.5, 0.6, 'fr');
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d1","role":"authenticated"}', true);
+select is(
+  (select string_agg(text, ',' order by text) from public.fetch_vestiges('en')),
+  'english fact',
+  'the EN device meets the translated library'
+);
+select is(
+  (select string_agg(text, ',' order by text) from public.fetch_vestiges('fr-FR')),
+  'citation française,fait français',
+  'locale tags normalize (fr-FR → fr) and the FR device meets its canon'
+);
+select is(
+  (select string_agg(text, ',' order by text) from public.fetch_vestiges('de')),
+  'citation française,fait français',
+  'an untranslated language falls back to the French canon — never an empty sky'
+);
+reset role;
+delete from public.kenos_vestiges where id like 't-ml-%';
 
 -- Purge: open corpses > 7 days go back to the void; a closed corpse
 -- is an artifact for a moon — then the ether forgets.

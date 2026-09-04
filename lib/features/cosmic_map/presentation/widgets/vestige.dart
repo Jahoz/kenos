@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -83,7 +84,12 @@ Future<List<Vestige>> _loadAllVestiges() async {
     final signedIn =
         client.auth.currentUser != null || client.auth.currentSession != null;
     if (signedIn) {
-      final rows = await client.rpc('fetch_vestiges');
+      // V3.16: the shard meets the traveler in their language
+      // (device locale, e.g. 'en' or 'fr-FR'); the server falls
+      // back to the French canon — the library is never empty.
+      final rows = await client.rpc('fetch_vestiges', params: {
+        'p_locale': Platform.localeName,
+      });
       if (rows is List && rows.isNotEmpty) {
         return [
           for (final row in rows)
