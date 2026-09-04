@@ -48,7 +48,7 @@ class SystemPainter extends CustomPainter {
 
     // ── The black hole: darker than the void itself ────────────────────
     final bh = world(KenosSystem.blackHole);
-    final bhRadius = viewport.shortestSide / 14;
+    final bhRadius = viewport.shortestSide / 12;
 
     // Gravitational lensing: a faint rose-tinted accretion ring — the
     // destruction color's only legitimate celestial object, whispering
@@ -89,7 +89,7 @@ class SystemPainter extends CustomPainter {
     for (var i = 0; i < KenosSystem.planets.length; i++) {
       final theme = KenosSystem.planets[i];
       final p = world(KenosSystem.planetPosition(i, epoch));
-      final bodyR = viewport.shortestSide / 40;
+      final bodyR = viewport.shortestSide / 34;
       final ringR = bodyR * 1.75;
 
       // The lane: each planet its own circle — never doubled, never
@@ -253,7 +253,7 @@ class SystemPainter extends CustomPainter {
     }
 
     // ── The wanderers (V3.12): named far bodies, each its silhouette ──
-    final wandererR = viewport.shortestSide / 85;
+    final wandererR = viewport.shortestSide / 72;
     for (var i = 0; i < celestialWanderers.length; i++) {
       final w = world(CelestialMath.wandererPosition(i, now));
       final body = Paint()..color = AppColors.fade(AppColors.pureLight, 0.4);
@@ -353,7 +353,7 @@ Rect planetTapRect({
     KenosSystem.planetPosition(index, now),
     viewport,
   );
-  final r = viewport.shortestSide / 40;
+  final r = viewport.shortestSide / 34;
   return Rect.fromCircle(center: p, radius: r);
 }
 
@@ -368,7 +368,7 @@ Rect wandererTapRect({
     CelestialMath.wandererPosition(index, now),
     viewport,
   );
-  return Rect.fromCircle(center: p, radius: viewport.shortestSide / 34);
+  return Rect.fromCircle(center: p, radius: viewport.shortestSide / 28);
 }
 
 /// Which wanderer (if any) sits under a screen tap. -1 = none.
