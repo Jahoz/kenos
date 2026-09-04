@@ -371,6 +371,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       await showConstellationReading(
         context,
         lines: lines,
+        figureId: cst.id,
         curatedBy: cst.curatedBy,
       );
       // No reload: the artifact stays, refermé.
@@ -619,6 +620,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                                   _onConstellationTap(cst),
                                               child: CustomPaint(
                                                 painter: _ConstellationPainter(
+                                                  id: cst.id,
                                                   closed: cst.isClosed,
                                                   lineCount: cst.lineCount,
                                                   target: cst.target,
@@ -1547,12 +1549,14 @@ class _SoundToggleState extends ConsumerState<_SoundToggle> {
 /// CLOSED = the figure complete, glowing indigo (readable whole, once).
 class _ConstellationPainter extends CustomPainter {
   _ConstellationPainter({
+    required this.id,
     required this.closed,
     required this.lineCount,
     required this.target,
     required this.color,
   });
 
+  final String id;
   final bool closed;
   final int lineCount;
   final int target;
@@ -1566,7 +1570,7 @@ class _ConstellationPainter extends CustomPainter {
 
     // One arithmetic, one truth: the figure domain places the stations.
     Offset station(int k) {
-      final unit = ConstellationFigure.starAt(k, target: t);
+      final unit = ConstellationFigure.starAt(k, target: t, id: id);
       return Offset(center.dx + radius * unit.dx, center.dy + radius * unit.dy);
     }
 
@@ -1612,6 +1616,7 @@ class _ConstellationPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ConstellationPainter old) =>
+      old.id != id ||
       old.closed != closed ||
       old.lineCount != lineCount ||
       old.target != target;

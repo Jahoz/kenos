@@ -44,6 +44,7 @@ Future<void> showContributeSheet(
 Future<void> showConstellationReading(
   BuildContext context, {
   required List<AssembledLine> lines,
+  required String figureId,
   String? curatedBy,
 }) {
   return showGeneralDialog(
@@ -56,7 +57,7 @@ Future<void> showConstellationReading(
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return FadeTransition(
         opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        child: _ReadingPanel(lines: lines, curatedBy: curatedBy),
+        child: _ReadingPanel(lines: lines, figureId: figureId, curatedBy: curatedBy),
       );
     },
   );
@@ -529,9 +530,17 @@ class _ComposerPadState extends State<_ComposerPad> {
 }
 
 class _ReadingPanel extends ConsumerStatefulWidget {
-  const _ReadingPanel({required this.lines, this.curatedBy});
+  const _ReadingPanel({
+    required this.lines,
+    required this.figureId,
+    this.curatedBy,
+  });
 
   final List<AssembledLine> lines;
+
+  /// The corpse's identity: it signs the figure (rotation, spin,
+  /// first ring) so no two artifacts share a sky.
+  final String figureId;
 
   /// The Curator's attribution: a curated reading NAMES the poet —
   /// it never pretends strangers wrote public-domain poetry.
@@ -583,6 +592,7 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
       final station = ConstellationFigure.starAt(
         p,
         target: _phrases!.length,
+        id: widget.figureId,
       );
       final pan = station.dx.clamp(-1.0, 1.0);
       final gain = 0.85 - 0.3 * ((station.dy + 1) / 2);
@@ -650,6 +660,7 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
                 // The figure the strangers drew, complete for one breath:
                 // every star a line, every segment a hand that passed.
                 _CompletedFigure(
+                  figureId: widget.figureId,
                   starCount: widget.lines.length,
                   singingPhrase: _playingPhrase,
                 ),
@@ -742,8 +753,13 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
 /// golden-angle stars (one per line) linked by the strangers' segments.
 /// V3.14 — in a SONG, the singing phrase's station breathes cyan.
 class _CompletedFigure extends StatelessWidget {
-  const _CompletedFigure({required this.starCount, this.singingPhrase = -1});
+  const _CompletedFigure({
+    required this.figureId,
+    required this.starCount,
+    this.singingPhrase = -1,
+  });
 
+  final String figureId;
   final int starCount;
   final int singingPhrase;
 
@@ -754,6 +770,7 @@ class _CompletedFigure extends StatelessWidget {
       height: 104,
       child: CustomPaint(
         painter: _CompletedFigurePainter(
+          figureId: figureId,
           starCount: starCount,
           singingPhrase: singingPhrase,
         ),
@@ -763,8 +780,13 @@ class _CompletedFigure extends StatelessWidget {
 }
 
 class _CompletedFigurePainter extends CustomPainter {
-  _CompletedFigurePainter({required this.starCount, this.singingPhrase = -1});
+  _CompletedFigurePainter({
+    required this.figureId,
+    required this.starCount,
+    this.singingPhrase = -1,
+  });
 
+  final String figureId;
   final int starCount;
   final int singingPhrase;
 
@@ -775,7 +797,7 @@ class _CompletedFigurePainter extends CustomPainter {
     final color = AppColors.indigo;
     final stars = [
       for (var k = 0; k < starCount; k++)
-        ConstellationFigure.starAt(k, target: starCount),
+        ConstellationFigure.starAt(k, target: starCount, id: figureId),
     ];
 
     Offset at(Offset unit) => Offset(
