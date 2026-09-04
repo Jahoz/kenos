@@ -1,6 +1,6 @@
 # KENOS — canonical commands (see CONTRIBUTING.md for the full picture)
 .DEFAULT_GOAL := help
-.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web deploy-site serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load db-garden db-curate db-sow-vestiges e2e gen-icons gen-audio coverage
+.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web deploy-site serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load db-garden db-curate db-sow-vestiges prod-reset prod-sow e2e gen-icons gen-audio coverage
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -122,6 +122,14 @@ db-curate: ## Curate poetry artifacts + vestiges (local, idempotent)
 
 db-wipe-load: ## Clean reset: remove every seeded row (real data + KEK untouched)
 	docker exec -i supabase_db_kenos psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/snippets/load_wipe.sql
+
+prod-reset: ## LAUNCH RESET (cloud): wipe test wake, keep curated+vestiges, replant garden
+	bash scripts/prod_admin.sh file supabase/snippets/prod_reset.sql
+
+prod-sow: ## Sow the generated sky (cloud): 360 real sealed echoes, no dead stars
+	dart run tool/gen_load_payloads.dart 360 > /tmp/kenos_sky_payloads.csv
+	bash scripts/prod_admin.sh stage /tmp/kenos_sky_payloads.csv
+	bash scripts/prod_admin.sh file supabase/snippets/prod_sow.sql
 
 e2e: ## Full bottle-in-the-sea loop over the real local PostgREST
 	bash scripts/e2e_local.sh
