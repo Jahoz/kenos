@@ -73,9 +73,15 @@ rpc_probe_payload() {
     seed_constellation)       echo '{"p_seed_x":0,"p_seed_y":0}' ;;
     contribute_line)          echo '{"p_constellation_id":"","p_ciphertext":"","p_key":""}' ;;
     fetch_constellations)     echo '{"p_min_x":0,"p_min_y":0,"p_max_x":0,"p_max_y":0}' ;;
+    peek_previous_line)       echo '{"p_constellation_id":""}' ;;
+    read_constellation)       echo '{"p_constellation_id":""}' ;;
+    fetch_vestiges)           echo '{}' ;;
     consume_constellation)    echo '{"p_constellation_id":""}' ;;
     emit_frequency)           echo '{"p_x":0,"p_y":0,"p_note_index":0,"p_hue_index":0}' ;;
     fetch_nearby_frequencies) echo '{"p_x":0,"p_y":0,"p_radius":0.01}' ;;
+    # No-arg payload: the anon probe must resolve the signature then be
+    # denied (granted to authenticated, gated to the guardian inside).
+    admin_fetch_metrics) echo '{}' ;;
     *) return 1 ;;
   esac
 }
@@ -130,9 +136,14 @@ for fn in $(client_rpcs); do
     ko "$fn unexpected answer $code: $(printf '%s' "$body" | head -c 120)"
   fi
 done
+# consume_constellation stays probe-able but is no longer in lib/
+# (V3.13 renamed the read) — already-deployed PWA clients still call
+# it, so its payload above documents that legacy surface.
 for fn in fetch_map_sector launch_echo rebound_echo leave_trace report_echo \
           fetch_receptions burn_reception seed_constellation contribute_line \
-          fetch_constellations consume_constellation emit_frequency fetch_nearby_frequencies; do
+          fetch_constellations peek_previous_line read_constellation \
+          fetch_vestiges emit_frequency fetch_nearby_frequencies \
+          admin_fetch_metrics; do
   client_rpcs | grep -qx "$fn" \
     || ko "$fn has a probe payload but is no longer referenced in lib/ — stale probe, remove it"
 done
