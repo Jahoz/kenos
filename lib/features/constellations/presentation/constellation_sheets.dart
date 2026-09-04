@@ -6,6 +6,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_fonts.dart';
 import '../../../../core/haptics/kenos_haptics.dart';
 import '../../../../core/widgets/anonymity_warning.dart';
+import '../../cosmic_map/data/artifact_memory.dart';
 import '../../echo/data/echo_providers.dart';
 import '../../echo/domain/pii_guard.dart';
 import '../../frequencies/application/spatial_wave_audio.dart';
@@ -46,6 +47,8 @@ Future<void> showConstellationReading(
   required List<AssembledLine> lines,
   required String figureId,
   String? curatedBy,
+  ArtifactMemory? memory,
+  Offset? keepPosition,
 }) {
   return showGeneralDialog(
     context: context,
@@ -57,7 +60,13 @@ Future<void> showConstellationReading(
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return FadeTransition(
         opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        child: _ReadingPanel(lines: lines, figureId: figureId, curatedBy: curatedBy),
+        child: _ReadingPanel(
+          lines: lines,
+          figureId: figureId,
+          curatedBy: curatedBy,
+          memory: memory,
+          keepPosition: keepPosition,
+        ),
       );
     },
   );
@@ -534,6 +543,8 @@ class _ReadingPanel extends ConsumerStatefulWidget {
     required this.lines,
     required this.figureId,
     this.curatedBy,
+    this.memory,
+    this.keepPosition,
   });
 
   final List<AssembledLine> lines;
@@ -541,6 +552,13 @@ class _ReadingPanel extends ConsumerStatefulWidget {
   /// The corpse's identity: it signs the figure (rotation, spin,
   /// first ring) so no two artifacts share a sky.
   final String figureId;
+
+  /// The traveller's artifact memory: the read outlives the session,
+  /// and the artifact may be KEPT in one's own sky (the reliquaire).
+  final ArtifactMemory? memory;
+
+  /// The seed position (logical [0,1]) — where a kept artifact pins.
+  final Offset? keepPosition;
 
   /// The Curator's attribution: a curated reading NAMES the poet —
   /// it never pretends strangers wrote public-domain poetry.
@@ -563,6 +581,33 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
   List<NotePhrase>? _phrases;
   int _playingPhrase = -1;
   bool _songAlive = false;
+
+  /// The reliquaire's quiet answer after LE GARDER.
+  String? _keepAck;
+
+  Future<void> _keep() async {
+    final memory = widget.memory;
+    final position = widget.keepPosition;
+    if (memory == null || position == null) return;
+    final released = await memory.keep(
+      KeptArtifact(
+        id: widget.figureId,
+        kind: 'constellation',
+        x: position.dx,
+        y: position.dy,
+        texts: [for (final l in widget.lines) l.text],
+        target: widget.lines.length,
+        keptAt: DateTime.now().millisecondsSinceEpoch,
+        curatedBy: widget.curatedBy,
+      ),
+    );
+    if (!mounted) return;
+    setState(() {
+      _keepAck = released == null
+          ? 'GARDÉ DANS TON CIEL'
+          : 'GARDÉ — LE PLUS ANCIEN EST RETOURNÉ AU CIEL';
+    });
+  }
 
   @override
   void initState() {
@@ -734,6 +779,33 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
                   ),
                 ),
                 const SizedBox(height: 20),
+                if (widget.memory != null && widget.keepPosition != null) ...[
+                  if (_keepAck == null &&
+                      !widget.memory!.isKept(widget.figureId))
+                    TextButton(
+                      onPressed: _keep,
+                      child: const Text(
+                        'LE GARDER DANS MON CIEL',
+                        style: TextStyle(
+                          fontFamily: AppFonts.mono,
+                          fontSize: 9,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    )
+                  else if (_keepAck != null)
+                    Text(
+                      _keepAck!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: AppFonts.mono,
+                        fontSize: 8.5,
+                        letterSpacing: 1.5,
+                        color: AppColors.fade(AppColors.ember, 0.75),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                ],
                 OutlinedButton(
                   onPressed: () =>
                       Navigator.of(context, rootNavigator: true).pop(),

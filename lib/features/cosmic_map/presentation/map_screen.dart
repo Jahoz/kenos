@@ -27,6 +27,7 @@ import '../application/motion_service.dart';
 import '../application/read_scar_controller.dart';
 import '../application/reception_controller.dart';
 import '../application/travel_camera.dart';
+import '../data/artifact_memory.dart';
 import 'widgets/accretion_painter.dart';
 import 'widgets/awakening_sas.dart';
 import 'widgets/background_painters.dart';
@@ -59,6 +60,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// The Vestiges: curated culture drifting in the void (V3.9).
   List<Vestige> _vestiges = const [];
 
+  /// The traveller's artifact memory: seven-day read markers and the
+  /// reliquaire (kept objects stay in THIS sky, local forever).
+  late final ArtifactMemory _artifacts = ref.read(artifactMemoryProvider);
+
   /// The one line that matters: signals first (they pulse), then the
   /// readable ether, then the mode.
   String _hudHeadline({required int readable, required int signals}) {
@@ -83,7 +88,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (_constellations.isNotEmpty) {
       parts.add('${_constellations.length} CONSTELLATIONS');
     }
-    final unreadVestiges = _vestiges.where((v) => !v.isRead).length;
+    final unreadVestiges =
+        _vestiges.where((v) => !_artifacts.isRead(v.id)).length;
     if (unreadVestiges > 0) parts.add('$unreadVestiges VESTIGES');
     return parts.join(' · ');
   }
@@ -132,6 +138,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     super.initState();
     _loadVestiges();
     _loadConstellations();
+    _loadArtifactMemory();
     _readCorpseGuide();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(ref.read(audioControllerProvider).ensureStarted());
@@ -155,6 +162,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Future<void> _loadVestiges() async {
     final vestiges = await loadVestiges();
     if (mounted) setState(() => _vestiges = vestiges);
+  }
+
+  Future<void> _loadArtifactMemory() async {
+    await _artifacts.load();
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadConstellations() async {
@@ -363,6 +375,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           .read(cst.id);
       if (!mounted) return;
       if (lines == null || lines.isEmpty) {
+        // Gone with the moon — unless THIS traveller kept it: the
+        // reliquaire re-reads locally, ember-marked.
+        final kept = _artifacts.keptById(cst.id);
+        if (kept != null) {
+          await showConstellationReading(
+            context,
+            lines: [
+              for (var i = 0; i < kept.texts.length; i++)
+                AssembledLine(number: i + 1, text: kept.texts[i]),
+            ],
+            figureId: kept.id,
+            curatedBy: kept.curatedBy,
+          );
+          return;
+        }
         // Open race (closed elsewhere is impossible here) or gone
         // with the moon: the sky tells the truth again.
         unawaited(_loadConstellations());
@@ -373,6 +400,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         lines: lines,
         figureId: cst.id,
         curatedBy: cst.curatedBy,
+        memory: _artifacts,
+        keepPosition: Offset(cst.seedX, cst.seedY),
       );
       // No reload: the artifact stays, refermé.
     } else {
@@ -474,9 +503,43 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         // body (vestige, corpse) is resolved against
                         // the throat, the lanes, the beacon and every
                         // one placed before it, in stable order.
+                        // The reliquaire: kept objects stay in this
+                        // sky even when the moon (or the daily shard
+                        // rotation) takes the original back — merged
+                        // in, local forever, ember-marked.
+                        final vestigesShown = [
+                          ..._vestiges,
+                          for (final k in _artifacts.kept())
+                            if (k.kind == 'vestige' &&
+                                !_vestiges.any((v) => v.id == k.id))
+                              Vestige(
+                                id: k.id,
+                                kind: k.vestigeKind ?? 'quote',
+                                text: k.texts.first,
+                                source: k.source ?? 'kenos',
+                                offsetX: k.x,
+                                offsetY: k.y,
+                              ),
+                        ];
+                        final constellationsShown = [
+                          ..._constellations,
+                          for (final k in _artifacts.kept())
+                            if (k.kind == 'constellation' &&
+                                !_constellations.any((c) => c.id == k.id))
+                              ConstellationMeta(
+                                id: k.id,
+                                seedX: k.x,
+                                seedY: k.y,
+                                state: 'CLOSED',
+                                lineCount: k.texts.length,
+                                target: k.target,
+                                kind: ConstellationKind.poem,
+                                curatedBy: k.curatedBy,
+                              ),
+                        ];
                         final staticAnchors = <Offset>[];
                         final vestigeAt = <String, Offset>{};
-                        for (final v in _vestiges) {
+                        for (final v in vestigesShown) {
                           final at = KenosSystem.resolveResting(
                             Offset(v.offsetX, v.offsetY),
                             occupied: staticAnchors,
@@ -485,7 +548,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           staticAnchors.add(at);
                         }
                         final corpseAt = <String, Offset>{};
-                        for (final cst in _constellations) {
+                        for (final cst in constellationsShown) {
                           final at = KenosSystem.resolveResting(
                             Offset(cst.seedX, cst.seedY),
                             occupied: staticAnchors,
@@ -530,12 +593,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             // in the void, tappable for a re-readable reveal.
                             // Their tumble rides the heavens' clock too —
                             // culture drifts even when the eye rests.
-                            if (_vestiges.isNotEmpty)
+                            if (vestigesShown.isNotEmpty)
                               _HeavensClock(
                                 builder: (context, vestigeBeat) => LayoutBuilder(
                                   builder: (context, c) => Stack(
                                     children: [
-                                      for (final v in _vestiges)
+                                      for (final v in vestigesShown)
                                         Builder(
                                           builder: (context) {
                                             final sp = _camera.worldToScreen(
@@ -561,6 +624,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                                   await showVestigeSheet(
                                                     context,
                                                     vestige: v,
+                                                    memory: _artifacts,
                                                   );
                                                   if (mounted) {
                                                     setState(() {});
@@ -575,9 +639,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                                               ? epoch
                                                               : DateTime.now(),
                                                         ),
-                                                    color: AppColors.pureLight,
+                                                    color:
+                                                        _artifacts.isKept(v.id)
+                                                            ? AppColors.ember
+                                                            : AppColors
+                                                                  .pureLight,
                                                     pulse: 0,
-                                                    read: v.isRead,
+                                                    read: _artifacts.isRead(
+                                                          v.id,
+                                                        ) &&
+                                                        !_artifacts.isKept(
+                                                          v.id,
+                                                        ),
+                                                    kept: _artifacts.isKept(
+                                                      v.id,
+                                                    ),
                                                   ),
                                                 ),
                                               ),
@@ -591,11 +667,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             // The Constellations: exquisite corpses. OPEN =
                             //    contribute a blind line; CLOSED = read it
                             //    whole, once. Never both for the same person.
-                            if (_constellations.isNotEmpty)
+                            if (constellationsShown.isNotEmpty)
                               LayoutBuilder(
                                 builder: (context, c) => Stack(
                                   children: [
-                                    for (final cst in _constellations)
+                                    for (final cst in constellationsShown)
                                       Builder(
                                         builder: (context) {
                                           final sp = _camera.worldToScreen(
@@ -624,6 +700,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                                   closed: cst.isClosed,
                                                   lineCount: cst.lineCount,
                                                   target: cst.target,
+                                                  read: _artifacts.isRead(
+                                                        cst.id,
+                                                      ) &&
+                                                      !_artifacts.isKept(
+                                                        cst.id,
+                                                      ),
+                                                  kept: _artifacts.isKept(
+                                                    cst.id,
+                                                  ),
                                                   // Songs read cyan (the waves'
                                                   // instrument), poems white;
                                                   // closed = indigo artifact.
@@ -1554,6 +1639,8 @@ class _ConstellationPainter extends CustomPainter {
     required this.lineCount,
     required this.target,
     required this.color,
+    this.read = false,
+    this.kept = false,
   });
 
   final String id;
@@ -1561,6 +1648,14 @@ class _ConstellationPainter extends CustomPainter {
   final int lineCount;
   final int target;
   final Color color;
+
+  /// Read on this device within the week: the drawn stars open into
+  /// hollow rings — the cicatrices grammar (visited is visible, the
+  /// ether's promise stays: full lights are discoveries).
+  final bool read;
+
+  /// Kept in this traveller's sky: ember seed and links, never ghost.
+  final bool kept;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1574,18 +1669,26 @@ class _ConstellationPainter extends CustomPainter {
       return Offset(center.dx + radius * unit.dx, center.dy + radius * unit.dy);
     }
 
-    // The seed: where the first stranger planted the corpse.
+    // The seed: where the first stranger planted the corpse. Kept:
+    // the reliquaire's ember burns at the heart.
     canvas.drawCircle(
       center,
-      1.1,
-      Paint()..color = AppColors.fade(color, closed ? 0.9 : 0.55),
+      kept ? 1.6 : 1.1,
+      Paint()
+        ..color = AppColors.fade(
+          kept ? AppColors.ember : color,
+          closed ? 0.9 : 0.55,
+        ),
     );
 
     // The strangers' segments: what has been drawn so far.
     final drawn = lineCount.clamp(0, t);
     if (drawn >= 2) {
       final link = Paint()
-        ..color = AppColors.fade(color, closed ? 0.5 : 0.28)
+        ..color = AppColors.fade(
+          kept ? AppColors.ember : color,
+          closed ? (kept ? 0.6 : 0.5) : 0.28,
+        )
         ..strokeWidth = 0.8
         ..strokeCap = StrokeCap.round;
       for (var k = 1; k < drawn; k++) {
@@ -1593,9 +1696,11 @@ class _ConstellationPainter extends CustomPainter {
       }
     }
 
-    // The stations: filled stars for written lines, hollow for the rest.
+    // The stations: filled stars for written lines, hollow for the
+    // rest. A READ artifact opens its stars into rings (visited is a
+    // memory, not a burn — full again after the week, or when kept).
     for (var k = 0; k < t; k++) {
-      final isFilled = k < drawn;
+      final isFilled = k < drawn && !(read && !kept);
       final pos = station(k);
       final paint = Paint()
         ..color = AppColors.fade(color, isFilled ? (closed ? 0.9 : 0.6) : 0.18);
@@ -1619,7 +1724,9 @@ class _ConstellationPainter extends CustomPainter {
       old.id != id ||
       old.closed != closed ||
       old.lineCount != lineCount ||
-      old.target != target;
+      old.target != target ||
+      old.read != read ||
+      old.kept != kept;
 }
 
 /// V3.12c — the heavens' own heartbeat: the sky (planets, wanderers,

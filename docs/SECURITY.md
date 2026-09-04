@@ -26,6 +26,7 @@ hand over the echo to be useful at all).
 | ROSE is destruction-only | `launch_echo` rejects the theme server-side |
 | Friction server-enforced | 1 echo / 20 s, 1 read / 5 s, audit journal without content |
 | Media is never publicly addressable | Private `echo-media` bucket; clients have INSERT-only access below their own anonymous-user prefix |
+| Artifact memory is device-local | Read markers (7-day TTL) and the reliquaire (≤ 7 kept objects, ember-marked) live in secure storage only; never synced, never networked. Kept text is PUBLIC culture (closed artifacts, curated vestiges) — the no-text-locally law is about sealed confessions |
 
 ## Ether Seal (at-rest encryption)
 

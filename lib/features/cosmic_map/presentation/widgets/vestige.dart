@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_fonts.dart';
+import '../../data/artifact_memory.dart';
 
 /// A Vestige: real, curated culture drifting in the void — a quote, an
 /// etymology, a haiku, a micro-history. NEVER a fake confession: the
@@ -38,17 +39,6 @@ class Vestige {
         offsetX: (json['x'] as num).toDouble(),
         offsetY: (json['y'] as num).toDouble(),
       );
-
-  /// Whether this shard has already been read on this device.
-  /// Read shards dim to a ghost — discoverable vs visited is visible.
-  bool get isRead => _readVestigeIds.contains(id);
-
-  /// Device-local read state (never leaves, never counts anywhere).
-  static final Set<String> _readVestigeIds = <String>{};
-
-  /// Marks the shard as read on this device (re-readable forever —
-  /// the mark is a memory, not a burn).
-  static void markRead(String id) => _readVestigeIds.add(id);
 
   /// How many curated shards exist in the current bundle.
   static int knownCount = 0;
@@ -144,6 +134,7 @@ class VestigePainter extends CustomPainter {
     required this.color,
     required this.pulse,
     this.read = false,
+    this.kept = false,
   });
 
   final double rotation;
@@ -152,11 +143,14 @@ class VestigePainter extends CustomPainter {
   /// 0..1 gentle highlight (a reader's attention passing nearby).
   final double pulse;
 
-  /// Read on this device: dimmed to a ghost.
+  /// Read on this device within the week: a VISIBLE ghost (still
+  /// there, still re-readable — a memory, not a burn; the marker
+  /// fades after seven days and the shard is a discovery again).
   final bool read;
 
-  /// Read on this device: the shard dims to a ghost (still there,
-  /// still re-readable — a memory, not a burn).
+  /// Kept in this traveller's sky: full light, ember-tinted — the
+  /// reliquaire's mark, local forever.
+  final bool kept;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -165,11 +159,11 @@ class VestigePainter extends CustomPainter {
     // finger's courtesy, the drawing never looms (V3.12c — the real
     // disproportion was here, not in the constellations).
     final r = size.shortestSide / 2 - 8;
-    final baseAlpha = read ? 0.1 : (0.22 + 0.22 * pulse);
+    final baseAlpha = kept ? 0.5 : (read ? 0.16 : (0.22 + 0.22 * pulse));
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = read ? 0.5 : 0.8
-      ..color = AppColors.fade(color, baseAlpha);
+      ..strokeWidth = kept || read ? 0.6 : 0.8
+      ..color = AppColors.fade(kept ? AppColors.ember : color, baseAlpha);
 
     canvas.save();
     canvas.translate(center.dx, center.dy);
@@ -197,13 +191,22 @@ class VestigePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(VestigePainter oldDelegate) =>
-      oldDelegate.rotation != rotation || oldDelegate.pulse != pulse;
+      oldDelegate.rotation != rotation ||
+      oldDelegate.pulse != pulse ||
+      oldDelegate.read != read ||
+      oldDelegate.kept != kept;
 }
 
 /// The Vestige reveal: serif text, sourced, RE-READABLE (a quote does
 /// not burn — that would be waste). A short hold (~1 s) decipheres.
-Future<void> showVestigeSheet(BuildContext context, {required Vestige vestige}) {
-  Vestige.markRead(vestige.id);
+/// With [memory], the read outlives the session (seven days) and the
+/// traveller may KEEP the shard in their sky (the reliquaire).
+Future<void> showVestigeSheet(
+  BuildContext context, {
+  required Vestige vestige,
+  ArtifactMemory? memory,
+}) {
+  memory?.markRead(vestige.id);
   return showGeneralDialog(
     context: context,
     barrierDismissible: true,
@@ -214,19 +217,53 @@ Future<void> showVestigeSheet(BuildContext context, {required Vestige vestige}) 
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return FadeTransition(
         opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        child: _VestigePanel(vestige: vestige),
+        child: _VestigePanel(vestige: vestige, memory: memory),
       );
     },
   );
 }
 
-class _VestigePanel extends StatelessWidget {
-  const _VestigePanel({required this.vestige});
+class _VestigePanel extends StatefulWidget {
+  const _VestigePanel({required this.vestige, this.memory});
 
   final Vestige vestige;
+  final ArtifactMemory? memory;
+
+  @override
+  State<_VestigePanel> createState() => _VestigePanelState();
+}
+
+class _VestigePanelState extends State<_VestigePanel> {
+  String? _keepAck;
+
+  Future<void> _keep() async {
+    final memory = widget.memory;
+    if (memory == null) return;
+    final released = await memory.keep(
+      KeptArtifact(
+        id: widget.vestige.id,
+        kind: 'vestige',
+        x: widget.vestige.offsetX,
+        y: widget.vestige.offsetY,
+        texts: [widget.vestige.text],
+        target: 0,
+        keptAt: DateTime.now().millisecondsSinceEpoch,
+        source: widget.vestige.source,
+        vestigeKind: widget.vestige.kind,
+      ),
+    );
+    if (!mounted) return;
+    setState(() {
+      _keepAck = released == null
+          ? 'GARDÉ DANS TON CIEL'
+          : 'GARDÉ — LE PLUS ANCIEN EST RETOURNÉ AU CIEL';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final vestige = widget.vestige;
+    final memory = widget.memory;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => Navigator.of(context, rootNavigator: true).pop(),
@@ -270,6 +307,31 @@ class _VestigePanel extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 36),
+                if (memory != null && _keepAck == null && !memory.isKept(vestige.id))
+                  TextButton(
+                    onPressed: _keep,
+                    child: const Text(
+                      'LE GARDER DANS MON CIEL',
+                      style: TextStyle(
+                        fontFamily: AppFonts.mono,
+                        fontSize: 9,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                if (_keepAck != null) ...[
+                  Text(
+                    _keepAck!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: AppFonts.mono,
+                      fontSize: 8.5,
+                      letterSpacing: 1.5,
+                      color: AppColors.fade(AppColors.ember, 0.75),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 Text(
                   'CECI NE BRÛLE PAS — IL REVIENDRA',
                   style: TextStyle(
