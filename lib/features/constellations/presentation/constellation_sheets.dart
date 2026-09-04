@@ -216,6 +216,17 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
       _acknowledge(messenger, result.count);
     } catch (e) {
       debugPrint('[kenos.constellations] contribute refused: $e');
+      // The ether's truth becomes ours: when it says these hands
+      // already gave (a contribution from before the memory existed,
+      // or from another device), the local memory learns it — the
+      // offer never returns, the loop dies with ONE honest refusal.
+      if (e.toString().contains('KENOS_ALREADY_CONTRIBUTED')) {
+        unawaited(
+          ref
+              .read(artifactMemoryProvider)
+              .markContributed(widget.constellation.id),
+        );
+      }
       if (mounted) {
         setState(() => _sending = false);
         // The writer deserves the ether's actual reason, never a

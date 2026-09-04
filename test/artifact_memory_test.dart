@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/constellations/data/constellation_repository.dart';
 import 'package:kenos/features/constellations/presentation/constellation_sheets.dart';
@@ -92,6 +93,39 @@ void main() {
     });
   });
 
+  group('la mémoire guérit au refus de l\'éther', () {
+    testWidgets(
+        'ALREADY_CONTRIBUTED appris localement — l\'offre meurt après UN refus',
+        (tester) async {
+      final memory = ArtifactMemory(io: _MemIO());
+      await memory.load();
+      final repo = _RefusingConstellationRepo('KENOS_ALREADY_CONTRIBUTED');
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            constellationRepositoryProvider.overrideWithValue(repo),
+            artifactMemoryProvider.overrideWithValue(memory),
+          ],
+          child: MaterialApp(home: _OpenSheetHost(kind: ConstellationKind.melody)),
+        ),
+      );
+      await tester.tap(find.text('OPEN'));
+      await tester.pump(const Duration(milliseconds: 600));
+
+      // One note on the composer pad revives the phrase button.
+      final pad = find.textContaining('LA HAUTEUR EST LA NOTE');
+      await tester.tapAt(tester.getCenter(pad));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(OutlinedButton, 'DONNER LA PHRASE'));
+      await tester.pump();
+
+      expect(find.textContaining('DÉJÀ DANS CE CORPS'), findsOneWidget,
+          reason: 'le refus dit son nom');
+      expect(memory.contributedTo('c1'), isTrue,
+          reason: 'la vérité de l\'éther devient locale, l\'offre ne reviendra plus');
+    });
+  });
+
   group('LE GARDER — les panneau', () {
     testWidgets('un vestige entre au reliquaire, marqué lu au passage',
         (tester) async {
@@ -170,6 +204,61 @@ void main() {
       expect(find.text('LE GARDER DANS MON CIEL'), findsNothing);
     });
   });
+}
+
+class _OpenSheetHost extends ConsumerWidget {
+  const _OpenSheetHost({required this.kind});
+
+  final ConstellationKind kind;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return TextButton(
+      onPressed: () => showContributeSheet(
+        context,
+        ref: ref,
+        constellation: ConstellationMeta(
+          id: 'c1',
+          seedX: 0.5,
+          seedY: 0.5,
+          state: 'OPEN',
+          lineCount: 1,
+          target: 4,
+          kind: kind,
+        ),
+      ),
+      child: const Text('OPEN'),
+    );
+  }
+}
+
+class _RefusingConstellationRepo implements ConstellationRepository {
+  _RefusingConstellationRepo(this.code);
+
+  final String code;
+
+  @override
+  Future<ContributeResult> contribute({
+    required String constellationId,
+    required String text,
+  }) async =>
+      throw Exception('PostgrestException: $code');
+
+  @override
+  Future<AssembledLine?> peekPrevious(String constellationId) async => null;
+
+  @override
+  Future<ConstellationMeta> seed(
+    double x,
+    double y, {
+    ConstellationKind kind = ConstellationKind.poem,
+  }) async => throw UnimplementedError();
+
+  @override
+  Future<List<ConstellationMeta>> fetchVisible() async => const [];
+
+  @override
+  Future<List<AssembledLine>?> read(String id) async => null;
 }
 
 class _MemIO implements ArtifactMemoryIO {

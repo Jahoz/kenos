@@ -53,7 +53,8 @@ class MapScreen extends ConsumerStatefulWidget {
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends ConsumerState<MapScreen> {
+class _MapScreenState extends ConsumerState<MapScreen>
+    with WidgetsBindingObserver {
   /// The Awakening sas speaks once per session, after the first
   /// receptions sync — never again (silence is the default state).
   static bool _aubeSpokenThisSession = false;
@@ -116,6 +117,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Offset _dragTotal = Offset.zero;
   double _pinchFactor = 1.0;
 
+  /// The sky's quiet breath (see initState).
+  Timer? _skyBreath;
+
   /// A fresh corpse comes back from the Mirror: reload the sky, then
   /// offer the seeder to give the FIRST line — to their own poem they
   /// are just another stranger, as blind as the rest.
@@ -137,10 +141,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadVestiges();
     _loadConstellations();
     _loadArtifactMemory();
     _readCorpseGuide();
+    // The sky breathes: a quiet pull every 90 s — strangers' lines
+    // appear on an OPEN map, states settle to the ether's truth. Pull
+    // only, never a push; the cadence stays invisible.
+    _skyBreath = Timer.periodic(const Duration(seconds: 90), (_) {
+      if (mounted) _loadConstellations();
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(ref.read(audioControllerProvider).ensureStarted());
     });
@@ -190,9 +201,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _skyBreath?.cancel();
     _glide?.cancel();
     _camera.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Coming back to the sky: the ether has written meanwhile — the
+    // corpses' truth (lines, states) and the shards' daily rotation
+    // are pulled the moment the traveller returns.
+    if (state == AppLifecycleState.resumed) {
+      _loadConstellations();
+      _loadVestiges();
+    }
   }
 
   /// The sky follows the fingers: one finger travels, two fingers
