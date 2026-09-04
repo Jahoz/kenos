@@ -96,6 +96,12 @@ String contributeRefusalMessage(Object error) {
 /// poem — an artifact, open to everyone (contributors included),
 /// re-readable like the vestiges.
 abstract class ConstellationRepository {
+  /// Whether THIS stranger already gave a line to the corpse — the
+  /// ether's truth (across devices and sessions), asked at the tap.
+  /// Null = unreachable (fail-open: the caller falls back to the
+  /// device's local memory).
+  Future<bool?> hasContributed(String constellationId);
+
   /// Seeds a new open constellation at the given position — a poem
   /// or a song, chosen at the drop, never mixed.
   Future<ConstellationMeta> seed(
@@ -233,6 +239,18 @@ class SupabaseConstellationRepository implements ConstellationRepository {
   }
 
   @override
+  Future<bool?> hasContributed(String id) async {
+    try {
+      return await _client.rpc(
+        'has_contributed',
+        params: {'p_constellation_id': id},
+      ) as bool;
+    } catch (_) {
+      return null; // the sky is a guest here: never block the tap
+    }
+  }
+
+  @override
   Future<List<AssembledLine>?> read(String id) async {
     try {
       final result = await _client.rpc(
@@ -328,6 +346,9 @@ class LocalConstellationRepository implements ConstellationRepository {
   @override
   Future<List<ConstellationMeta>> fetchVisible() async =>
       [for (final c in _constellations) c.currentMeta];
+
+  @override
+  Future<bool?> hasContributed(String id) async => null;
 
   @override
   Future<List<AssembledLine>?> read(String id) async {

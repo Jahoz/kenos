@@ -173,6 +173,9 @@ class FakeConstellationRepository implements ConstellationRepository {
   }
 
   @override
+  Future<bool?> hasContributed(String id) async => null;
+
+  @override
   Future<AssembledLine?> peekPrevious(String constellationId) async => null;
 
   @override

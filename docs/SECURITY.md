@@ -106,7 +106,7 @@ once the extension is available on the project.
 
 ## Testing the promises
 
-- `supabase/tests/rpc.sql` — 130 RPC invariants (atomicity, escrow
+- `supabase/tests/rpc.sql` — 132 RPC invariants (atomicity, escrow
   round-trip, sector floor bins, own-echo exclusion, purge incl. media
   orphan sweep, rate limits). `make db-test`.
 - `supabase/tests/rls.sql` — 16 active break-in attempts (column

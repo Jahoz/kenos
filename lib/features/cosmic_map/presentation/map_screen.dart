@@ -430,19 +430,32 @@ class _MapScreenState extends ConsumerState<MapScreen>
       );
       // No reload: the artifact stays, refermé.
     } else {
-      // One line per stranger per corpse: if these hands already
-      // gave, the sky says so — it never re-offers what it must then
-      // refuse (the live prod catch: compose offered, submit denied).
-      if (_artifacts.contributedTo(cst.id)) {
-        showHud(context, 'TA LIGNE EST DÉJÀ DANS CE CORPS.');
-        return;
-      }
-      unawaited(
-        showContributeSheet(context, ref: ref, constellation: cst).then((_) {
-          if (mounted) _loadConstellations();
-        }),
-      );
+      await _offerIfNewToMe(cst);
     }
+  }
+
+  /// One line per stranger per corpse — and the OFFER must never
+  /// come for hands that already gave. Two truths, in order: the
+  /// device's memory first (instant), then the ether itself (the
+  /// only truth across devices and sessions). When the ether says
+  /// yes-these-hands-gave, its answer becomes local memory — the
+  /// question is never asked again for this corpse.
+  Future<void> _offerIfNewToMe(ConstellationMeta cst) async {
+    if (_artifacts.contributedTo(cst.id)) {
+      showHud(context, 'TA LIGNE EST DÉJÀ DANS CE CORPS.');
+      return;
+    }
+    final etherSays = await ref
+        .read(constellationRepositoryProvider)
+        .hasContributed(cst.id);
+    if (!mounted) return;
+    if (etherSays == true) {
+      unawaited(_artifacts.markContributed(cst.id));
+      showHud(context, 'TA LIGNE EST DÉJÀ DANS CE CORPS.');
+      return;
+    }
+    await showContributeSheet(context, ref: ref, constellation: cst);
+    if (mounted) unawaited(_loadConstellations());
   }
 
   /// RECALIBRER, travelled: return the eye to the heart of the ether.
@@ -741,6 +754,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                   kept: _artifacts.isKept(
                                                     cst.id,
                                                   ),
+                                                  mine: _artifacts
+                                                      .contributedTo(
+                                                        cst.id,
+                                                      ),
                                                   // Songs read cyan (the waves'
                                                   // instrument), poems white;
                                                   // closed = indigo artifact.
@@ -1673,6 +1690,7 @@ class _ConstellationPainter extends CustomPainter {
     required this.color,
     this.read = false,
     this.kept = false,
+    this.mine = false,
   });
 
   final String id;
@@ -1688,6 +1706,10 @@ class _ConstellationPainter extends CustomPainter {
 
   /// Kept in this traveller's sky: ember seed and links, never ghost.
   final bool kept;
+
+  /// These hands gave a line to this corpse: a thin orbit rings the
+  /// seed — 'ta main est dans ce corps', visible across the sky.
+  final bool mine;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1712,6 +1734,16 @@ class _ConstellationPainter extends CustomPainter {
           closed ? 0.9 : 0.55,
         ),
     );
+    if (mine) {
+      canvas.drawCircle(
+        center,
+        4.2,
+        Paint()
+          ..color = AppColors.fade(color, kept ? 0.7 : 0.45)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8,
+      );
+    }
 
     // The strangers' segments: what has been drawn so far.
     final drawn = lineCount.clamp(0, t);
@@ -1758,7 +1790,8 @@ class _ConstellationPainter extends CustomPainter {
       old.lineCount != lineCount ||
       old.target != target ||
       old.read != read ||
-      old.kept != kept;
+      old.kept != kept ||
+      old.mine != mine;
 }
 
 /// V3.12c — the heavens' own heartbeat: the sky (planets, wanderers,

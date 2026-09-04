@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(131);
+select plan(133);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -1378,6 +1378,32 @@ select throws_ok(
   $$select public.kenos_list_media_orphans()$$,
   '42501', 'permission denied for function kenos_list_media_orphans',
   'the orphan ledger is service-role only'
+);
+reset role;
+
+-- ── has_contributed: the sky asks the truth (contentless) ──────────────
+-- The contributor knows, the stranger doesn't — and the ether never
+-- tells more than one quiet boolean. Asked AS the contributor, then
+-- as a stranger. (The corpse id is captured as postgres FIRST: the
+-- lines table is RPC-only for clients.)
+select l.constellation_id as hasc_corpse
+  from public.kenos_constellation_lines l
+ where l.contributor_id = '00000000-0000-4000-8000-0000000000f1'
+ limit 1 \gset
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-4000-8000-0000000000f1","role":"authenticated"}', true);
+select is(
+  public.has_contributed(:'hasc_corpse'::uuid),
+  true,
+  'the contributor''s hands are known to the ether (asked as f1)'
+);
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-4000-8000-0000000000b2","role":"authenticated"}', true);
+select is(
+  public.has_contributed(:'hasc_corpse'::uuid),
+  false,
+  'a stranger''s hands are not the contributor''s'
 );
 reset role;
 

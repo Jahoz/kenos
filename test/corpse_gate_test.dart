@@ -124,6 +124,9 @@ class FakeConstellationRepository implements ConstellationRepository {
       const ContributeResult(count: 1);
 
   @override
+  Future<bool?> hasContributed(String id) async => null;
+
+  @override
   Future<AssembledLine?> peekPrevious(String constellationId) async => null;
 
   @override

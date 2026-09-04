@@ -692,6 +692,36 @@ la mort de Secret et Yik Yak ; KENOS n'assume pas les cercles clos.
   Qui est le garant d'une galaxie (modération) ? Répondre avant d'écrire
   une ligne de SQL.
 
+## V3.17 — Le Soutien du sanctuaire (décision Hugo, 2026-09-04)
+
+Le sanctuaire reste gratuit : **pas de publicité, pas d'abonnement, pas de
+paywall sur le cœur** (lire, écrire, dériver). La couverture des frais
+(Supabase free tier aujourd'hui, Pro ~25 $/mois demain, frais des stores
+ensuite) passe par le soutien volontaire — décision prise après revue des
+options (dons, IAP offrande, cosmétiques, affiliation musicale écartée).
+
+- **GitHub Sponsors** (`github.com/sponsors/Jahos`) : 0 % de commission,
+  ponctuel ou mensuel. Section « 07 / Entretenir le vide » ajoutée au
+  mini-site (`site/index.html`) + lien discret en pied de page —
+  composants existants uniquement (kicker, callout, btn), identité
+  registry intacte.
+- **Transparence** : les sommes financisent l'hébergement de l'éther ;
+  ce ne sont pas des dons fiscaux (pas d'association). Le soutien se vit
+  hors du sanctuaire — l'éther ne sait jamais qui donne.
+- **Fiscal** : revenus occasionnels (2042-C-PRO) tant que les flux
+  restent modérés et sporadiques ; bascule micro-entreprise si
+  régularité, ou au premier IAP.
+- **L'offrande IAP (Roadmap+)** : si une communauté se forme — IAP
+  consommable « cloche/dérive » (0,99-2,99 €), déblocage strictement
+  local (secure storage), jamais de compte, jamais de télémétrie, jamais
+  de ROSE en achat. Puis éventuellement packs cosmétiques.
+- **Interdits (contrat kenos)** : publicité, abonnement, revente de
+  données (de toute façon impossible — Ether Seal), paywall sur le
+  Mindful Hold.
+- **Hébergement du site** : la page de soutien est « commerciale » au
+  sens du tier Vercel Hobby — migration à arbitrer vers Cloudflare
+  Pages / GitHub Pages avant promotion active du lien.
+
 ## 4. Règles inchangées (rappel)
 
 - Single-read atomique, Ether Seal, RPC-only, ROSE destructif,

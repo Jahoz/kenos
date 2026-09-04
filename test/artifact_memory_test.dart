@@ -245,6 +245,9 @@ class _RefusingConstellationRepo implements ConstellationRepository {
       throw Exception('PostgrestException: $code');
 
   @override
+  Future<bool?> hasContributed(String id) async => null;
+
+  @override
   Future<AssembledLine?> peekPrevious(String constellationId) async => null;
 
   @override
