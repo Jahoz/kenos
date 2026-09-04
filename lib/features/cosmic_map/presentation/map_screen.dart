@@ -641,15 +641,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               ),
                             ),
                             // V3.12b — the falls: what dies here spirals
-                            // into the black hole, above the stars.
+                            // into the black hole, above the stars —
+                            // and NEVER intercepts a pointer: a
+                            // full-screen CustomPaint claims hit-tests
+                            // by default (hitTestSelf → size.contains),
+                            // which starved every widget beneath it
+                            // (stars, vestiges, corpses: unclickable).
                             _HeavensClock(
-                              builder: (context, fallAt) => CustomPaint(
-                                painter: AccretionPainter(
-                                  motes: ref.watch(accretionProvider),
-                                  camera: _camera,
-                                  viewport: _viewport,
-                                  now: fallAt,
-                                  reducedMotion: reduced,
+                              builder: (context, fallAt) => IgnorePointer(
+                                child: CustomPaint(
+                                  painter: AccretionPainter(
+                                    motes: ref.watch(accretionProvider),
+                                    camera: _camera,
+                                    viewport: _viewport,
+                                    now: fallAt,
+                                    reducedMotion: reduced,
+                                  ),
                                 ),
                               ),
                             ),
