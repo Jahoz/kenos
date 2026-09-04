@@ -39,7 +39,7 @@ String? env(String k) => Platform.environment[k]?.trim().isEmpty == true
 
 final aiUrl = env('VESTIGE_AI_URL') ?? env('OPENAI_BASE_URL');
 final aiKey = env('VESTIGE_AI_KEY') ?? env('OPENAI_API_KEY');
-final aiModel = env('VESTIGE_AI_MODEL') ?? 'gpt-4o-mini';
+final aiModel = env('VESTIGE_AI_MODEL') ?? 'gemini-3.6-flash';
 
 const themes = [
   'astronomie (distances lumineuses, planètes, étoiles, poussières)',
@@ -102,7 +102,7 @@ Future<Map<String, dynamic>> chat(
   final client = HttpClient();
   try {
     final req = await client.openUrl('POST', validatedUrl(aiUrl!));
-    req.headers.set('Content-Type', 'application/json');
+    req.headers.set('Content-Type', 'application/json; charset=utf-8');
     req.headers.set('Authorization', 'Bearer $aiKey');
     req.write(jsonEncode({
       'model': aiModel,
