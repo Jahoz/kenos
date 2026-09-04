@@ -243,9 +243,23 @@ Future<List<Map<String, dynamic>>> verify(List<Map<String, dynamic>> batch) asyn
     {'role': 'user', 'content': numbered},
   ], temperature: 0.1);
 
-  final verdicts = (out['items'] as List? ?? [])
-      .map((v) => (v as Map).cast<String, dynamic>())
-      .toList();
+  // Providers disagree on the verify shape: some return
+  // {"items": [...]}, Mistral keys them {"1": {...}, "2": {...}}.
+  // Normalize both (and ignore the numeric index — order matches).
+  int intKey(Object? k) => int.tryParse(k.toString()) ?? 1 << 30;
+  final verdicts = <Map<String, dynamic>>[];
+  final rawItems = out['items'];
+  if (rawItems is List) {
+    verdicts.addAll(
+        rawItems.map((v) => (v as Map).cast<String, dynamic>()));
+  } else {
+    final keys = out.keys.toList()
+      ..sort((a, b) => intKey(a).compareTo(intKey(b)));
+    for (final k in keys) {
+      final v = out[k];
+      if (v is Map) verdicts.add(v.cast<String, dynamic>());
+    }
+  }
   final kept = <Map<String, dynamic>>[];
   for (var i = 0; i < batch.length; i++) {
     if (i >= verdicts.length) break;
