@@ -127,5 +127,5 @@ export default {
     if (!response.ok) return Response.json({ url: null, reason: "spotify" });
     const track = await response.json();
     return Response.json({ url: typeof track.preview_url === "string" ? track.preview_url : null });
-  },
+    }),
 };
