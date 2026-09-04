@@ -700,7 +700,7 @@ paywall sur le cœur** (lire, écrire, dériver). La couverture des frais
 ensuite) passe par le soutien volontaire — décision prise après revue des
 options (dons, IAP offrande, cosmétiques, affiliation musicale écartée).
 
-- **GitHub Sponsors** (`github.com/sponsors/Jahos`) : 0 % de commission,
+- **GitHub Sponsors** (`github.com/sponsors/Jahoz`) : 0 % de commission,
   ponctuel ou mensuel. Section « 07 / Entretenir le vide » ajoutée au
   mini-site (`site/index.html`), lien en pied de page + lien sobre dans
   le header sticky (toujours accessible au scroll, quasi muet par défaut,
