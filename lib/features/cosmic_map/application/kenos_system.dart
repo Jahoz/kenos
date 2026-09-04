@@ -37,6 +37,69 @@ class KenosSystem {
     return blackHole + d / dist * blackHoleExclusion;
   }
 
+  /// V3.12c — serene real estate for everything that RESTS (vestiges,
+  /// corpses). One deterministic resolver, applied in a stable order:
+  ///  - never upon the black hole;
+  ///  - never ON the two planetary lanes (a world rides its circle);
+  ///  - never on the fixed beacon Polaris;
+  ///  - never stacked on another resting body ([occupied] carries the
+  ///    ones already placed — call in a stable sequence).
+  /// Echoes still sweep their swarm (they move; motion crossing a
+  /// resting shard is the sky breathing, not a collision).
+  static Offset resolveResting(
+    Offset p, {
+    List<Offset> occupied = const [],
+    double clearance = 0.055,
+  }) {
+    var q = outsideTheHole(p);
+    // The lanes: dodge both planetary circles radially.
+    for (final lane in [orbitRadiusOf(0), orbitRadiusOf(1)]) {
+      final d = (q - blackHole).distance;
+      if (d < 1e-9) break;
+      if ((d - lane).abs() < 0.055) {
+        var target = d < lane ? lane - 0.055 : lane + 0.055;
+        if (target < blackHoleExclusion + 0.01) target = lane + 0.055;
+        q = blackHole + (q - blackHole) / d * target;
+      }
+    }
+    // The beacon: Polaris keeps a clear sky.
+    final toBeacon = q - CelestialMath.polaris;
+    if (toBeacon.distance < clearance + 0.02 && toBeacon.distance >= 0) {
+      final away = toBeacon.distance < 1e-9
+          ? const Offset(0, -1)
+          : toBeacon / toBeacon.distance;
+      q = CelestialMath.polaris + away * (clearance + 0.02);
+    }
+    // The others: a deterministic GOLDEN SCATTER. Repulsion alone
+    // squeezes clusters; instead, a stacked body takes the next
+    // golden-angle station on a ring around its first collision —
+    // clusters bloom apart, never through each other.
+    final base = q;
+    const golden = 2.399963229728653; // radians, the golden angle
+    for (var n = 0; n < 24; n++) {
+      var clear = true;
+      for (final o in occupied) {
+        if ((q - o).distance < clearance) {
+          clear = false;
+          break;
+        }
+      }
+      if (clear) break;
+      // Phyllotaxis (sunflower packing): station n sits at golden angle
+      // n·φ on a spiral of radius c·√(n+1) — the layout that keeps
+      // every pair at least ~c apart, for any cluster size.
+      final angle = n * golden;
+      final r = 0.062 * math.sqrt(n + 1);
+      q = Offset(
+        base.dx + r * math.cos(angle),
+        base.dy + r * math.sin(angle),
+      );
+    }
+    q = outsideTheHole(q);
+    // The known ether's bounds.
+    return Offset(q.dx.clamp(0.02, 0.98), q.dy.clamp(0.02, 0.98));
+  }
+
   /// Each anchor rides its OWN lane (V3.12): the Moon closer and
   /// livelier, Venus wider and slower — the tracks never smear into
   /// one another, conjunctions stay rare. Polaris rides none.

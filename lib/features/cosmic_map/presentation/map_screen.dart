@@ -469,6 +469,29 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       // and jumped at the next screen rebuild.
                       builder: (context, _) {
                         final epoch = DateTime.now();
+                        // V3.12c — serene real estate: every resting
+                        // body (vestige, corpse) is resolved against
+                        // the throat, the lanes, the beacon and every
+                        // one placed before it, in stable order.
+                        final staticAnchors = <Offset>[];
+                        final vestigeAt = <String, Offset>{};
+                        for (final v in _vestiges) {
+                          final at = KenosSystem.resolveResting(
+                            Offset(v.offsetX, v.offsetY),
+                            occupied: staticAnchors,
+                          );
+                          vestigeAt[v.id] = at;
+                          staticAnchors.add(at);
+                        }
+                        final corpseAt = <String, Offset>{};
+                        for (final cst in _constellations) {
+                          final at = KenosSystem.resolveResting(
+                            Offset(cst.seedX, cst.seedY),
+                            occupied: staticAnchors,
+                          );
+                          corpseAt[cst.id] = at;
+                          staticAnchors.add(at);
+                        }
                         return Stack(
                           fit: StackFit.expand,
                           children: [
@@ -508,18 +531,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             // culture drifts even when the eye rests.
                             if (_vestiges.isNotEmpty)
                               _HeavensClock(
-                                builder: (context, vestigeAt) => LayoutBuilder(
+                                builder: (context, vestigeBeat) => LayoutBuilder(
                                   builder: (context, c) => Stack(
                                     children: [
                                       for (final v in _vestiges)
                                         Builder(
                                           builder: (context) {
-                                            // Nothing rests upon the
-                                            // black hole (V3.12b).
                                             final sp = _camera.worldToScreen(
-                                              KenosSystem.outsideTheHole(
-                                                Offset(v.offsetX, v.offsetY),
-                                              ),
+                                              vestigeAt[v.id] ??
+                                                  Offset(v.offsetX, v.offsetY),
                                               Size(c.maxWidth, c.maxHeight),
                                             );
                                             if (sp.dx < -30 ||
@@ -578,9 +598,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                       Builder(
                                         builder: (context) {
                                           final sp = _camera.worldToScreen(
-                                            KenosSystem.outsideTheHole(
-                                              Offset(cst.seedX, cst.seedY),
-                                            ),
+                                            corpseAt[cst.id] ??
+                                                Offset(cst.seedX, cst.seedY),
                                             Size(c.maxWidth, c.maxHeight),
                                           );
                                           if (sp.dx < -46 ||

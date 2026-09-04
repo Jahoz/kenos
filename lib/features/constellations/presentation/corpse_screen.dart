@@ -41,13 +41,20 @@ class _CorpseScreenState extends ConsumerState<CorpseScreen> {
     try {
       final eye = ref.read(travelPositionProvider);
       final rng = Random();
-      // Never seed upon the black hole: the corpse rests outside
-      // the central horizon (V3.12b).
-      final seed = KenosSystem.outsideTheHole(
+      // Serene real estate (V3.12c): the corpse never rests upon the
+      // throat, the lanes, the beacon — nor on another corpse already
+      // drifting out there.
+      final others = (await ref
+              .read(constellationRepositoryProvider)
+              .fetchVisible())
+          .map((c) => Offset(c.seedX, c.seedY))
+          .toList();
+      final seed = KenosSystem.resolveResting(
         Offset(
           (eye.dx + (rng.nextDouble() - 0.5) * 0.12).clamp(0.05, 0.95),
           (eye.dy + (rng.nextDouble() - 0.5) * 0.12).clamp(0.05, 0.95),
         ),
+        occupied: others,
       );
       final meta = await ref.read(constellationRepositoryProvider).seed(
             seed.dx,
