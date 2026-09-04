@@ -161,11 +161,14 @@ class VestigePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final r = size.shortestSide / 2 - 2;
-    final baseAlpha = read ? 0.12 : (0.28 + 0.3 * pulse);
+    // The shard stays STAR-CORE sized (~16 px): the 32 px box is the
+    // finger's courtesy, the drawing never looms (V3.12c — the real
+    // disproportion was here, not in the constellations).
+    final r = size.shortestSide / 2 - 8;
+    final baseAlpha = read ? 0.1 : (0.22 + 0.22 * pulse);
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = read ? 0.7 : 1.1
+      ..strokeWidth = read ? 0.5 : 0.8
       ..color = AppColors.fade(color, baseAlpha);
 
     canvas.save();
@@ -187,7 +190,7 @@ class VestigePainter extends CustomPainter {
     canvas.drawLine(
       Offset(-r * 0.4, -r * 0.2),
       Offset(r * 0.5, r * 0.15),
-      paint..strokeWidth = 0.7,
+      paint..strokeWidth = 0.55,
     );
     canvas.restore();
   }

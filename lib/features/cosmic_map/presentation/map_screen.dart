@@ -590,10 +590,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                             return const SizedBox.shrink();
                                           }
                                           return Positioned(
-                                            left: sp.dx - 17,
-                                            top: sp.dy - 17,
-                                            width: 34,
-                                            height: 34,
+                                            left: sp.dx - 23,
+                                            top: sp.dy - 23,
+                                            width: 46,
+                                            height: 46,
                                             child: GestureDetector(
                                               behavior: HitTestBehavior.opaque,
                                               onTap: () =>
@@ -1554,16 +1554,16 @@ class _ConstellationPainter extends CustomPainter {
     // The seed: where the first stranger planted the corpse.
     canvas.drawCircle(
       center,
-      0.8,
-      Paint()..color = AppColors.fade(color, closed ? 0.5 : 0.35),
+      1.1,
+      Paint()..color = AppColors.fade(color, closed ? 0.9 : 0.55),
     );
 
     // The strangers' segments: what has been drawn so far.
     final drawn = lineCount.clamp(0, t);
     if (drawn >= 2) {
       final link = Paint()
-        ..color = AppColors.fade(color, closed ? 0.2 : 0.14)
-        ..strokeWidth = 0.5
+        ..color = AppColors.fade(color, closed ? 0.5 : 0.28)
+        ..strokeWidth = 0.8
         ..strokeCap = StrokeCap.round;
       for (var k = 1; k < drawn; k++) {
         canvas.drawLine(station(k - 1), station(k), link);
@@ -1575,17 +1575,17 @@ class _ConstellationPainter extends CustomPainter {
       final isFilled = k < drawn;
       final pos = station(k);
       final paint = Paint()
-        ..color = AppColors.fade(color, isFilled ? (closed ? 0.4 : 0.32) : 0.1);
+        ..color = AppColors.fade(color, isFilled ? (closed ? 0.9 : 0.6) : 0.18);
       if (isFilled) {
-        canvas.drawCircle(pos, closed ? 1.05 : 0.95, paint);
+        canvas.drawCircle(pos, closed ? 2.0 : 1.8, paint);
       } else {
         canvas.drawCircle(
           pos,
-          0.9,
+          1.4,
           Paint()
-            ..color = AppColors.fade(color, 0.1)
+            ..color = AppColors.fade(color, 0.16)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 0.5,
+            ..strokeWidth = 0.7,
         );
       }
     }
