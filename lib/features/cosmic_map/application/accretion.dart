@@ -12,16 +12,27 @@ import 'kenos_system.dart';
 /// animates the mote spiralling into the rose accretion ring: the
 /// destruction colour's only celestial object swallows its own.
 class AccretionMote {
-  const AccretionMote({required this.origin, required this.at, this.tint});
+  const AccretionMote({
+    required this.origin,
+    required this.at,
+    this.tint,
+    this.rising = false,
+  });
 
-  /// World position where the object died.
+  /// World position where the object died (or, when [rising], where
+  /// the phoenix was re-sealed).
   final Offset origin;
 
-  /// When the fall began.
+  /// When the fall (or the rise) began.
   final DateTime at;
 
-  /// The dead echo's hue — the mote reddens as it falls.
+  /// The echo's hue — a falling mote warms toward the rose horizon.
   final Color? tint;
+
+  /// V3.12c — the phoenix's streak: instead of falling into the hole,
+  /// the mote RISES from where the thought was read and fades into
+  /// the ether for its next reader.
+  final bool rising;
 }
 
 /// One fall lasts this long (world spirals are not rushed).
@@ -41,6 +52,18 @@ class AccretionController extends Notifier<List<AccretionMote>> {
     state = [
       ...alive,
       AccretionMote(origin: worldOrigin, at: now, tint: tint),
+    ];
+  }
+
+  /// The phoenix's launch: a streak rising from [worldOrigin].
+  void feedRising(Offset worldOrigin, {Color? tint}) {
+    final now = DateTime.now();
+    final alive = state
+        .where((m) => now.difference(m.at) < accretionFall * 2)
+        .toList();
+    state = [
+      ...alive,
+      AccretionMote(origin: worldOrigin, at: now, tint: tint, rising: true),
     ];
   }
 

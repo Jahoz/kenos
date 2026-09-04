@@ -42,6 +42,10 @@ class AccretionPainter extends CustomPainter {
       final t =
           now.difference(mote.at).inMicroseconds / accretionFall.inMicroseconds;
       if (t < 0 || t >= 1) continue;
+      if (mote.rising) {
+        _paintRising(canvas, mote, t, worldScale);
+        continue;
+      }
       final (radius, angle) = AccretionController.spiralAt(mote, t);
       final pos = hole +
           Offset(
@@ -79,6 +83,34 @@ class AccretionPainter extends CustomPainter {
         Paint()..color = AppColors.fade(color, 1),
       );
     }
+  }
+
+
+  /// The phoenix: a streak rising from where the thought was read,
+  /// its own hue, fading into the ether — the opposite verb of the
+  /// fall.
+  void _paintRising(Canvas canvas, AccretionMote mote, double t, double worldScale) {
+    final start = camera.worldToScreen(mote.origin, viewport);
+    final rise = Curves.easeOut.transform(t);
+    final color = mote.tint ?? AppColors.pureLight;
+    final tail = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round
+      ..color = AppColors.fade(color, 0.5 * (1 - t));
+    final len = viewport.shortestSide * 0.10;
+    canvas.drawLine(
+      start + Offset(0, -len * rise),
+      start + Offset(0, -len * (rise * 1.35 + 0.05)),
+      tail,
+    );
+    canvas.drawCircle(
+      start + Offset(0, -len * rise),
+      (2.2 * (1 - t) + 0.6) * (viewport.shortestSide / 700),
+      Paint()
+        ..color = AppColors.fade(color, 0.85 * (1 - t) + 0.1)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
+    );
   }
 
   @override

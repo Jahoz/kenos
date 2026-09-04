@@ -226,6 +226,14 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
           .read(mapControllerProvider.notifier)
           .rebound(source: widget.echo, text: widget.echo.text ?? '');
       if (!mounted) return;
+      if (ok) {
+        // The phoenix leaves a rising streak: the thought, re-sealed,
+        // climbs back into the ether for its next reader (V3.12c).
+        ref.read(accretionProvider.notifier).feedRising(
+              KenosSystem.echoPosition(widget.echo, DateTime.now()),
+              tint: widget.echo.theme.core,
+            );
+      }
       setState(() => _phase = ok ? _Phase.rebounded : _Phase.refused);
       if (ok) {
         await Future<void>.delayed(const Duration(milliseconds: 1700));
@@ -742,7 +750,21 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        // The Sling-Shot rides ABOVE the fold: relaunching is a first
+        // class gesture, never buried under a scroll (V3.12c).
+        _SlingRail(onRebound: _rebound, onAshes: _ashes),
+        const SizedBox(height: 10),
+        Text(
+          'GLISSE VERS LE HAUT POUR RELANCER — VERS LE BAS POUR LES CENDRES',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: AppFonts.mono,
+            fontSize: 7.5,
+            letterSpacing: 1.5,
+            color: AppColors.fade(AppColors.pureLight, 0.28),
+          ),
+        ),
+        const SizedBox(height: 14),
         TextButton(
           onPressed: _reporting ? null : _reportEcho,
           child: Text(
@@ -755,10 +777,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        const SizedBox(height: 14),
-        _SlingRail(onRebound: _rebound, onAshes: _ashes),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
       ],
     );
   }
