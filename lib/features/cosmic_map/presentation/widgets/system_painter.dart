@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../echo/domain/echo.dart';
+import '../../application/celestial_bodies.dart';
 import '../../application/kenos_system.dart';
 import '../../application/travel_camera.dart';
 
@@ -74,26 +75,29 @@ class SystemPainter extends CustomPainter {
         ..color = AppColors.fade(AppColors.roseText, 0.22),
     );
 
-    // ── The three planets ──────────────────────────────────────────────
+    // ── The named anchors (V3.12) ─────────────────────────────────────
+    // Each intention's world has its own glyph: a crescent Moon, a
+    // ringed Venus, the fixed beacon Polaris. Worlds are bodies, stars
+    // are lights — never confused.
     for (var i = 0; i < KenosSystem.planets.length; i++) {
       final theme = KenosSystem.planets[i];
       final p = world(KenosSystem.planetPosition(i, epoch));
-
-      // Orbit path around the void: barely there, a thought of a line.
-      final orbitPaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.6
-        ..color = AppColors.fade(theme.halo, 0.05);
-      canvas.drawCircle(
-        world(KenosSystem.blackHole),
-        KenosSystem.planetOrbit / camera.viewExtent * viewport.shortestSide,
-        orbitPaint,
-      );
-
-      // The planet: a RINGED DISC — planets are worlds (a body + a
-      // ring), stars are lights (points + halos). Never confused.
       final bodyR = viewport.shortestSide / 46;
       final ringR = bodyR * 1.75;
+
+      // Orbit path around the void — Polaris has none: it holds still.
+      if (i != 2) {
+        final orbitPaint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.6
+          ..color = AppColors.fade(theme.halo, 0.05);
+        canvas.drawCircle(
+          world(KenosSystem.blackHole),
+          KenosSystem.planetOrbit / camera.viewExtent * viewport.shortestSide,
+          orbitPaint,
+        );
+      }
+
       // Soft breathing halo (very dim: it must not outshine stars).
       canvas.drawCircle(
         p,
@@ -102,31 +106,91 @@ class SystemPainter extends CustomPainter {
           ..color = AppColors.fade(theme.core, 0.08)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 22),
       );
-      // The ring: a thin ellipse, tilted per planet.
-      canvas.save();
-      canvas.translate(p.dx, p.dy);
-      canvas.rotate(-0.42 + i * 0.35);
-      canvas.drawOval(
-        Rect.fromCircle(center: Offset.zero, radius: ringR),
+
+      switch (i) {
+        case 0: // La Lune — a crescent: what wanes, what returns.
+          canvas.drawCircle(
+            p,
+            bodyR,
+            Paint()..color = AppColors.fade(theme.core, 0.5),
+          );
+          canvas.drawCircle(
+            p.translate(-bodyR * 0.38, -bodyR * 0.22),
+            bodyR * 0.92,
+            Paint()
+              ..color = AppColors.voidBlack.withValues(alpha: 0.72),
+          );
+          canvas.drawCircle(
+            p,
+            bodyR,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.1
+              ..color = AppColors.fade(theme.halo, 0.7),
+          );
+        case 1: // Vénus — the ringed world of confided love.
+          canvas.save();
+          canvas.translate(p.dx, p.dy);
+          canvas.rotate(-0.42 + 0.35);
+          canvas.drawOval(
+            Rect.fromCircle(center: Offset.zero, radius: ringR),
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.4
+              ..color = AppColors.fade(theme.halo, 0.30),
+          );
+          canvas.restore();
+          canvas.drawCircle(
+            p,
+            bodyR,
+            Paint()..color = AppColors.fade(theme.core, 0.55),
+          );
+          canvas.drawCircle(
+            p,
+            bodyR,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.2
+              ..color = AppColors.fade(theme.halo, 0.75),
+          );
+        case 2: // Polaris — the beacon: a point, a cross of rays.
+          final ray = Paint()
+            ..strokeWidth = 1.0
+            ..color = AppColors.fade(theme.halo, 0.55);
+          final rl = bodyR * 2.6;
+          canvas.drawLine(p.translate(-rl, 0), p.translate(rl, 0), ray);
+          canvas.drawLine(p.translate(0, -rl), p.translate(0, rl), ray);
+          canvas.drawCircle(
+            p,
+            bodyR * 0.55,
+            Paint()..color = AppColors.fade(theme.core, 0.9),
+          );
+          canvas.drawCircle(
+            p,
+            bodyR * 0.55,
+            Paint()
+              ..color = AppColors.fade(theme.halo, 0.35)
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+          );
+      }
+    }
+
+    // ── The wanderers (V3.12): named far bodies on slow arcs ──────────
+    for (var i = 0; i < celestialWanderers.length; i++) {
+      final w = world(CelestialMath.wandererPosition(i, now));
+      final r = viewport.shortestSide / 110;
+      canvas.drawCircle(
+        w,
+        r,
+        Paint()..color = AppColors.fade(AppColors.pureLight, 0.34),
+      );
+      canvas.drawCircle(
+        w,
+        r,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.4
-          ..color = AppColors.fade(theme.halo, 0.30),
-      );
-      canvas.restore();
-      // The body: a solid disc with a thin bright limb.
-      canvas.drawCircle(
-        p,
-        bodyR,
-        Paint()..color = AppColors.fade(theme.core, 0.55),
-      );
-      canvas.drawCircle(
-        p,
-        bodyR,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.2
-          ..color = AppColors.fade(theme.halo, 0.75),
+          ..strokeWidth = 0.8
+          ..color = AppColors.fade(AppColors.cyan, 0.5),
       );
     }
 
@@ -176,6 +240,40 @@ Rect planetTapRect({
   );
   final r = viewport.shortestSide / 40;
   return Rect.fromCircle(center: p, radius: r);
+}
+
+/// Screen rectangle of a wanderer's tap target.
+Rect wandererTapRect({
+  required int index,
+  required TravelCamera camera,
+  required Size viewport,
+  required DateTime now,
+}) {
+  final p = camera.worldToScreen(
+    CelestialMath.wandererPosition(index, now),
+    viewport,
+  );
+  return Rect.fromCircle(center: p, radius: viewport.shortestSide / 34);
+}
+
+/// Which wanderer (if any) sits under a screen tap. -1 = none.
+int wandererHitTest({
+  required Offset screenPoint,
+  required TravelCamera camera,
+  required Size viewport,
+  required DateTime now,
+}) {
+  for (var i = 0; i < celestialWanderers.length; i++) {
+    if (wandererTapRect(
+          index: i,
+          camera: camera,
+          viewport: viewport,
+          now: now,
+        ).contains(screenPoint)) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 /// Which planet (if any) sits under a screen tap. -1 = none.

@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import '../../echo/domain/echo.dart';
 import '../../echo/domain/echo_color_theme.dart';
+import 'celestial_bodies.dart';
 
 /// V3.7b — the System: a black hole at the heart of the world, three
 /// planets for the three intentions, and every echo orbiting the
@@ -37,6 +38,9 @@ class KenosSystem {
 
   /// World position of a planet at a given moment.
   static Offset planetPosition(int index, DateTime at) {
+    // Polaris holds still: the fixed point of the whole turning sky
+    // (V3.12 — the named heavens).
+    if (index == 2) return CelestialMath.polaris;
     final phase =
         (at.millisecondsSinceEpoch + _epoch) / planetPeriod.inMilliseconds;
     final angle = 2 * math.pi * (phase + index / planets.length);

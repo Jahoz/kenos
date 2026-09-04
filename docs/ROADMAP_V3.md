@@ -562,6 +562,24 @@ de domaine public), crédités, upsertables sans release.
   (+2 : la bibliothèque sert ses éclats, un éclat retiré quitte le
   ciel), 189 tests Dart, e2e 18/18.
 
+## V3.12 — Le Système nommé (idée Hugo, 2026-09-02) ✅
+
+Le ciel reçoit sa mythologie : **sept corps nommés**, chacun expliqué
+au clic (et au survol desktop, étiquette + curseur). Les trois ancres
+d'intention deviennent des mondes identifiables — **La Lune** (APAISER,
+un croissant qui renaît), **Vénus** (CONFIER, l'anneau de l'amour à
+voix basse — la proposition même de Hugo), **Polaris** (ÉCLAIRER,
+l'étoile fixe en phare : elle N'ORBITE PLUS, le point immobile du ciel
+tournant — glyphes distincts par nature). La plaque dit le nom, la
+nature, un poème, l'intention et le compte d'échos en orbite vivant
+(« 3 échos dérivent autour d'elle en ce moment »), avec VOYAGER VERS.
+Quatre **corps errants** dérivent au-delà des orbites — **Pluton**,
+**Triton**, **Europe**, **Titan** — des catégories ouvertes : leur
+plaque dit « RIEN N'ORBITE ICI — PAS ENCORE », l'imagination du tri
+que l'éther ne connaît pas encore. Trouvés en voyageant (arcs lents
+déterministes, 0,62-0,74 UA du vide). Zéro migration : la mythologie
+vit client, le thème→orbite reste la clé sacrée du Miroir. 7 tests.
+
 ## V4 — Les Clusters : galaxies privées (idée Hugo, 2026-09-01 — **GELÉ, arbitrage Hugo 2026-09-02** : on va au bout du Cadavre Exquis et des Symphonies d'abord)
 
 Créer une mini-galaxie invitable (amis, collègues), vivant en parallèle

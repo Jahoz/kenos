@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,7 @@ import '../../constellations/presentation/constellation_sheets.dart';
 import '../../echo/data/echo_providers.dart';
 import '../../echo/domain/echo.dart';
 import '../../echo/domain/read_scar.dart';
+import '../application/celestial_bodies.dart';
 import '../application/kenos_system.dart';
 import '../application/map_controller.dart';
 import '../application/motion_service.dart';
@@ -26,6 +28,7 @@ import '../application/reception_controller.dart';
 import '../application/travel_camera.dart';
 import 'widgets/awakening_sas.dart';
 import 'widgets/background_painters.dart';
+import 'widgets/celestial_plaque.dart';
 import 'widgets/mindful_hold_star.dart';
 import 'widgets/origin_node.dart';
 import 'widgets/scar_field_painter.dart';
@@ -58,9 +61,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// readable ether, then the mode.
   String _hudHeadline({required int readable, required int signals}) {
     if (signals > 0) {
-      return signals == 1
-          ? '1 SIGNAL — KENOS'
-          : '$signals SIGNAUX — KENOS';
+      return signals == 1 ? '1 SIGNAL — KENOS' : '$signals SIGNAUX — KENOS';
     }
     return '$readable ÉCHOS — $_bootLabel';
   }
@@ -84,6 +85,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (unreadVestiges > 0) parts.add('$unreadVestiges VESTIGES');
     return parts.join(' · ');
   }
+
+  /// V3.12 — the hovered named body (desktop): its name floats beside
+  /// it, the cursor says « this is a world ».
+  String? _hoverName;
+  Offset? _hoverPos;
 
   /// The Constellations: exquisite corpses drifting in the void (V3.8).
   List<ConstellationMeta> _constellations = const [];
@@ -161,8 +167,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   void _maybeSpeakAube() {
     if (_aubeSpokenThisSession || !mounted) return;
-    final receptions =
-        ref.read(receptionControllerProvider).valueOrNull;
+    final receptions = ref.read(receptionControllerProvider).valueOrNull;
     if (receptions == null) return; // still syncing: wait.
     _aubeSpokenThisSession = true;
     unawaited(maybeShowAwakening(context, ref));
@@ -202,7 +207,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void _onScaleEnd(ScaleEndDetails details) {
     // Neither travelled nor zoomed: an intention — a planet glides the
     // eye toward its gravity. (One detector, one grammar.)
-    if (_dragTotal.distance < 8 && ( _pinchFactor - 1.0 ).abs() < 0.03) {
+    if (_dragTotal.distance < 8 && (_pinchFactor - 1.0).abs() < 0.03) {
       _onVoidTap();
       return;
     }
@@ -235,15 +240,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   /// Screen point → world point (for anchoring the pinch).
   Offset _screenToWorld(Offset screen) => Offset(
-        (screen.dx - _viewport.width / 2) /
-            _viewport.width *
-            _camera.viewExtent +
-            _camera.center.dx,
-        (screen.dy - _viewport.height / 2) /
-            _viewport.height *
-            _camera.viewExtent +
-            _camera.center.dy,
-      );
+    (screen.dx - _viewport.width / 2) / _viewport.width * _camera.viewExtent +
+        _camera.center.dx,
+    (screen.dy - _viewport.height / 2) / _viewport.height * _camera.viewExtent +
+        _camera.center.dy,
+  );
 
   /// Publish where the eye rests (music of the spheres listens there).
   void _publishPosition() {
@@ -254,7 +255,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void _refreshAfterTravel() {
     final r = _camera.visibleRect;
     unawaited(
-      ref.read(mapControllerProvider.notifier).refreshViewport(
+      ref
+          .read(mapControllerProvider.notifier)
+          .refreshViewport(
             minX: r.minX,
             minY: r.minY,
             maxX: r.maxX,
@@ -263,22 +266,88 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  /// A tap on the void: a planet glides the eye toward its gravity —
-  /// « voyager vers ». Tapping empty space travels nowhere (the drag
-  /// is the road, the tap is the intention).
-  void _onVoidTap() {
+  /// Desktop hover: a named body whispers its name before the plaque.
+  void _onFieldHover(PointerHoverEvent event) {
+    final now = DateTime.now();
+    String? name;
+    Offset? pos;
+    final w = wandererHitTest(
+      screenPoint: event.position,
+      camera: _camera,
+      viewport: _viewport,
+      now: now,
+    );
+    if (w >= 0) {
+      name = celestialWanderers[w].name;
+      pos = _camera.worldToScreen(
+        CelestialMath.wandererPosition(w, now),
+        _viewport,
+      );
+    } else {
+      final p = planetHitTest(
+        screenPoint: event.position,
+        camera: _camera,
+        viewport: _viewport,
+        now: now,
+      );
+      if (p >= 0) {
+        name = celestialBodies[p].name;
+        pos = _camera.worldToScreen(
+          KenosSystem.planetPosition(p, now),
+          _viewport,
+        );
+      }
+    }
+    if (name != _hoverName) {
+      setState(() {
+        _hoverName = name;
+        _hoverPos = pos;
+      });
+    }
+  }
+
+  /// A tap on the void: a named body explains itself (V3.12) — the
+  /// plaque carries « voyager vers » for the anchors. Tapping empty
+  /// space travels nowhere (the drag is the road, the tap is the
+  /// intention).
+  Future<void> _onVoidTap() async {
     _publishPosition();
+    final now = DateTime.now();
+    final wanderer = wandererHitTest(
+      screenPoint: _lastPointerDown,
+      camera: _camera,
+      viewport: _viewport,
+      now: now,
+    );
+    if (wanderer >= 0) {
+      KenosHaptics.pulse(KenosPulse.themePick);
+      await showCelestialPlaque(context, body: celestialWanderers[wanderer]);
+      return;
+    }
     final hit = planetHitTest(
       screenPoint: _lastPointerDown,
       camera: _camera,
       viewport: _viewport,
-      now: DateTime.now(),
+      now: now,
     );
     if (hit < 0) return;
-    final target = KenosSystem.planetPosition(hit, DateTime.now());
-    _glide?.cancel();
-    _camera.panByWorld(target - _camera.center);
-    _refreshAfterTravel();
+    KenosHaptics.pulse(KenosPulse.themePick);
+    final echoes =
+        ref.read(mapControllerProvider).valueOrNull ?? const <Echo>[];
+    final orbitCount = echoes
+        .where((e) => !e.isMine && KenosSystem.planetIndexOf(e) == hit)
+        .length;
+    await showCelestialPlaque(
+      context,
+      body: celestialBodies[hit],
+      orbitCount: orbitCount,
+      onTravel: () {
+        final target = KenosSystem.planetPosition(hit, DateTime.now());
+        _glide?.cancel();
+        _camera.panByWorld(target - _camera.center);
+        _refreshAfterTravel();
+      },
+    );
   }
 
   /// An OPEN corpse takes a line (continuing the preceding one); a
@@ -287,8 +356,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Future<void> _onConstellationTap(ConstellationMeta cst) async {
     KenosHaptics.pulse(KenosPulse.themePick);
     if (cst.isClosed) {
-      final lines =
-          await ref.read(constellationRepositoryProvider).read(cst.id);
+      final lines = await ref
+          .read(constellationRepositoryProvider)
+          .read(cst.id);
       if (!mounted) return;
       if (lines == null || lines.isEmpty) {
         // Open race (closed elsewhere is impossible here) or gone
@@ -303,10 +373,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       );
       // No reload: the artifact stays, refermé.
     } else {
-      unawaited(showContributeSheet(context, ref: ref, constellation: cst)
-          .then((_) {
-        if (mounted) _loadConstellations();
-      }));
+      unawaited(
+        showContributeSheet(context, ref: ref, constellation: cst).then((_) {
+          if (mounted) _loadConstellations();
+        }),
+      );
     }
   }
 
@@ -326,8 +397,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final signals =
         ref.watch(receptionControllerProvider).valueOrNull?.length ?? 0;
     // The reader's trail: faint hollow points where lights dissolved.
-    final scars = ref.watch(readScarControllerProvider).valueOrNull ??
-        const <ReadScar>[];
+    final scars =
+        ref.watch(readScarControllerProvider).valueOrNull ?? const <ReadScar>[];
 
     // L'Aube: once the first sync settles, the sas may speak.
     ref.listen(receptionControllerProvider, (previous, next) {
@@ -351,9 +422,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       backgroundColor: AppColors.voidBlack,
       // First gesture anywhere = audio unlock (iOS autoplay policy).
       body: Listener(
-        onPointerDown: (_) => unawaited(
-          ref.read(audioControllerProvider).ensureStarted(),
-        ),
+        onPointerDown: (_) =>
+            unawaited(ref.read(audioControllerProvider).ensureStarted()),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -363,185 +433,230 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             LayoutBuilder(
               builder: (context, constraints) {
                 _viewport = Size(constraints.maxWidth, constraints.maxHeight);
-                return GestureDetector(
-                  // The sky follows the finger; holding a star keeps
-                  // its own friction (a >28px drift cancels the hold
-                  // and hands the gesture to the void). Tapping a
-                  // planet glides the eye toward its gravity.
-                  onScaleStart: _onScaleStart,
-                  onScaleUpdate: _onScaleUpdate,
-                  onScaleEnd: _onScaleEnd,
-                  behavior: HitTestBehavior.translucent,
-                  // The eye moves → only what looks through it
-                  // rebuilds: heavens, vestiges, corpses, stars. The
-                  // HUD, the gates and the scenery keep their frames.
-                  child: ListenableBuilder(
-                    listenable: _camera,
-                    // epoch lives HERE, inside the camera builder: a
-                    // stale captured epoch made shouldRepaint see two
-                    // identical clocks — the heavens froze mid-gesture
-                    // and jumped at the next screen rebuild.
-                    builder: (context, _) {
-                      final epoch = DateTime.now();
-                      return Stack(
-                      fit: StackFit.expand,
-                      children: [
-                      // The heavens: black hole + planets, behind stars.
-                      RepaintBoundary(
-                        child: CustomPaint(
-                          painter: SystemPainter(
-                            camera: _camera,
-                            viewport: _viewport,
-                            now: epoch,
-                            reducedMotion: context.wantsReducedMotion,
-                            echoes: echoes.valueOrNull ?? const <Echo>[],
-                          ),
-                        ),
-                      ),
-                      // The reader's trail: hollow points where lights
-                      // dissolved — local, contentless, fading.
-                      if (scars.isNotEmpty)
-                        RepaintBoundary(
-                          child: CustomPaint(
-                            painter: ScarFieldPainter(
-                              center: _camera.center,
-                              zoom: _camera.zoom,
-                              scars: scars,
-                            ),
-                          ),
-                        ),
-                      // The Vestiges: carved shards of culture, static
-                      // in the void, tappable for a re-readable reveal.
-                      if (_vestiges.isNotEmpty)
-                        LayoutBuilder(
-                          builder: (context, c) => Stack(
-                            children: [
-                              for (final v in _vestiges)
-                                Builder(
-                                  builder: (context) {
-                                    final sp = _camera.worldToScreen(
-                                      Offset(v.offsetX, v.offsetY),
-                                      Size(c.maxWidth, c.maxHeight),
-                                    );
-                                    if (sp.dx < -30 ||
-                                        sp.dx > c.maxWidth + 30 ||
-                                        sp.dy < -30 ||
-                                        sp.dy > c.maxHeight + 30) {
-                                      return const SizedBox.shrink();
-                                    }
-                                    return Positioned(
-                                      left: sp.dx - 16,
-                                      top: sp.dy - 16,
-                                      width: 32,
-                                      height: 32,
-                                      child: GestureDetector(
-                                        behavior: HitTestBehavior.opaque,
-                                        onTap: () async {
-                                          await showVestigeSheet(
-                                            context,
-                                            vestige: v,
-                                          );
-                                          if (mounted) {
-                                            setState(() {});
-                                          }
-                                        },
-                                        child: CustomPaint(
-                                          painter: VestigePainter(
-                                            rotation:
-                                                VestigeMath.rotationAt(
-                                              v.id,
-                                              context.wantsReducedMotion
-                                                  ? epoch
-                                                  : DateTime.now(),
-                                            ),
-                                            color: AppColors.pureLight,
-                                            pulse: 0,
-                                            read: v.isRead,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
+                return MouseRegion(
+                  // Desktop: named bodies whisper their name on hover.
+                  cursor: _hoverName != null
+                      ? SystemMouseCursors.click
+                      : MouseCursor.defer,
+                  onHover: _onFieldHover,
+                  onExit: (_) {
+                    if (_hoverName != null) {
+                      setState(() {
+                        _hoverName = null;
+                        _hoverPos = null;
+                      });
+                    }
+                  },
+                  child: GestureDetector(
+                    // The sky follows the finger; holding a star keeps
+                    // its own friction (a >28px drift cancels the hold
+                    // and hands the gesture to the void). Tapping a
+                    // planet glides the eye toward its gravity.
+                    onScaleStart: _onScaleStart,
+                    onScaleUpdate: _onScaleUpdate,
+                    onScaleEnd: _onScaleEnd,
+                    behavior: HitTestBehavior.translucent,
+                    // The eye moves → only what looks through it
+                    // rebuilds: heavens, vestiges, corpses, stars. The
+                    // HUD, the gates and the scenery keep their frames.
+                    child: ListenableBuilder(
+                      listenable: _camera,
+                      // epoch lives HERE, inside the camera builder: a
+                      // stale captured epoch made shouldRepaint see two
+                      // identical clocks — the heavens froze mid-gesture
+                      // and jumped at the next screen rebuild.
+                      builder: (context, _) {
+                        final epoch = DateTime.now();
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            // The heavens: black hole + planets, behind stars.
+                            RepaintBoundary(
+                              child: CustomPaint(
+                                painter: SystemPainter(
+                                  camera: _camera,
+                                  viewport: _viewport,
+                                  now: epoch,
+                                  reducedMotion: context.wantsReducedMotion,
+                                  echoes: echoes.valueOrNull ?? const <Echo>[],
                                 ),
-                            ],
-                          ),
-                        ),
-                      // The Constellations: exquisite corpses. OPEN =
-                      //    contribute a blind line; CLOSED = read it
-                      //    whole, once. Never both for the same person.
-                      if (_constellations.isNotEmpty)
-                        LayoutBuilder(
-                          builder: (context, c) => Stack(
-                            children: [
-                              for (final cst in _constellations)
-                                Builder(
-                                  builder: (context) {
-                                    final sp = _camera.worldToScreen(
-                                      Offset(cst.seedX, cst.seedY),
-                                      Size(c.maxWidth, c.maxHeight),
-                                    );
-                                    if (sp.dx < -46 ||
-                                        sp.dx > c.maxWidth + 46 ||
-                                        sp.dy < -46 ||
-                                        sp.dy > c.maxHeight + 46) {
-                                      return const SizedBox.shrink();
-                                    }
-                                    return Positioned(
-                                      left: sp.dx - 23,
-                                      top: sp.dy - 23,
-                                      width: 46,
-                                      height: 46,
-                                      child: GestureDetector(
-                                        behavior: HitTestBehavior.opaque,
-                                        onTap: () => _onConstellationTap(cst),
-                                        child: CustomPaint(
-                                          painter: _ConstellationPainter(
-                                            closed: cst.isClosed,
-                                            lineCount: cst.lineCount,
-                                            target: cst.target,
-                                            // Songs read cyan (the waves'
-                                            // instrument), poems white;
-                                            // closed = indigo artifact.
-                                            color: cst.isClosed
-                                                ? AppColors.indigo
-                                                : cst.kind ==
-                                                        ConstellationKind.melody
-                                                    ? AppColors.cyan
-                                                    : AppColors.pureLight,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                            ],
-                          ),
-                        ),
-                      echoes.when(
-                        data: (list) => list.isEmpty
-                            ? const _CalmEther()
-                            : _ParallaxStarLayer(
-                                echoes: list,
-                                camera: _camera,
                               ),
-                        loading: () => const _Centered(
-                          'CALIBRATION DE L\'ÉTHER…',
-                          color: AppColors.teal,
-                        ),
-                        error: (e, _) => _UnreachableEther(
-                          onRetry: () {
-                            ref.invalidate(sessionReadyProvider);
-                            ref.invalidate(mapControllerProvider);
-                          },
-                        ),
-                      ),
-                    ],
-                      );
-                    },
+                            ),
+                            // The reader's trail: hollow points where lights
+                            // dissolved — local, contentless, fading.
+                            if (scars.isNotEmpty)
+                              RepaintBoundary(
+                                child: CustomPaint(
+                                  painter: ScarFieldPainter(
+                                    center: _camera.center,
+                                    zoom: _camera.zoom,
+                                    scars: scars,
+                                  ),
+                                ),
+                              ),
+                            // The Vestiges: carved shards of culture, static
+                            // in the void, tappable for a re-readable reveal.
+                            if (_vestiges.isNotEmpty)
+                              LayoutBuilder(
+                                builder: (context, c) => Stack(
+                                  children: [
+                                    for (final v in _vestiges)
+                                      Builder(
+                                        builder: (context) {
+                                          final sp = _camera.worldToScreen(
+                                            Offset(v.offsetX, v.offsetY),
+                                            Size(c.maxWidth, c.maxHeight),
+                                          );
+                                          if (sp.dx < -30 ||
+                                              sp.dx > c.maxWidth + 30 ||
+                                              sp.dy < -30 ||
+                                              sp.dy > c.maxHeight + 30) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          return Positioned(
+                                            left: sp.dx - 16,
+                                            top: sp.dy - 16,
+                                            width: 32,
+                                            height: 32,
+                                            child: GestureDetector(
+                                              behavior: HitTestBehavior.opaque,
+                                              onTap: () async {
+                                                await showVestigeSheet(
+                                                  context,
+                                                  vestige: v,
+                                                );
+                                                if (mounted) {
+                                                  setState(() {});
+                                                }
+                                              },
+                                              child: CustomPaint(
+                                                painter: VestigePainter(
+                                                  rotation:
+                                                      VestigeMath.rotationAt(
+                                                        v.id,
+                                                        context.wantsReducedMotion
+                                                            ? epoch
+                                                            : DateTime.now(),
+                                                      ),
+                                                  color: AppColors.pureLight,
+                                                  pulse: 0,
+                                                  read: v.isRead,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            // The Constellations: exquisite corpses. OPEN =
+                            //    contribute a blind line; CLOSED = read it
+                            //    whole, once. Never both for the same person.
+                            if (_constellations.isNotEmpty)
+                              LayoutBuilder(
+                                builder: (context, c) => Stack(
+                                  children: [
+                                    for (final cst in _constellations)
+                                      Builder(
+                                        builder: (context) {
+                                          final sp = _camera.worldToScreen(
+                                            Offset(cst.seedX, cst.seedY),
+                                            Size(c.maxWidth, c.maxHeight),
+                                          );
+                                          if (sp.dx < -46 ||
+                                              sp.dx > c.maxWidth + 46 ||
+                                              sp.dy < -46 ||
+                                              sp.dy > c.maxHeight + 46) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          return Positioned(
+                                            left: sp.dx - 23,
+                                            top: sp.dy - 23,
+                                            width: 46,
+                                            height: 46,
+                                            child: GestureDetector(
+                                              behavior: HitTestBehavior.opaque,
+                                              onTap: () =>
+                                                  _onConstellationTap(cst),
+                                              child: CustomPaint(
+                                                painter: _ConstellationPainter(
+                                                  closed: cst.isClosed,
+                                                  lineCount: cst.lineCount,
+                                                  target: cst.target,
+                                                  // Songs read cyan (the waves'
+                                                  // instrument), poems white;
+                                                  // closed = indigo artifact.
+                                                  color: cst.isClosed
+                                                      ? AppColors.indigo
+                                                      : cst.kind ==
+                                                            ConstellationKind
+                                                                .melody
+                                                      ? AppColors.cyan
+                                                      : AppColors.pureLight,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            echoes.when(
+                              data: (list) => list.isEmpty
+                                  ? const _CalmEther()
+                                  : _ParallaxStarLayer(
+                                      echoes: list,
+                                      camera: _camera,
+                                    ),
+                              loading: () => const _Centered(
+                                'CALIBRATION DE L\'ÉTHER…',
+                                color: AppColors.teal,
+                              ),
+                              error: (e, _) => _UnreachableEther(
+                                onRetry: () {
+                                  ref.invalidate(sessionReadyProvider);
+                                  ref.invalidate(mapControllerProvider);
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 );
-            },
-          ),
+              },
+            ),
+            // V3.12 — the hovered body's name, floating beside it.
+            if (_hoverName != null && _hoverPos != null)
+              Positioned(
+                left: (_hoverPos!.dx - 60).clamp(8.0, _viewport.width - 128),
+                top: (_hoverPos!.dy - 44).clamp(8.0, _viewport.height - 40),
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.fade(AppColors.voidBlack, 0.8),
+                      border: Border.all(color: AppColors.hairlineStrong),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      _hoverName!,
+                      style: TextStyle(
+                        fontFamily: AppFonts.mono,
+                        fontSize: 9,
+                        letterSpacing: 3,
+                        color: AppColors.fade(AppColors.pureLight, 0.75),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             // Top HUD — one thin line of machine whisper, one row of
             // quiet controls. The void dominates; the numbers breathe.
             SafeArea(
@@ -553,10 +668,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   children: [
                     // ONE line: the state that matters now.
                     Text(
-                      _hudHeadline(
-                        readable: readable,
-                        signals: signals,
-                      ),
+                      _hudHeadline(readable: readable, signals: signals),
                       style: TextStyle(
                         fontFamily: AppFonts.mono,
                         fontSize: 9,
@@ -617,7 +729,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               child: Padding(
                 padding: EdgeInsets.only(
                   left: AppLayout.originLeft,
-                  bottom: MediaQuery.sizeOf(context).width <
+                  bottom:
+                      MediaQuery.sizeOf(context).width <
                           AppLayout.mirrorGateMaxWidth
                       ? AppLayout.originBottomNarrow
                       : AppLayout.originBottomWide,
@@ -783,8 +896,7 @@ class _ParallaxStarLayer extends ConsumerStatefulWidget {
   final TravelCamera camera;
 
   @override
-  ConsumerState<_ParallaxStarLayer> createState() =>
-      _ParallaxStarLayerState();
+  ConsumerState<_ParallaxStarLayer> createState() => _ParallaxStarLayerState();
 }
 
 class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
@@ -875,7 +987,9 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
       notifier.dispose();
     }
     _retired.clear();
-    final stale = _shifts.keys.where((id) => !_visibleIds.contains(id)).toList();
+    final stale = _shifts.keys
+        .where((id) => !_visibleIds.contains(id))
+        .toList();
     for (final id in stale) {
       _retired.add(_shifts.remove(id)!);
       _baseScreen.remove(id);
@@ -969,8 +1083,10 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
           final diameter = ParallaxMath.starDiameter(z);
           final hit = diameter + 26; // comfortable touch target
           // Fresh base for this frame: the drift accumulates from HERE.
-          final shift =
-              _shifts.putIfAbsent(echo.id, () => ValueNotifier(Offset.zero));
+          final shift = _shifts.putIfAbsent(
+            echo.id,
+            () => ValueNotifier(Offset.zero),
+          );
           shift.value = Offset.zero;
           _baseScreen[echo.id] = sp;
           _byId[echo.id] = echo;
@@ -1129,7 +1245,8 @@ class _CalmEther extends StatefulWidget {
   State<_CalmEther> createState() => _CalmEtherState();
 }
 
-class _CalmEtherState extends State<_CalmEther> with SingleTickerProviderStateMixin {
+class _CalmEtherState extends State<_CalmEther>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 4),
@@ -1303,7 +1420,10 @@ class _AnimatedEchoButtonState extends State<_AnimatedEchoButton>
               child: Container(
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: AppColors.fade(AppColors.pureLight, 0.5 + (glow * 0.3)),
+                    color: AppColors.fade(
+                      AppColors.pureLight,
+                      0.5 + (glow * 0.3),
+                    ),
                     width: 1,
                   ),
                   boxShadow: [
@@ -1315,14 +1435,20 @@ class _AnimatedEchoButtonState extends State<_AnimatedEchoButton>
                   ],
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   child: Text(
                     'FORMULER UN ÉCHO',
                     style: TextStyle(
                       fontFamily: AppFonts.mono,
                       fontSize: 9,
                       letterSpacing: 2,
-                      color: AppColors.fade(AppColors.pureLight, 0.7 + (glow * 0.3)),
+                      color: AppColors.fade(
+                        AppColors.pureLight,
+                        0.7 + (glow * 0.3),
+                      ),
                     ),
                   ),
                 ),
@@ -1356,7 +1482,6 @@ class _SoundToggleState extends ConsumerState<_SoundToggle> {
   }
 }
 
-
 /// V3.11b — the emergent figure: each contributed line is a star at the
 /// next golden-angle station around the seed — the constellation draws
 /// itself as strangers write. Drawn stars are bright and linked by
@@ -1384,10 +1509,7 @@ class _ConstellationPainter extends CustomPainter {
     // One arithmetic, one truth: the figure domain places the stations.
     Offset station(int k) {
       final unit = ConstellationFigure.starAt(k, target: t);
-      return Offset(
-        center.dx + radius * unit.dx,
-        center.dy + radius * unit.dy,
-      );
+      return Offset(center.dx + radius * unit.dx, center.dy + radius * unit.dy);
     }
 
     // The seed: where the first stranger planted the corpse.
@@ -1429,7 +1551,6 @@ class _ConstellationPainter extends CustomPainter {
       }
     }
   }
-
 
   @override
   bool shouldRepaint(_ConstellationPainter old) =>
