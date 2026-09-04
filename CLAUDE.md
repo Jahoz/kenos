@@ -62,7 +62,7 @@ make db-verify-load           # Preuve e2e : consommer un écho seedé, l'ouvrir
 make db-wipe-load              # Reset clean du seed (data réelle + KEK intacts)
 make db-garden                 # Jardiner : plante des anneaux ouverts (jamais de lignes)
 make db-curate                 # Curater : artefacts poésie domaine public + vestiges, crédités
-make db-sow-vestiges SOW_ARGS="--count 20"  # IA : semer des éclats vérifiés (2 passes ; staging puis --emit)
+make db-sow-vestiges SOW_ARGS="--count 20"  # IA : semer des éclats vérifiés (2 passes) — clé gratuite Google AI Studio (https://aistudio.google.com/apikey)
 make e2e                   # Boucle réelle sur PostgREST local
 make deploy-site           # Landing → kenos-site.vercel.app (Vercel séparé, SANS lien git ; épingle l'alias — jamais de déploiement par push)
 python3 tool/gen_audio.py  # Régénère les assets audio (std-lib only)

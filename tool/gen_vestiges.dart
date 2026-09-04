@@ -13,14 +13,20 @@
 // The human stays the gate: default writes a STAGING markdown for
 // review; --emit writes the SQL upsert file once you approve.
 //
-// Usage:
-//   VESTIGE_AI_URL=... VESTIGE_AI_KEY=... VESTIGE_AI_MODEL=... \
-//     dart run tool/gen_vestiges.dart --count 12 [--theme astronomie] \
-//       [--emit] [--seed-file supabase/snippets/curate_vestiges.sql]
+// Usage (FREE — Google AI Studio, no credit card, ~1500 req/day):
+//   1. Get a key: https://aistudio.google.com/apikey
+//   2. Export:
+//        export VESTIGE_AI_URL=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+//        export VESTIGE_AI_KEY=AIza...
+//        export VESTIGE_AI_MODEL=gemini-2.5-flash
+//   3. make db-sow-vestiges SOW_ARGS='--count 20'
 //
-// Any OpenAI-compatible endpoint works (OpenAI, GLM, Mistral,
-// Together, a local gateway). The URL host is validated: http/https
-// only, never loopback/private/reserved addresses.
+// Alternatives (also free, OpenAI-compatible):
+//   Groq   — https://api.groq.com/openai/v1/chat/completions (model: llama-3.3-70b-versatile)
+//   Mistral— https://api.mistral.ai/v1/chat/completions (~200 req/day, model: mistral-small-latest)
+//
+// The URL host is validated: http/https only, never
+// loopback/private/reserved addresses.
 
 import 'dart:convert';
 import 'dart:io';
@@ -45,6 +51,21 @@ const themes = [
   'neurosciences et mémoire (court, vérifiable)',
   'musique : gammes anciennes, pentatonique, résonances',
 ];
+
+/// Some free providers ignore response_format and wrap JSON in
+/// markdown fences or prose — salvage the outermost object anyway.
+Map<String, dynamic> salvageJson(String raw) {
+  var text = raw.trim();
+  final fenced = RegExp(r'\`\`\`(?:json)?\s*([\s\S]*?)\`\`\`');
+  final m = fenced.firstMatch(text);
+  if (m != null) text = m.group(1)!.trim();
+  final start = text.indexOf('{');
+  final end = text.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    text = text.substring(start, end + 1);
+  }
+  return jsonDecode(text) as Map<String, dynamic>;
+}
 
 // ── HTTP (stdlib, host-validated) ──────────────────────────────────────
 
@@ -100,7 +121,7 @@ Future<Map<String, dynamic>> chat(
     final message = (choices.first as Map<String, dynamic>)['message']
         as Map<String, dynamic>;
     final content = message['content'] as String;
-    return jsonDecode(content) as Map<String, dynamic>;
+    return salvageJson(content);
   } finally {
     client.close();
   }
