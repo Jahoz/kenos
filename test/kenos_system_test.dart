@@ -23,8 +23,12 @@ void main() {
         final dist = (p - KenosSystem.blackHole).distance;
         // V3.12: each anchor rides its OWN lane — Polaris (i=2) holds
         // still at its fixed distance; the two others at their own.
+        // V3.21: the beacon holds the north corner, clear of every
+        // orbiting lane (no more conjunctions through her sky).
         if (i == 2) {
-          expect(dist, closeTo(0.32, 1e-9), reason: 'Polaris ne bouge pas');
+          expect(dist, closeTo(0.523259, 1e-5), reason: 'Polaris ne bouge pas');
+          expect(dist - KenosSystem.orbitRadiusOf(1),
+              greaterThan(0.15), reason: 'hors de la voie de Vénus');
         } else {
           expect(dist, closeTo(KenosSystem.orbitRadiusOf(i), 1e-9),
               reason: 'chaque monde a sa propre piste');

@@ -7,14 +7,15 @@ import 'package:kenos/features/cosmic_map/presentation/widgets/celestial_plaque.
 /// stays deterministic, and the plaque says what the sky corresponds to.
 void main() {
   group('la math des cieux nommés', () {
-    test('Polaris ne bouge pas — le point fixe', () {
+    test('Polaris ne bouge pas — le point fixe, hors de la bande', () {
       final a = DateTime.fromMillisecondsSinceEpoch(0);
       final b = DateTime.fromMillisecondsSinceEpoch(987654321000);
-      final pa = Offset(0.5, 0.5) +
-          const Offset(0, -0.32); // via KenosSystem.planetPosition(2, ·)
-      expect(pa, CelestialMath.polaris);
-      expect(CelestialMath.polaris.dx, 0.5);
-      expect(CelestialMath.polaris.dy, 0.18);
+      expect(CelestialMath.polaris, const Offset(0.13, 0.13));
+      // V3.21: the beacon clears every lane — no more conjunctions
+      // with the orbiting anchors (Moon 0.26, Venus 0.37).
+      final r = (CelestialMath.polaris - const Offset(0.5, 0.5)).distance;
+      expect(r, greaterThan(0.5), reason: 'hors de la bande orbitale');
+      expect(r - 0.37, greaterThan(0.15), reason: 'au-delà de la voie de Vénus');
       // Same instant twice — trivially equal, but the contract is fixed.
       expect(a.millisecondsSinceEpoch >= 0 && b.millisecondsSinceEpoch > 0, isTrue);
     });

@@ -96,8 +96,15 @@ const List<CelestialBody> celestialWanderers = [
 class CelestialMath {
   CelestialMath._();
 
-  /// Polaris does not orbit: the fixed point, top of the void.
-  static const Offset polaris = Offset(0.5, 0.5 - 0.32);
+  /// Polaris does not orbit: the fixed point, beacon of the north
+  /// corner. V3.21 — she used to hold r=0.32 straight up, INSIDE the
+  /// orbiting band: the Moon (r=0.26) swept past her every 30 min
+  /// and Venus (r=0.37) every 55, each carrying its swarm of echoes
+  /// — constant conjunctions, colliding skies. The corner (r≈0.523)
+  /// clears every lane: 0.26 from the Moon's path, 0.16 from
+  /// Venus's — the beacon watches the system instead of standing in
+  /// its traffic.
+  static const Offset polaris = Offset(0.13, 0.13);
 
   /// A wanderer's world position: far slow arcs beyond every orbit,
   /// found only by travelling. Each drifts at its own imperceptible
