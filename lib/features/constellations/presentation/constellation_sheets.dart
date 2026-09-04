@@ -5,7 +5,9 @@ import '../../../../core/audio/audio_providers.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_fonts.dart';
 import '../../../../core/haptics/kenos_haptics.dart';
+import '../../../../core/widgets/anonymity_warning.dart';
 import '../../echo/data/echo_providers.dart';
+import '../../echo/domain/pii_guard.dart';
 import '../../frequencies/application/spatial_wave_audio.dart';
 import '../../frequencies/domain/kenos_wave.dart';
 import '../data/constellation_repository.dart';
@@ -72,6 +74,7 @@ class _ContributePanel extends ConsumerStatefulWidget {
 class _ContributePanelState extends ConsumerState<_ContributePanel> {
   final _input = TextEditingController();
   bool _sending = false;
+  bool _piiAcknowledged = false;
   AssembledLine? _previous;
   bool _peeked = false;
 
@@ -146,6 +149,24 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
         : _input.text.trim().isEmpty ? null : _input.text.trim();
     if (payload == null) return;
     if (!_isSong && payload.length > _maxLength) return;
+
+    // The PII guard (poem only — a song is notes, anonymous by
+    // construction): the line seals on this device, and the sealed
+    // line is structurally invisible to the ether. This quiet look is
+    // the only warning there will ever be. Warn, never block.
+    if (!_isSong && !_piiAcknowledged && PiiGuard.carriesIdentity(payload)) {
+      final proceed = await warnAnonymityLoss(
+        context,
+        body:
+            'Cette ligne semble porter des données personnelles.\n\n'
+            'Elle dérivera scellée avec le poème — lisible, un jour, par '
+            'ses auteurs. L\'anonymat, lui, ne revient pas.',
+        takeBackLabel: 'REPRENDRE MA LIGNE',
+      );
+      if (!mounted || !proceed) return;
+      _piiAcknowledged = true;
+    }
+
     setState(() => _sending = true);
     try {
       final result = await ref

@@ -15,6 +15,7 @@ import '../../../../core/constants/app_durations.dart';
 import '../../../../core/constants/app_fonts.dart';
 import '../../../../core/haptics/kenos_haptics.dart';
 import '../../../../core/utils/motion_preferences.dart';
+import '../../../../core/widgets/anonymity_warning.dart';
 import '../../../../core/widgets/ether_dissolve.dart';
 import '../../../../core/widgets/hud.dart';
 import '../../../../core/widgets/scramble_text.dart';
@@ -331,62 +332,14 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
   /// ANONYMITY WARNING — non-blocking: the contract is anonymity, and
   /// choosing belongs to the one who writes. The shield only makes
   /// the choice visible at the moment it can still be unmade.
-  Future<bool> _warnAnonymity() async {
-    final proceed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => Dialog(
-        backgroundColor: AppColors.voidBlack,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(color: AppColors.fade(AppColors.pureLight, 0.18)),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'TON ANONYMAT EST LE CONTRAT',
-                  style: TextStyle(
-                    fontFamily: AppFonts.mono,
-                    fontSize: 10,
-                    letterSpacing: 3,
-                    color: AppColors.fade(AppColors.teal, 0.85),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Ce que tu t\'apprêtes à laisser semble porter des données '
-                  'personnelles.\n\nElles dériveront avec ta trace, lisibles '
-                  'par un inconnu — et l\'anonymat, lui, ne revient pas.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: AppFonts.serifItalic,
-                    fontSize: 14,
-                    height: 1.75,
-                    color: AppColors.fade(AppColors.pureLight, 0.75),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: const Text('LAISSER QUAND MÊME'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('REPRENDRE MA LIGNE'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-    return proceed ?? false;
-  }
+  Future<bool> _warnAnonymity() => warnAnonymityLoss(
+        context,
+        body:
+            'Ce que tu t\'apprêtes à laisser semble porter des données '
+            'personnelles.\n\nElles dériveront avec ta trace, lisibles '
+            'par un inconnu — et l\'anonymat, lui, ne revient pas.',
+        takeBackLabel: 'REPRENDRE MA LIGNE',
+      );
 
   /// CARE MOMENT — non-blocking: the cry belongs to the one who wrote
   /// it. The shield never censors; it makes sure the writer knows

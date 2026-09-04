@@ -13,6 +13,7 @@ import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/constants/app_layout.dart';
 import '../../../core/haptics/kenos_haptics.dart';
+import '../../../core/widgets/anonymity_warning.dart';
 import '../../../core/widgets/hud.dart';
 import '../../../core/widgets/scramble_text.dart';
 import '../../cosmic_map/application/map_controller.dart';
@@ -20,6 +21,7 @@ import '../../echo/data/echo_repository.dart';
 import '../../echo/domain/echo_color_theme.dart';
 import '../../echo/domain/echo_excerpt.dart';
 import '../../echo/domain/echo_media.dart';
+import '../../echo/domain/pii_guard.dart';
 import 'widgets/media_draft_preview.dart';
 
 /// The Mirror: shaping the void, visual sealing, launch into the ether.
@@ -38,6 +40,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
 
   EchoColorTheme _theme = EchoColorTheme.teal;
   bool _sealing = false;
+  bool _piiAcknowledged = false;
   final ImagePicker _picker = ImagePicker();
   final AudioRecorder _recorder = AudioRecorder();
   EchoMediaDraft? _media;
@@ -275,6 +278,24 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
 
   Future<void> _sealAndLaunch() async {
     if (!_canSend) return;
+
+    // The PII guard: the author's last quiet look, BEFORE the sealing
+    // ceremony. Once sealed, the ether is structurally blind to the
+    // thought — this device-side look (phone/email, zero network) is
+    // the only warning there will ever be. Warn, never block.
+    if (!_piiAcknowledged && PiiGuard.carriesIdentity(_input.text)) {
+      final proceed = await warnAnonymityLoss(
+        context,
+        body:
+            'Ce que tu t\'apprêtes à sceller semble porter des données '
+            'personnelles.\n\nUn seul inconnu les lira — mais il suffit : '
+            'l\'anonymat, lui, ne revient pas.',
+        takeBackLabel: 'REPRENDRE MA PENSÉE',
+      );
+      if (!mounted || !proceed) return;
+      _piiAcknowledged = true;
+    }
+
     setState(() => _sealing = true);
     _focus.unfocus();
 
