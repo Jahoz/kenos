@@ -12,8 +12,15 @@ import '../../../core/constants/app_layout.dart';
 import '../../echo/data/echo_providers.dart';
 
 /// The threshold: three rules, one gate. Passed once, never seen again.
+/// An invited guest crosses it on their way somewhere (LE SALON's
+/// claim) — `returnTo` says where the door opens after the rules, and
+/// `onEntered` lets an embedding screen react without waiting for a
+/// navigation that may be a same-location no-op.
 class OnboardingScreen extends ConsumerWidget {
-  const OnboardingScreen({super.key});
+  const OnboardingScreen({super.key, this.returnTo = '/space', this.onEntered});
+
+  final String returnTo;
+  final VoidCallback? onEntered;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -96,7 +103,8 @@ class OnboardingScreen extends ConsumerWidget {
                       unawaited(
                         ref.read(localEchoStoreProvider).setOnboarded(),
                       );
-                      context.go('/space');
+                      onEntered?.call();
+                      context.go(returnTo);
                     },
                     child: const Text('ENTRER'),
                   ),

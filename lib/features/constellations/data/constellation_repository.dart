@@ -53,6 +53,27 @@ class ConstellationMeta {
 /// A corpse is a poem or a song — chosen at the drop, never mixed.
 enum ConstellationKind { poem, melody }
 
+/// LE SALON (V3.19): what a drop returns when the ring is born behind
+/// a door. The invite token crosses the wire exactly once, here — it
+/// exists in the share link and on the seeder's device, nowhere else.
+class SeededConstellation {
+  const SeededConstellation({required this.meta, this.inviteToken});
+
+  final ConstellationMeta meta;
+  final String? inviteToken;
+
+  bool get isSalon => inviteToken != null;
+}
+
+/// The salon door refused the key — demo parity for the SQL guard
+/// (KENOS_INVITE_UNKNOWN: missing and wrong look alike).
+class SalonKeyRefused implements Exception {
+  const SalonKeyRefused();
+
+  @override
+  String toString() => 'KENOS_INVITE_UNKNOWN';
+}
+
 /// One assembled line of a read constellation.
 class AssembledLine {
   const AssembledLine({required this.number, required this.text});
@@ -88,6 +109,9 @@ String contributeRefusalMessage(Object error) {
   if (raw.contains('KENOS_INVALID_LENGTH')) {
     return 'LA PHRASE EST TROP LONGUE POUR LE CIEL.';
   }
+  if (raw.contains('KENOS_INVITE_UNKNOWN')) {
+    return 'LE SALON N\'A PAS RECONNU TA CLÉ.';
+  }
   return 'L\'ÉTHER A REFUSÉ LA LIGNE.';
 }
 
@@ -103,25 +127,38 @@ abstract class ConstellationRepository {
   Future<bool?> hasContributed(String constellationId);
 
   /// Seeds a new open constellation at the given position — a poem
-  /// or a song, chosen at the drop, never mixed.
-  Future<ConstellationMeta> seed(
+  /// or a song, chosen at the drop, never mixed. Invited = LE SALON:
+  /// the ring is born behind a door and the returned bundle carries
+  /// the link's key (once, to the seeder only).
+  Future<SeededConstellation> seed(
     double x,
     double y, {
     ConstellationKind kind = ConstellationKind.poem,
+    bool invited = false,
   });
 
   /// Contributes ONE sealed line, continuing from the preceding one
   /// (returned sealed — opened on this device). Never the fragments
-  /// of the whole (the soul of the blind poem).
+  /// of the whole (the soul of the blind poem). A salon ring demands
+  /// its door key — the claim IS the contribution.
   Future<ContributeResult> contribute({
     required String constellationId,
     required String text,
+    String? inviteToken,
   });
 
   /// The tail of an OPEN poem — exactly ONE line (the last), to
   /// continue it. Null when the poem has not started. The whole
-  /// stays blind.
-  Future<AssembledLine?> peekPrevious(String constellationId);
+  /// stays blind. A salon ring demands its key here too.
+  Future<AssembledLine?> peekPrevious(
+    String constellationId, {
+    String? inviteToken,
+  });
+
+  /// LE SALON: the link's key resolves the ring's metadata — enough
+  /// for the claim screen to speak, blind as the map. Throws when
+  /// the key opens nothing (wrong or expired — alike, by design).
+  Future<ConstellationMeta> fetchInvited(String token);
 
   /// The map's constellations (metadata only).
   Future<List<ConstellationMeta>> fetchVisible();
@@ -139,29 +176,43 @@ class SupabaseConstellationRepository implements ConstellationRepository {
   final SupabaseClient _client;
 
   @override
-  Future<ConstellationMeta> seed(
+  Future<SeededConstellation> seed(
     double x,
     double y, {
     ConstellationKind kind = ConstellationKind.poem,
+    bool invited = false,
   }) async {
     final rows = await _client.rpc('seed_constellation', params: {
       'p_seed_x': x,
       'p_seed_y': y,
       'p_kind': kind == ConstellationKind.melody ? 'MELODY' : 'POEM',
+      'p_invited': invited,
     });
-    final id = ((rows as List).first as Map)['id'] as String;
-    // The server picks a random target 4-7; fetch the whole truth.
+    final row = ((rows as List).first as Map).cast<String, dynamic>();
+    final id = row['id'] as String;
+    final token = row['invite_token'] as String?;
+    // The server picks a random target 4-7; fetch the whole truth. An
+    // open salon never shows in the sky — its exact truth comes back
+    // through the door itself.
+    if (token != null) {
+      return SeededConstellation(
+        meta: await fetchInvited(token),
+        inviteToken: token,
+      );
+    }
     final all = await fetchVisible();
-    return all.firstWhere(
-      (c) => c.id == id,
-      orElse: () => ConstellationMeta(
-        id: id,
-        seedX: x,
-        seedY: y,
-        state: 'OPEN',
-        lineCount: 0,
-        target: 5,
-        kind: kind,
+    return SeededConstellation(
+      meta: all.firstWhere(
+        (c) => c.id == id,
+        orElse: () => ConstellationMeta(
+          id: id,
+          seedX: x,
+          seedY: y,
+          state: 'OPEN',
+          lineCount: 0,
+          target: 5,
+          kind: kind,
+        ),
       ),
     );
   }
@@ -170,6 +221,7 @@ class SupabaseConstellationRepository implements ConstellationRepository {
   Future<ContributeResult> contribute({
     required String constellationId,
     required String text,
+    String? inviteToken,
   }) async {
     // The line is sealed on-device like an echo — the corpse never
     // sees what it carries.
@@ -178,6 +230,7 @@ class SupabaseConstellationRepository implements ConstellationRepository {
       'p_constellation_id': constellationId,
       'p_ciphertext': sealed.payloadB64,
       'p_key': sealed.keyB64,
+      'p_invite_token': ?inviteToken,
     });
     final bundle = (result as Map).cast<String, dynamic>();
     final previousBundle = bundle['previous'] as Map?;
@@ -204,11 +257,17 @@ class SupabaseConstellationRepository implements ConstellationRepository {
   }
 
   @override
-  Future<AssembledLine?> peekPrevious(String constellationId) async {
+  Future<AssembledLine?> peekPrevious(
+    String constellationId, {
+    String? inviteToken,
+  }) async {
     try {
       final result = await _client.rpc(
         'peek_previous_line',
-        params: {'p_constellation_id': constellationId},
+        params: {
+          'p_constellation_id': constellationId,
+          'p_invite_token': ?inviteToken,
+        },
       );
       if (result == null) return null;
       final bundle = (result as Map).cast<String, dynamic>();
@@ -236,6 +295,17 @@ class SupabaseConstellationRepository implements ConstellationRepository {
         .map((row) =>
             ConstellationMeta.fromJson((row as Map).cast<String, dynamic>()))
         .toList();
+  }
+
+  @override
+  Future<ConstellationMeta> fetchInvited(String token) async {
+    final result = await _client.rpc(
+      'fetch_invited_constellation',
+      params: {'p_token': token},
+    );
+    return ConstellationMeta.fromJson(
+      (result as Map).cast<String, dynamic>(),
+    );
   }
 
   @override
@@ -296,14 +366,17 @@ class LocalConstellationRepository implements ConstellationRepository {
   final List<_DemoConstellation> _constellations = [];
 
   @override
-  Future<ConstellationMeta> seed(
+  Future<SeededConstellation> seed(
     double x,
     double y, {
     ConstellationKind kind = ConstellationKind.poem,
+    bool invited = false,
   }) async {
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    final token = invited ? 'salon-${stamp.toRadixString(36)}' : null;
     final c = _DemoConstellation(
       meta: ConstellationMeta(
-        id: 'const-${DateTime.now().microsecondsSinceEpoch}',
+        id: 'const-$stamp',
         seedX: x,
         seedY: y,
         state: 'OPEN',
@@ -311,17 +384,24 @@ class LocalConstellationRepository implements ConstellationRepository {
         target: 4 + (DateTime.now().second % 4),
         kind: kind,
       ),
+      inviteToken: token,
     );
     _constellations.add(c);
-    return c.currentMeta;
+    return SeededConstellation(meta: c.currentMeta, inviteToken: token);
   }
 
   @override
   Future<ContributeResult> contribute({
     required String constellationId,
     required String text,
+    String? inviteToken,
   }) async {
     final c = _constellations.firstWhere((c) => c.meta.id == constellationId);
+    // The salon door: no key, no line — and a wrong key behaves
+    // exactly like a missing one (parity with the SQL guard).
+    if (c.inviteToken != null && inviteToken != c.inviteToken) {
+      throw SalonKeyRefused();
+    }
     // The classic rule: the contributor continues the preceding line.
     final previous = c.lines.isEmpty
         ? null
@@ -334,18 +414,35 @@ class LocalConstellationRepository implements ConstellationRepository {
   }
 
   @override
-  Future<AssembledLine?> peekPrevious(String constellationId) async {
+  Future<AssembledLine?> peekPrevious(
+    String constellationId, {
+    String? inviteToken,
+  }) async {
     final c = _constellations.firstWhere(
       (c) => c.meta.id == constellationId,
       orElse: () => throw StateError('unknown constellation'),
     );
+    if (c.inviteToken != null && inviteToken != c.inviteToken) {
+      throw SalonKeyRefused();
+    }
     if (c.lines.isEmpty) return null;
     return AssembledLine(number: c.lines.length, text: c.lines.last);
   }
 
   @override
-  Future<List<ConstellationMeta>> fetchVisible() async =>
-      [for (final c in _constellations) c.currentMeta];
+  Future<List<ConstellationMeta>> fetchVisible() async => [
+        // Parity with the ether: an open salon does not exist on the
+        // map; closed, it joins the sky like any artifact.
+        for (final c in _constellations)
+          if (c.inviteToken == null || c.closed) c.currentMeta,
+      ];
+
+  @override
+  Future<ConstellationMeta> fetchInvited(String token) async {
+    final matches = _constellations.where((c) => c.inviteToken == token);
+    if (matches.isEmpty) throw SalonKeyRefused();
+    return matches.first.currentMeta;
+  }
 
   @override
   Future<bool?> hasContributed(String id) async => null;
@@ -364,9 +461,13 @@ class LocalConstellationRepository implements ConstellationRepository {
 }
 
 class _DemoConstellation {
-  _DemoConstellation({required this.meta});
+  _DemoConstellation({required this.meta, this.inviteToken});
 
   final ConstellationMeta meta;
+
+  /// Null = a public ring; set = a salon behind this key.
+  final String? inviteToken;
+
   final List<String> lines = [];
   bool closed = false;
 

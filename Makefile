@@ -46,7 +46,11 @@ deploy-web: ## Build for the real ether and deploy the PWA to Vercel (prod)
 	@# server then serves the real ether. Run `make dev-local` after a
 	@# deploy to restore the local-ether build on :4308.
 	@touch .env.cloud
-	flutter build web --release $$(grep -v '^#' .env.cloud | sed 's/^/--dart-define=/' | tr '\n' ' ')
+	@# SALON_LINK_ORIGIN: invite links point at THIS deployment (the
+	@# claim route /#/c/<key>). Local builds omit it — the web falls
+	@# back to the current origin (localhost:4308 in dev-local).
+	flutter build web --release $$(grep -v '^#' .env.cloud | sed 's/^/--dart-define=/' | tr '\n' ' ') \
+		--dart-define=SALON_LINK_ORIGIN=https://kenos-lemon.vercel.app
 	@# Deploy FROM build/web (the documented static path): the root link
 	@# state travels with the copied .vercel so nothing else uploads.
 	rm -rf build/web/.vercel && cp -R .vercel build/web/.vercel

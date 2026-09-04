@@ -124,6 +124,78 @@ AFTER=$(curl -s -X POST "$API/rest/v1/rpc/fetch_receptions" \
   -H "$(auth_header)" -H "$(bearer "$TOKEN_A")" -H 'Content-Type: application/json' -d '{}')
 check "$AFTER" '[]' "voir = brûler : le signal ne revient pas"
 
+# ── LE SALON (V3.19): the invitable constellation ────────────────────────
+# One link is the door; hidden while written, a public artifact once
+# closed. The key is checked inside the contribution itself.
+TOKEN_C=$(curl -s -X POST "$API/auth/v1/signup" -H "$(auth_header)" -H 'Content-Type: application/json' -d '{}' | json_field "['access_token']")
+TOKEN_D=$(curl -s -X POST "$API/auth/v1/signup" -H "$(auth_header)" -H 'Content-Type: application/json' -d '{}' | json_field "['access_token']")
+[ -n "$TOKEN_C" ] && [ -n "$TOKEN_D" ] && ok "deux invités de plus (C, D)" || ko "sign-in invités"
+
+SALON=$(curl -s -X POST "$API/rest/v1/rpc/seed_constellation" \
+  -H "$(auth_header)" -H "$(bearer "$TOKEN_A")" -H 'Content-Type: application/json' \
+  -d '{"p_seed_x":0.4,"p_seed_y":0.4,"p_kind":"POEM","p_invited":true}')
+SALON_ID=$(echo "$SALON" | json_field "[0]['id']")
+SALON_KEY=$(echo "$SALON" | json_field "[0]['invite_token']")
+[ ${#SALON_KEY} -eq 32 ] && ok "A sème un salon, la clé naît (32 hex)" || ko "salon seed: $SALON"
+
+# Cheat: no key, no line — and a forged key opens exactly as little.
+NOKEY=$(curl -s -X POST "$API/rest/v1/rpc/contribute_line" \
+  -H "$(auth_header)" -H "$(bearer "$TOKEN_B")" -H 'Content-Type: application/json' \
+  -d "{\"p_constellation_id\":\"$SALON_ID\",\"p_ciphertext\":\"intrusion\",\"p_key\":\"\"}")
+echo "$NOKEY" | grep -q KENOS_INVITE_UNKNOWN && ok "sans clé, la porte refuse" || ko "salon sans clé: $NOKEY"
+BADKEY=$(curl -s -X POST "$API/rest/v1/rpc/contribute_line" \
+  -H "$(auth_header)" -H "$(bearer "$TOKEN_B")" -H 'Content-Type: application/json' \
+  -d "{\"p_constellation_id\":\"$SALON_ID\",\"p_ciphertext\":\"intrusion\",\"p_key\":\"\",\"p_invite_token\":\"cafebabecafebabecafebabecafebabe\"}")
+echo "$BADKEY" | grep -q KENOS_INVITE_UNKNOWN && ok "une clé forgée n'ouvre rien" || ko "salon fausse clé: $BADKEY"
+
+# The claim door resolves the ring's metadata — never a fingerprint.
+INVITED=$(curl -s -X POST "$API/rest/v1/rpc/fetch_invited_constellation" \
+  -H "$(auth_header)" -H "$(bearer "$TOKEN_B")" -H 'Content-Type: application/json' \
+  -d "{\"p_token\":\"$SALON_KEY\"}")
+check "$(echo "$INVITED" | json_field "['state']")" 'OPEN' "le lien résout le salon (OPEN)"
+if [[ "$INVITED" == *"invite_token"* ]]; then ko "la résolution expose la clé !"; else ok "la résolution ne porte aucune clé"; fi
+
+# Hidden while written: the map pretends the salon does not exist.
+SKYOPEN=$(curl -s -X POST "$API/rest/v1/rpc/fetch_constellations" \
+  -H "$(auth_header)" -H "$(bearer "$TOKEN_C")" -H 'Content-Type: application/json' \
+  -d '{"p_min_x":0,"p_min_y":0,"p_max_x":1,"p_max_y":1}')
+if [[ "$SKYOPEN" == *"$SALON_ID"* ]]; then
+  ko "le salon ouvert existe sur la carte !"
+else
+  ok "le salon ouvert est invisible sur la carte"
+fi
+
+# The guests write through the door: B opens, fresh strangers fill the
+# ring to ITS target (the server chose it, 4-7), the last line closes.
+SALON_TARGET=$(echo "$INVITED" | json_field "['target']")
+LINE_B=$(curl -s -X POST "$API/rest/v1/rpc/contribute_line" \
+  -H "$(auth_header)" -H "$(bearer "$TOKEN_B")" -H 'Content-Type: application/json' \
+  -d "{\"p_constellation_id\":\"$SALON_ID\",\"p_ciphertext\":\"première du salon\",\"p_key\":\"\",\"p_invite_token\":\"$SALON_KEY\"}")
+check "$(echo "$LINE_B" | json_field "['count']")" '1' "B ouvre le poème du salon"
+GUEST_DONE=0
+while [ "$GUEST_DONE" -lt "$((SALON_TARGET - 1))" ]; do
+  GUEST_TOKEN=$(curl -s -X POST "$API/auth/v1/signup" -H "$(auth_header)" -H 'Content-Type: application/json' -d '{}' | json_field "['access_token']")
+  GUEST_COUNT=$(curl -s -X POST "$API/rest/v1/rpc/contribute_line" \
+    -H "$(auth_header)" -H "$(bearer "$GUEST_TOKEN")" -H 'Content-Type: application/json' \
+    -d "{\"p_constellation_id\":\"$SALON_ID\",\"p_ciphertext\":\"ligne d'invité $GUEST_DONE\",\"p_key\":\"\",\"p_invite_token\":\"$SALON_KEY\"}" | json_field "['count']")
+  [ -n "$GUEST_COUNT" ] && GUEST_DONE=$((GUEST_DONE + 1))
+done
+
+# Closed, the salon joins the public sky — an artifact like the others.
+SKYCLOSED=$(curl -s -X POST "$API/rest/v1/rpc/fetch_constellations" \
+  -H "$(auth_header)" -H "$(bearer "$TOKEN_C")" -H 'Content-Type: application/json' \
+  -d '{"p_min_x":0,"p_min_y":0,"p_max_x":1,"p_max_y":1}')
+if [[ "$SKYCLOSED" == *"$SALON_ID"* ]]; then
+  ok "refermé, le salon apparaît sur la carte publique"
+else
+  ko "le salon refermé manque à la carte: $SKYCLOSED"
+fi
+ARTIFACT=$(curl -s -X POST "$API/rest/v1/rpc/read_constellation" \
+  -H "$(auth_header)" -H "$(bearer "$TOKEN_D")" -H 'Content-Type: application/json' \
+  -d "{\"p_constellation_id\":\"$SALON_ID\"}")
+ARTIFACT_N=$(echo "$ARTIFACT" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('lines', [])))")
+check "$ARTIFACT_N" "$SALON_TARGET" "un invité relit l'artefact entier ($SALON_TARGET lignes, par tous)"
+
 echo "──"
 echo "Résultat: $PASS ✓ / $FAIL ✗"
 [ "$FAIL" -eq 0 ]

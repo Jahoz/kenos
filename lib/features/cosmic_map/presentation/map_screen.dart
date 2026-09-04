@@ -19,6 +19,7 @@ import '../../../core/widgets/hud.dart';
 import '../../constellations/data/constellation_repository.dart';
 import '../../constellations/domain/constellation_figure.dart';
 import '../../constellations/presentation/constellation_sheets.dart';
+import '../../constellations/presentation/salon_share_sheet.dart';
 import '../../echo/data/echo_providers.dart';
 import '../../echo/domain/echo.dart';
 import '../../echo/domain/read_scar.dart';
@@ -122,15 +123,32 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// The sky's quiet breath (see initState).
   Timer? _skyBreath;
 
-  /// A fresh corpse comes back from the Mirror: reload the sky, then
+  /// A fresh corpse comes back from its door: reload the sky, then
   /// offer the seeder to give the FIRST line — to their own poem they
-  /// are just another stranger, as blind as the rest.
-  Future<void> _corpseSeeded(String id) async {
+  /// are just another stranger, as blind as the rest. A salon never
+  /// shows on the sky while it is written: the first line is given
+  /// behind the door, then the link — once.
+  Future<void> _corpseSeeded(SeededConstellation seeded) async {
+    if (seeded.isSalon) {
+      await showContributeSheet(
+        context,
+        ref: ref,
+        constellation: seeded.meta,
+        inviteToken: seeded.inviteToken,
+      );
+      if (!mounted) return;
+      await showSalonShareSheet(
+        context,
+        meta: seeded.meta,
+        inviteToken: seeded.inviteToken!,
+      );
+      return;
+    }
     await _loadConstellations();
     if (!mounted) return;
     ConstellationMeta? fresh;
     for (final c in _constellations) {
-      if (c.id == id) {
+      if (c.id == seeded.meta.id) {
         fresh = c;
         break;
       }
@@ -1050,12 +1068,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
                         ),
                         backgroundColor: AppColors.voidBlack,
                       ),
-                      // The corpse gate pops with the fresh id: the
+                      // The corpse gate pops with the fresh seed: the
                       // ring was dropped near the eye — offer the
                       // seeder the FIRST blind line.
                       onPressed: () async {
                         final seeded = await context.push('/cadavre');
-                        if (seeded is String && seeded.isNotEmpty) {
+                        if (seeded is SeededConstellation) {
                           await _corpseSeeded(seeded);
                         }
                       },

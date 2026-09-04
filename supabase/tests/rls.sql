@@ -1,7 +1,7 @@
 -- KENOS security tests — access control as an authenticated client.
 -- These tests actively try to cheat; every attempt must fail.
 begin;
-select plan(16);
+select plan(17);
 
 -- Seed: one echo owned by a test author, created outside client reach.
 insert into auth.users (id, email, aud, role)
@@ -94,6 +94,13 @@ select throws_ok(
   $$insert into public.kenos_metrics_daily (day) values (current_date)$$,
   42501, 'permission denied for table kenos_metrics_daily',
   'direct INSERT into the metrics ledger denied'
+);
+
+-- ── V3.19 — LE SALON: the door fingerprint is client-unreachable ──────
+select throws_ok(
+  'select invite_token_hash from public.kenos_constellations',
+  42501, 'permission denied for table kenos_constellations',
+  'the salon fingerprint is denied to clients — RPC-only'
 );
 
 -- The map RPC: metadata yes, text impossible (and the retired view is gone).

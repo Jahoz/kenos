@@ -26,6 +26,7 @@ hand over the echo to be useful at all).
 | ROSE is destruction-only | `launch_echo` rejects the theme server-side |
 | Friction server-enforced | 1 echo / 20 s, 1 read / 5 s, audit journal without content |
 | Media is never publicly addressable | Private `echo-media` bucket; clients have INSERT-only access below their own anonymous-user prefix |
+| Salon invite keys are capabilities, not records | `invite_token_hash` stores the sha256 fingerprint only — a dump holds no door; the plaintext key (16 random bytes, hex) is returned once, to the seeder; verified inside `contribute_line` / `peek_previous_line` (`KENOS_INVITE_UNKNOWN` — missing and wrong indistinguishable); an open salon is invisible on the map; the key dies with the ring (purge) |
 | Artifact memory is device-local | Read markers (7-day TTL) and the reliquaire (≤ 7 kept objects, ember-marked) live in secure storage only; never synced, never networked. Kept text is PUBLIC culture (closed artifacts, curated vestiges) — the no-text-locally law is about sealed confessions |
 
 ## Ether Seal (at-rest encryption)

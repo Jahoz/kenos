@@ -776,6 +776,64 @@ chaque phrase correspond à une livraison réelle :
   importée ; tokens registry intacts (teal/cyan pour la donnée, la
   braise n'apparaît qu'en mots).
 
+## V3.19 — LE SALON : la constellation invitable ✅ (idée Hugo, livrée 2026-09-04)
+
+Le cadavre exquis historique se jouait en salon, entre amis, à
+l'aveugle — le rite est porté. Un anneau peut naître derrière une
+porte : **un lien unique**, porté par le semeur à qui il choisit. Le
+lien EST l'invitation (l'alternative « quasi gratuite » documentée
+pour les clusters) — et la boucle de découverte est native : pour
+poser sa ligne, l'invité entre dans le vide.
+
+- **Arbitrages (recommandations adoptées, toutes réversibles)** :
+  UN LIEN par anneau (chaque porteur pose une ligne, la règle
+  un-inconnu-une-ligne intacte — invitations nominatives → Roadmap+) ·
+  CACHÉ EN ÉCRITURE (un salon ouvert n'existe pas sur la carte, pas
+  d'éther à deux classes ; refermé, l'artefact rejoint le ciel,
+  indiscernable d'un poème d'étrangers) · **la clé est une
+  capability** : 16 octets aléatoires en hex, la base ne garde que
+  l'empreinte sha256 (un dump ne tient aucune porte), le clair vit
+  dans le lien et sur l'écran du semeur — une fois.
+- **Le claim EST la contribution** : la clé se vérifie DANS la
+  transaction qui écrit la ligne (`KENOS_INVITE_UNKNOWN` — absent et
+  faux se ressemblent, la porte ne dit rien). Aucun registre
+  d'invités, aucun siège fantôme ; le lien meurt avec l'anneau
+  (purge inchangée : ouvert 7 j, refermé une lune).
+- **La porte SQL** : `seed_constellation(+p_invited)` rend la clé une
+  fois · `contribute_line` / `peek_previous_line` l'exigent ·
+  `fetch_invited_constellation` résout les MÉTADONNÉES seules (jamais
+  la clé) · `fetch_constellations` ignore les salons ouverts.
+- **Le seuil de l'invité** (`/#/c/<clé>` — hash routing GoRouter,
+  zéro config serveur, prêt pour universal links le jour des stores) :
+  un invité neuf croise le Seuil d'abord (`returnTo` + `onEntered` —
+  le retour sur la même route est un no-op GoRouter, l'écran réagit
+  lui-même), puis figure d'attente (stations de l'angle d'or,
+  pleines/creuses), progression honnête, POSER MA LIGNE/PHRASE — le
+  rituel existant, verbatim. Six états : résolution, clé morte (« LE
+  SALON S'EST TU »), refermé (→ lire l'artefact public), déjà
+  contribué, injoignable (+ RÉESSAYER), l'invitation.
+- **Le semeur** : le seuil du cadavre choisit son public — DANS LE
+  VIDE (défaut) ou EN SALON — puis la feuille de partage montre le
+  lien UNE fois (PARTAGER `share_plus` / COPIER, fermeture uniquement
+  par « J'AI PARTAGÉ » : la clé ne se perd pas par accident).
+- **Observatoire** : compteur `salons_seeded` (sans contenu, même
+  transaction) et `salons_open` dans l'état vivant. **Braise** : la
+  main tendue de l'invitation — ember, avec parcimonie ; ROSE reste
+  réservé à la destruction.
+- Roadmap+ : invitations nominatives par siège, universal links /
+  stores, URLs en chemin, ancre locale des salons ouverts pour les
+  participants, métrique `salon_opened`, mémo « mes salons », mélange
+  inconnus/invités dans un même anneau.
+
+Gates : 174 invariants pgTAP (+22 : la clé rendue une fois et
+l'empreinte ≠ clé, salon ouvert invisible / refermé visible, refus
+sans et avec fausse clé, auto-close par la porte, peek gardé,
+artefact public, aucun payload client ne porte la clé, chemin public
+inchangé, métrique, empreinte inaccessible aux clients), 272 tests
+Dart (+20 : parité démo de la porte, forme du lien, les états du
+seuil, le parcours Seuil→salon, le panneau de partage, le choix du
+public), analyze 0, e2e 28/28 (+10 sur l'éther local réel).
+
 ## 4. Règles inchangées (rappel)
 
 - Single-read atomique, Ether Seal, RPC-only, ROSE destructif,

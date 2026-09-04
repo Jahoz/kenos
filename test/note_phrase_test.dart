@@ -70,7 +70,8 @@ void main() {
     test('semer en MELODY, phrases séquentielles, artefact re-lisible',
         () async {
       final repo = LocalConstellationRepository();
-      final song = await repo.seed(0.5, 0.5, kind: ConstellationKind.melody);
+      final song =
+          (await repo.seed(0.5, 0.5, kind: ConstellationKind.melody)).meta;
       expect(song.kind, ConstellationKind.melody);
 
       // The first stranger hears NOTHING before them — they open it.

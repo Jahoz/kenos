@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/constants/app_durations.dart';
 import '../core/utils/motion_preferences.dart';
 import '../features/constellations/presentation/corpse_screen.dart';
+import '../features/constellations/presentation/salon_claim_screen.dart';
 import '../features/cosmic_map/presentation/impact_screen.dart';
 import '../features/cosmic_map/presentation/map_screen.dart';
 import '../features/create_echo/presentation/mirror_screen.dart';
@@ -50,6 +51,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/cadavre',
         pageBuilder: (context, state) =>
             _fade(context, child: const CorpseScreen()),
+      ),
+      // LE SALON (V3.19): the invitation link's landing — a key, not a
+      // page. The threshold decides what the guest meets (rules first
+      // if they are new, then the claim).
+      GoRoute(
+        path: '/c/:token',
+        pageBuilder: (context, state) => _fade(
+          context,
+          child: SalonClaimScreen(token: state.pathParameters['token'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/impact',

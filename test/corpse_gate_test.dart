@@ -6,11 +6,12 @@ import 'package:kenos/features/constellations/presentation/corpse_screen.dart';
 import 'package:kenos/features/cosmic_map/application/kenos_system.dart';
 import 'package:kenos/features/cosmic_map/application/travel_camera.dart';
 
-/// The corpse has its own door (OUVRIR UN CADAVRE on the map) and its
-/// own screen — an echo empties oneself, a corpse opens a space for
-/// strangers. Pinned: poem or song chosen at the drop, the ring born
-/// near the resting eye, the id pops back to the map for the FIRST
-/// blind line.
+/// The corpse has its own door (SEMER UNE CONSTELLATION on the map)
+/// and its own screen — an echo empties oneself, a corpse opens a
+/// space for strangers. Pinned: poem or song chosen at the drop, the
+/// ring born near the resting eye, the seed pops back to the map for
+/// the FIRST blind line — and, since V3.19, WHO the ring waits for:
+/// the void, or a salon behind a shareable key.
 void main() {
   late FakeConstellationRepository repo;
 
@@ -34,7 +35,8 @@ void main() {
             builder: (context) => TextButton(
               // Push like the map's gate, capturing the pop result.
               onPressed: () async {
-                repo.poppedWith = await Navigator.of(context).push<String?>(
+                repo.popped = await Navigator.of(context)
+                    .push<SeededConstellation?>(
                   MaterialPageRoute(builder: (_) => const CorpseScreen()),
                 );
               },
@@ -57,10 +59,54 @@ void main() {
     expect(find.text('RENONCER'), findsOneWidget);
   });
 
-  testWidgets('semer un poème : anneau près de l\'œil, id au pop',
+  testWidgets('le choix du public : le vide par défaut, le salon au doigt',
       (tester) async {
     await pumpCorpse(tester);
 
+    // The void is the default — the historic corpse.
+    expect(find.text('CONSTELLATION'), findsOneWidget);
+    await tester.ensureVisible(find.text('SEMER UN POÈME'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('SEMER UN POÈME'));
+    await tester.pumpAndSettle();
+
+    expect(repo.invitedFlags, [false]);
+    expect(repo.popped, isNotNull);
+    expect(repo.popped!.isSalon, isFalse,
+        reason: 'dans le vide : pas de porte, pas de clé');
+    expect(repo.popped!.inviteToken, isNull);
+  });
+
+  testWidgets('EN SALON : la clé naît avec l\'anneau et voyage au pop',
+      (tester) async {
+    await pumpCorpse(tester);
+
+    await tester.tap(find.byKey(const ValueKey('audience_salon')));
+    await tester.pumpAndSettle();
+    // The screen speaks the salon: title, hidden ring, the link to
+    // come.
+    expect(find.text('LE SALON'), findsOneWidget);
+    expect(find.text("Un poème à l'aveugle,\nentre invités"), findsOneWidget);
+
+    await tester.ensureVisible(find.text('SEMER UN POÈME'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('SEMER UN POÈME'));
+    await tester.pumpAndSettle();
+
+    expect(repo.invitedFlags, [true]);
+    expect(repo.popped, isNotNull);
+    expect(repo.popped!.isSalon, isTrue);
+    expect(repo.popped!.inviteToken, 'salon-key-test',
+        reason: 'la clé croise le fil exactement une fois, vers le semeur');
+    expect(find.byType(CorpseScreen), findsNothing);
+  });
+
+  testWidgets('semer un poème : anneau près de l\'œil, graine au pop',
+      (tester) async {
+    await pumpCorpse(tester);
+
+    await tester.ensureVisible(find.text('SEMER UN POÈME'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('SEMER UN POÈME'));
     await tester.pumpAndSettle();
 
@@ -77,42 +123,50 @@ void main() {
         lessThan(KenosSystem.blackHoleExclusion + 0.2),
         reason: 'mais dans le quartier de l\'œil');
     expect(repo.lastKind, ConstellationKind.poem);
-    expect(repo.poppedWith, 'corpse-fresh');
+    expect(repo.popped!.meta.id, 'corpse-fresh');
     expect(find.byType(CorpseScreen), findsNothing);
   });
 
   testWidgets('semer une chanson : le genre voyage', (tester) async {
     await pumpCorpse(tester);
 
+    await tester.ensureVisible(find.text('SEMER UNE CHANSON'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('SEMER UNE CHANSON'));
     await tester.pumpAndSettle();
 
     expect(repo.lastKind, ConstellationKind.melody);
-    expect(repo.poppedWith, 'corpse-fresh');
+    expect(repo.popped!.meta.id, 'corpse-fresh');
   });
 }
 
 class FakeConstellationRepository implements ConstellationRepository {
   final List<Offset> seeds = [];
-  String? poppedWith;
+  final List<bool> invitedFlags = [];
+  SeededConstellation? popped;
   ConstellationKind? lastKind;
 
   @override
-  Future<ConstellationMeta> seed(
+  Future<SeededConstellation> seed(
     double x,
     double y, {
     ConstellationKind kind = ConstellationKind.poem,
+    bool invited = false,
   }) async {
     seeds.add(Offset(x, y));
+    invitedFlags.add(invited);
     lastKind = kind;
-    return ConstellationMeta(
-      id: 'corpse-fresh',
-      seedX: x,
-      seedY: y,
-      state: 'OPEN',
-      lineCount: 0,
-      target: 5,
-      kind: kind,
+    return SeededConstellation(
+      meta: ConstellationMeta(
+        id: 'corpse-fresh',
+        seedX: x,
+        seedY: y,
+        state: 'OPEN',
+        lineCount: 0,
+        target: 5,
+        kind: kind,
+      ),
+      inviteToken: invited ? 'salon-key-test' : null,
     );
   }
 
@@ -120,6 +174,7 @@ class FakeConstellationRepository implements ConstellationRepository {
   Future<ContributeResult> contribute({
     required String constellationId,
     required String text,
+    String? inviteToken,
   }) async =>
       const ContributeResult(count: 1);
 
@@ -127,10 +182,18 @@ class FakeConstellationRepository implements ConstellationRepository {
   Future<bool?> hasContributed(String id) async => null;
 
   @override
-  Future<AssembledLine?> peekPrevious(String constellationId) async => null;
+  Future<AssembledLine?> peekPrevious(
+    String constellationId, {
+    String? inviteToken,
+  }) async =>
+      null;
 
   @override
   Future<List<ConstellationMeta>> fetchVisible() async => const [];
+
+  @override
+  Future<ConstellationMeta> fetchInvited(String token) async =>
+      throw const SalonKeyRefused();
 
   @override
   Future<List<AssembledLine>?> read(String id) async => null;

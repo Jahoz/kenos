@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(136);
+select plan(157);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -817,6 +817,207 @@ select throws_ok(
   $$select public.seed_constellation(0.81::float8, 0.81::float8, 'SHOUT')$$,
   'P0001', 'KENOS_INVALID_KIND',
   'the kind is POEM or MELODY — never a shout'
+);
+
+-- ── V3.19 — LE SALON: the invitable constellation ──────────────────────
+-- One link is the door; hidden while writing, a public artifact once
+-- closed. The base keeps only the sha256 fingerprint of the key.
+reset role;
+insert into auth.users (id, email, aud, role) values
+  ('00000000-0000-4000-8000-0000000000e1', 'e1@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000e2', 'e2@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000e3', 'e3@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000e4', 'e4@t.kenos', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000e5', 'e5@t.kenos', 'authenticated', 'authenticated');
+
+create table if not exists tests.salon_seed (id uuid, token text);
+truncate tests.salon_seed;
+grant select, insert, truncate on table tests.salon_seed to authenticated;
+
+-- e1 seeds a salon ring and captures the door key exactly once.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000e1","role":"authenticated"}', true);
+insert into tests.salon_seed (id, token)
+  select id, invite_token from public.seed_constellation(0.5::float8, 0.33::float8, 'POEM', true);
+select is(
+  (select count(*) from tests.salon_seed where id is not null and token is not null),
+  1::bigint,
+  'an invited seed returns the ring and its door key, once'
+);
+select is(
+  (select length(token) from tests.salon_seed),
+  32,
+  'the door key is 32 hex characters — 128 random bits'
+);
+
+-- Dump-safety: the base keeps the fingerprint, never the key.
+reset role;
+select is(
+  (select invite_token_hash from public.kenos_constellations
+    where id = (select id from tests.salon_seed)),
+  (select encode(digest(token, 'sha256'), 'hex') from tests.salon_seed),
+  'the stored fingerprint is sha256(key)'
+);
+select isnt(
+  (select invite_token_hash from public.kenos_constellations
+    where id = (select id from tests.salon_seed)),
+  (select token from tests.salon_seed),
+  'a dump holds no door — fingerprint differs from the key'
+);
+
+-- Hidden while writing: the map never sees an open salon.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000d6","role":"authenticated"}', true);
+select is(
+  (select count(*) from public.fetch_constellations(0, 0, 1, 1)
+    where id = (select id from tests.salon_seed)),
+  0::bigint,
+  'an open salon is invisible on the map — no two-class ether'
+);
+
+-- The claim door: the key resolves metadata, never a line, never the
+-- fingerprint.
+select is(
+  (select result ->> 'state' from (
+    select public.fetch_invited_constellation((select token from tests.salon_seed)) as result
+  ) q),
+  'OPEN',
+  'the link resolves the salon — OPEN, waiting for its guests'
+);
+select is(
+  (select result ? 'invite_token_hash' from (
+    select public.fetch_invited_constellation((select token from tests.salon_seed)) as result
+  ) q),
+  false,
+  'the claim payload carries no fingerprint — metadata only'
+);
+select throws_ok(
+  $$select public.fetch_invited_constellation('deadbeefdeadbeefdeadbeefdeadbeef')$$,
+  'P0001', 'KENOS_INVITE_UNKNOWN',
+  'a wrong key finds no salon'
+);
+
+-- The door guards the writing: no key, no line — and a forged key
+-- opens exactly as little as a missing one.
+select throws_ok(
+  $$select public.contribute_line((select id from tests.salon_seed), 'intrusion', '')$$,
+  'P0001', 'KENOS_INVITE_UNKNOWN',
+  'a stranger without the key cannot write in the salon'
+);
+select throws_ok(
+  $$select public.contribute_line((select id from tests.salon_seed), 'intrusion', '', 'cafebabecafebabecafebabecafebabe')$$,
+  'P0001', 'KENOS_INVITE_UNKNOWN',
+  'a forged key opens nothing — missing and wrong look alike'
+);
+select throws_ok(
+  $$select public.peek_previous_line((select id from tests.salon_seed))$$,
+  'P0001', 'KENOS_INVITE_UNKNOWN',
+  'even the peek demands the key'
+);
+
+-- The guests write blind, through the door. e2 opens the poem.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000e2","role":"authenticated"}', true);
+insert into tests.contribute_bundle (bundle)
+  select public.contribute_line((select id from tests.salon_seed),
+                                'première ligne du salon', '',
+                                (select token from tests.salon_seed));
+select is(
+  (select bundle ->> 'count' from tests.contribute_bundle),
+  '1',
+  'the first guest opens the salon poem'
+);
+select is(
+  (select jsonb_typeof(bundle -> 'previous') from tests.contribute_bundle),
+  'null',
+  'the opener sees no preceding line — the poem starts with them'
+);
+truncate tests.contribute_bundle;
+
+-- e3 continues: the classic rule holds behind the door.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000e3","role":"authenticated"}', true);
+insert into tests.contribute_bundle (bundle)
+  select public.contribute_line((select id from tests.salon_seed),
+                                'deuxième ligne du salon', '',
+                                (select token from tests.salon_seed));
+select is(
+  (select bundle -> 'previous' ->> 'text' from tests.contribute_bundle),
+  'première ligne du salon',
+  'the classic rule holds behind the door — one continues, blind'
+);
+truncate tests.contribute_bundle;
+
+select is(
+  (select result ->> 'text' from (
+    select public.peek_previous_line((select id from tests.salon_seed),
+                                     (select token from tests.salon_seed)) as result
+  ) q),
+  'deuxième ligne du salon',
+  'peek WITH the key shows the tail of the poem'
+);
+
+-- Pin the target to 4 so the closing is deterministic, then close the
+-- salon through the door (the seeder is a stranger to their own poem).
+reset role;
+update public.kenos_constellations set target_lines = 4
+  where id = (select id from tests.salon_seed);
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000e1","role":"authenticated"}', true);
+select public.contribute_line((select id from tests.salon_seed),
+                              'troisième ligne du salon', '',
+                              (select token from tests.salon_seed));
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000e4","role":"authenticated"}', true);
+select public.contribute_line((select id from tests.salon_seed),
+                              'quatrième ligne du salon', '',
+                              (select token from tests.salon_seed));
+
+-- CLOSED, the salon joins the public sky — an artifact like the others.
+select is(
+  (select state from public.fetch_constellations(0, 0, 1, 1)
+    where id = (select id from tests.salon_seed)),
+  'CLOSED',
+  'the salon closes at its target — through the door'
+);
+select is(
+  (select count(*) from public.fetch_constellations(0, 0, 1, 1)
+    where id = (select id from tests.salon_seed)),
+  1::bigint,
+  'the closed salon appears on the public map'
+);
+select is(
+  (select jsonb_array_length(result -> 'lines') from (
+    select public.read_constellation((select id from tests.salon_seed)) as result
+  ) q),
+  4,
+  'a stranger reads the salon''s finished poem — the artifact belongs to everyone'
+);
+
+-- Contentless metrics: the salon seed was counted, exactly once.
+reset role;
+select is(
+  coalesce((select m.salons_seeded from public.kenos_metrics_daily m where m.day = current_date), 0),
+  1,
+  'salon_seeded counted exactly once, contentless'
+);
+
+-- The public path is unchanged: a void seed returns no key, and a
+-- public ring still writes without one.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000e5","role":"authenticated"}', true);
+select is(
+  (select invite_token is null from public.seed_constellation(0.9::float8, 0.9::float8, 'POEM', false)),
+  true,
+  'a public seed returns no key — the void has no door'
+);
+select is(
+  (select public.contribute_line(
+     (select id from public.seed_constellation(0.91::float8, 0.91::float8, 'POEM', false)),
+     'ligne sans clé', '') ->> 'count'),
+  '1',
+  'a public ring still writes without any key'
 );
 
 -- ── V3.14b — the Gardener & the Curator ─────────────────────────────────

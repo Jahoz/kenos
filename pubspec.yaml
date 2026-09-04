@@ -41,6 +41,7 @@ dependencies:
   path_provider: ^2.1.6
   record: ^6.2.1
   sensors_plus: ^7.1.0
+  share_plus: ^13.3.0
   supabase_flutter: ^2.17.2
   url_launcher: ^6.3.0
 

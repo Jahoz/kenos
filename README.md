@@ -31,6 +31,17 @@ Pas de discussion — mais le **signal qu'on a touché quelqu'un** :
 - Côté serveur : `kenos_receptions` (sans contenu par défaut), RPC `leave_trace`
   (fenêtre de 10 min après lecture, one-shot), `fetch_receptions` / `burn_reception`.
 
+## Le Salon (constellations invitable, V3.19)
+
+Le cadavre exquis historique se jouait entre amis, à l'aveugle —
+l'anneau peut naître derrière une porte : **un seul lien par anneau**,
+montré une fois au semeur, porté à qui il choisit. Chaque porteur pose
+une ligne (la précédente visible, jamais le tout) ; l'anneau reste
+**invisible tant que le poème se fait**, puis refermé il rejoint
+l'éther comme un artefact public, indiscernable. La clé du lien n'existe
+nulle part en clair côté serveur — seulement son empreinte SHA-256 : un
+dump de la base ne tient aucune porte. Le lien meurt avec l'anneau.
+
 ## Démarrage rapide (mode démo, sans backend)
 
 ```bash
@@ -112,9 +123,9 @@ catalog iOS, pur stdlib).
 
 ```bash
 make analyze     # flutter analyze — 0 issue
-make test        # 226 tests Dart : chiffrement, culling, contrôleurs, parcours UI
-make db-test     # 146 invariants SQL (pgTAP) : RPC + tentatives d'effraction RLS
-make e2e         # boucle complète sur le PostgREST local réel (18 vérifications)
+make test        # 272 tests Dart : chiffrement, culling, contrôleurs, parcours UI
+make db-test     # 174 invariants SQL (pgTAP) : RPC + tentatives d'effraction RLS
+make e2e         # boucle complète sur le PostgREST local réel (28 vérifications)
 ```
 
 Le test `app_flow_test.dart` rejoue le parcours réel : seuil → carte →

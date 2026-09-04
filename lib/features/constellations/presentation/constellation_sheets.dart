@@ -21,10 +21,12 @@ import '../domain/note_phrase.dart';
 /// everyone, re-readable like the vestiges.
 
 /// Contribute one line to an open constellation, continuing the poem.
+/// A salon ring passes its door key — the claim IS the contribution.
 Future<void> showContributeSheet(
   BuildContext context, {
   required WidgetRef ref,
   required ConstellationMeta constellation,
+  String? inviteToken,
 }) {
   return showGeneralDialog(
     context: context,
@@ -36,7 +38,10 @@ Future<void> showContributeSheet(
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return FadeTransition(
         opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        child: _ContributePanel(constellation: constellation),
+        child: _ContributePanel(
+          constellation: constellation,
+          inviteToken: inviteToken,
+        ),
       );
     },
   );
@@ -74,9 +79,12 @@ Future<void> showConstellationReading(
 }
 
 class _ContributePanel extends ConsumerStatefulWidget {
-  const _ContributePanel({required this.constellation});
+  const _ContributePanel({required this.constellation, this.inviteToken});
 
   final ConstellationMeta constellation;
+
+  /// LE SALON: the door key, when the line is given behind one.
+  final String? inviteToken;
 
   @override
   ConsumerState<_ContributePanel> createState() => _ContributePanelState();
@@ -112,7 +120,7 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
   Future<void> _peekPrevious() async {
     final previous = await ref
         .read(constellationRepositoryProvider)
-        .peekPrevious(widget.constellation.id);
+        .peekPrevious(widget.constellation.id, inviteToken: widget.inviteToken);
     if (mounted) {
       setState(() {
         _previous = previous;
@@ -195,7 +203,11 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
     try {
       final result = await ref
           .read(constellationRepositoryProvider)
-          .contribute(constellationId: widget.constellation.id, text: payload);
+          .contribute(
+            constellationId: widget.constellation.id,
+            text: payload,
+            inviteToken: widget.inviteToken,
+          );
       if (!mounted) return;
       // One line per stranger per corpse, remembered: the sky will
       // never again OFFER composition to hands that already gave.

@@ -167,6 +167,7 @@ class FakeConstellationRepository implements ConstellationRepository {
   Future<ContributeResult> contribute({
     required String constellationId,
     required String text,
+    String? inviteToken,
   }) async {
     lines.add(text);
     return ContributeResult(count: lines.length);
@@ -176,13 +177,17 @@ class FakeConstellationRepository implements ConstellationRepository {
   Future<bool?> hasContributed(String id) async => null;
 
   @override
-  Future<AssembledLine?> peekPrevious(String constellationId) async => null;
+  Future<AssembledLine?> peekPrevious(
+    String constellationId, {
+    String? inviteToken,
+  }) async => null;
 
   @override
-  Future<ConstellationMeta> seed(
+  Future<SeededConstellation> seed(
     double x,
     double y, {
     ConstellationKind kind = ConstellationKind.poem,
+    bool invited = false,
   }) async =>
       throw UnimplementedError();
 
@@ -191,4 +196,8 @@ class FakeConstellationRepository implements ConstellationRepository {
 
   @override
   Future<List<AssembledLine>?> read(String id) async => null;
+
+  @override
+  Future<ConstellationMeta> fetchInvited(String token) async =>
+      throw const SalonKeyRefused();
 }

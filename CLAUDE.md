@@ -57,7 +57,7 @@ make dev                   # Mode démo local (aucun backend requis)
 make dev-local             # PWA release sur l'éther local seedé (:4308) — JAMAIS juger la perf sur `flutter run` (debug, 5-20× plus lent)
 make analyze               # 0 issue
 make test                  # 252 tests (chiffrement, culling, contrôleurs, UI)
-make db-reset && make db-test  # Migrations + 149 invariants pgTAP
+make db-reset && make db-test  # Migrations + 174 invariants pgTAP
 make db-seed-load && make db-load-report  # Montée en charge : seed 30 j (scellés LISIBLES, ~12k lignes) + rapport
 make db-verify-load           # Preuve e2e : consommer un écho seedé, l'ouvrir sur l'appareil
 make db-wipe-load              # Reset clean du seed (data réelle + KEK intacts)
@@ -137,6 +137,16 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
   sur l'appareil), la chanson refermée se traverse : lecture
   séquentielle, chaque phrase spatialisée à sa station d'angle d'or
   (flutter_soloud, repli assets cuits).
+- **Le Salon (V3.19)** : une constellation peut naître invitable —
+  un lien unique `/#/c/<clé>` est la porte, porté par le semeur à qui
+  il choisit. La clé (16 octets hex) n'est rendue qu'au semeur ; la
+  base ne garde que son empreinte sha256 (`invite_token_hash` — un
+  dump ne tient aucune porte). Le claim EST la contribution : la clé
+  se vérifie dans la transaction `contribute_line` /
+  `peek_previous_line` (`KENOS_INVITE_UNKNOWN` — absent et faux se
+  ressemblent). Salon ouvert invisible sur la carte ; refermé,
+  l'artefact est public et indiscernable. La purge est inchangée —
+  le lien meurt avec l'anneau.
 - **Vestiges multilingues (V3.16)** : la voix produit reste FR (canon,
   pour toujours) ; les éclats curatés existent par locale
   (fetch_vestiges(p_locale), normalisation `fr-FR`→`fr`, repli honnête
