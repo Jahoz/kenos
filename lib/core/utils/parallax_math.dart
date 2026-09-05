@@ -31,6 +31,14 @@ class ParallaxMath {
   /// target grows with it (tight clusters stay tappable).
   static double starDiameter(double z) => 30.0 + 62.0 * z;
 
+  /// One sky, every screen (V3.25): star sizes were raw pixels while
+  /// planets scale with the viewport — on a phone's narrow window a
+  /// deep glow swallowed the Moon whole. Stars now scale in the same
+  /// currency: the desktop look (900 px shortest side) is the
+  /// reference and proportions hold everywhere.
+  static double displayScale(double shortestSide) =>
+      (shortestSide / 900).clamp(0.40, 1.15);
+
   /// The eye's resting zoom — the anchor of [zoomScale]. The launched
   /// look (TravelCamera's default) must stay scale 1.0: the tuned sky
   /// and its tests are calibrated to it.

@@ -1274,6 +1274,10 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
 
   void _onOrbitTick(Duration elapsed) {
     if (!mounted || _reduced) return;
+    // 120 Hz displays double the work for nothing the eye can name:
+    // the drift rides at most ~60 fps (V3.25).
+    if (elapsed - _lastOrbitAt < const Duration(milliseconds: 12)) return;
+    _lastOrbitAt = elapsed;
     final now = DateTime.now();
     _driftSkies(now);
     _orbitTickCount++;
@@ -1286,6 +1290,8 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
       setState(() {});
     }
   }
+
+  Duration _lastOrbitAt = Duration.zero;
 
   /// Frame-rate orbital drift: each star's screen delta from its base
   /// position feeds its ValueNotifier — a layout-only update. The
@@ -1395,6 +1401,12 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
 
         final eyeScale = ParallaxMath.zoomScale(widget.camera.zoom);
         final eye = widget.camera.center;
+        // One sky, every screen (V3.25): star lights scale with the
+        // viewport like the planets do — on a phone's narrow window
+        // raw-pixel stars swallowed the Moon whole.
+        final dScale = ParallaxMath.displayScale(
+          math.min(w, h).toDouble(),
+        );
 
         // Pass 1 — every visible sight: position, depth, aliveness.
         final sights =
@@ -1482,7 +1494,8 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
           // other's holds — a star must stay catchable, not smother
           // its neighbours. 1.35 keeps the comfort, loses the plague.
           final hit =
-              ParallaxMath.starDiameter(z) * math.min(eyeScale, 1.35) +
+              ParallaxMath.starDiameter(z) * dScale *
+                  math.min(eyeScale, 1.35) +
               26;
           final reception = s.reception;
           // Fresh base for this frame: the drift accumulates from HERE.
@@ -1513,6 +1526,7 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
                       key: ValueKey('star-${echo.id}'),
                       echo: echo,
                       z: z,
+                      displayScale: dScale,
                       breathAt: (_reduced || reception <= 0)
                           ? null
                           : _breathAt,
@@ -2091,6 +2105,7 @@ class _GlimmerFieldPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final eyeScale = ParallaxMath.zoomScale(_zoom);
+    final dScale = ParallaxMath.displayScale(size.shortestSide);
     for (final echo in echoes) {
       final z = echo.resolveZ(now);
       final world = KenosSystem.echoPosition(echo, now);
@@ -2111,7 +2126,11 @@ class _GlimmerFieldPainter extends CustomPainter {
           ParallaxMath.opacityFor(z) * (0.30 + 0.70 * reception) * 0.85;
       final paint = Paint()
         ..color = AppColors.fade(echo.theme.core, alpha);
-      canvas.drawCircle(sp, ParallaxMath.coreRadius(z) * 0.8 * eyeScale, paint);
+      canvas.drawCircle(
+        sp,
+        ParallaxMath.coreRadius(z) * 0.8 * eyeScale * dScale,
+        paint,
+      );
     }
   }
 

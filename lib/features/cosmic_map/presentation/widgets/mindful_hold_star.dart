@@ -33,12 +33,18 @@ class MindfulHoldStar extends ConsumerStatefulWidget {
     super.key,
     required this.echo,
     required this.z,
+    this.displayScale = 1.0,
     this.breathAt,
     this.reception = 1.0,
   });
 
   final Echo echo;
   final double z;
+
+  /// One sky, every screen (V3.25): 1.0 is the desktop reference; a
+  /// phone's narrow window shrinks the light so planets keep their
+  /// stature. The catch zone keeps a 44 px floor regardless.
+  final double displayScale;
 
   /// The sky's breath clock (V3.7 polish): each star swells and dims
   /// on its own 6-second phase. Null = frozen (reduce-motion).
@@ -294,8 +300,9 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     // ring is the author's mark in the sky (0.68 drowned it among
     // the ether — the live report: 'impossible to spot my own').
     final scale = _echo.isMine ? 0.82 : 1.0;
-    final diameter = ParallaxMath.starDiameter(z) * scale;
-    final coreRadius = ParallaxMath.coreRadius(z) * scale;
+    final diameter = ParallaxMath.starDiameter(z) * scale * widget.displayScale;
+    final coreRadius =
+        ParallaxMath.coreRadius(z) * scale * widget.displayScale;
     final color = _echo.isMine ? AppColors.fade(AppColors.teal, 0.55) : _echo.theme.core;
     final hasUnreadSignal =
         _echo.isMine && _hasUnreadReception();
@@ -438,8 +445,9 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     // the core's neighbourhood claims the pointer, and depth sorting
     // lets each stacked star keep its own heart. Zooming separates
     // cores faster than it grows them — depth becomes the isolation
-    // gesture it always should have been.
-    final coreCatch = coreRadius * 2 * 1.35 + 24;
+    // gesture it always should have been. Never below 44 px: a thumb
+    // is a thumb on every screen (V3.25).
+    final coreCatch = math.max(coreRadius * 2 * 1.35 + 24, 44.0);
 
     if (_echo.isMine) {
       // Sealed stars answer a deliberate tap; the Listener below only

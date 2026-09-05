@@ -52,6 +52,15 @@ class SystemPainter extends CustomPainter {
     // bodies did not, and the wheel felt dead.
     final bodyScale = ParallaxMath.zoomScale(_zoom);
 
+    // Small screens pay blur in PHYSICAL pixels (a phone at DPR 3
+    // rasterizes nine times the area): the halos soften by half
+    // there — the mobile breath (V3.25).
+    final softScreen = size.shortestSide < 600;
+    final haloBlur = softScreen ? 11.0 : 22.0;
+    final ringBlur = softScreen ? 4.0 : 8.0;
+    final moonBlur = softScreen ? 5.0 : 9.0;
+    final venusBlur = softScreen ? 4.0 : 7.0;
+
     // Viewport culling (V3.17c): a blurred body off-screen still pays
     // its full raster price on web — a circle plus its margin is
     // drawn only when it can touch the traveller's window.
@@ -72,7 +81,7 @@ class SystemPainter extends CustomPainter {
     // the reading contract: what crosses never returns.
     final ringPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, ringBlur)
       ..shader = SweepGradient(
         colors: [
           AppColors.fade(AppColors.rose, 0.0),
@@ -155,7 +164,7 @@ class SystemPainter extends CustomPainter {
         bodyR,
         Paint()
           ..color = AppColors.fade(theme.core, 0.08)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 22),
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, haloBlur),
       );
 
       switch (i) {
@@ -267,7 +276,7 @@ class SystemPainter extends CustomPainter {
             bodyR * 0.6,
             Paint()
               ..color = AppColors.fade(theme.halo, 0.25 + 0.2 * pulse)
-              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
+              ..maskFilter = MaskFilter.blur(BlurStyle.normal, moonBlur),
           );
       }
     }
@@ -321,7 +330,7 @@ class SystemPainter extends CustomPainter {
             wandererR * 1.7,
             Paint()
               ..color = AppColors.fade(AppColors.pureLight, 0.12)
-              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7),
+              ..maskFilter = MaskFilter.blur(BlurStyle.normal, venusBlur),
           );
           canvas.drawCircle(w, wandererR, body);
           canvas.drawCircle(w, wandererR, limb);

@@ -57,6 +57,31 @@ void main() {
     });
   });
 
+  group('ParallaxMath.displayScale (V3.25 — un ciel, tous les écrans)', () {
+    test("l'écran large de référence ne change pas", () {
+      expect(ParallaxMath.displayScale(900), 1.0);
+      expect(ParallaxMath.displayScale(1035), greaterThan(1.0));
+    });
+
+    test('sur écran étroit, une étoile profonde ne dépasse pas la Lune', () {
+      // S25 portrait: ~390 logical px shortest side.
+      const phone = 390.0;
+      final s = ParallaxMath.displayScale(phone);
+      final deepStar = ParallaxMath.starDiameter(1.0) * s; // 92 × ~0.43
+      final moonWithRings =
+          phone / 34 * 2 * 1.75; // bodyR×2, ringR = bodyR×1.75
+      expect(deepStar, lessThan(moonWithRings * 1.25),
+          reason: 'la lumière reste une lumière, pas une planète');
+      expect(deepStar, greaterThan(moonWithRings * 0.6),
+          reason: 'mais elle reste visible du pouce');
+    });
+
+    test("jamais sous 0.4 ni au-dessus de 1.15 — la loi a des bords", () {
+      expect(ParallaxMath.displayScale(200), 0.40);
+      expect(ParallaxMath.displayScale(4000), 1.15);
+    });
+  });
+
   group('ParallaxMath.zoomScale (V3.17 — le zoom que l\'œil voit)', () {
     test("l'œil au repos ne change rien au ciel lancé", () {
       expect(ParallaxMath.zoomScale(ParallaxMath.eyeBaseZoom), 1.0);
