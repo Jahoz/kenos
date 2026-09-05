@@ -192,6 +192,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
     unawaited(ref.read(localEchoStoreProvider).markCorpseGuideSeen());
   }
 
+  /// Coalesced wheel zoom (V3.22): pending factor + anchor + the
+  /// 32 ms apply timer — see the Listener's onPointerSignal.
+  double _wheelFactor = 1.0;
+  Offset _wheelAnchor = Offset.zero;
+  Timer? _wheelDue;
+
   /// V3.17 — the wheel whisper: desktop eyes have no pinch to teach
   /// them the zoom. One quiet breath above the gates, once, never
   /// blocking the map (IgnorePointer), gone on its own.
@@ -260,6 +266,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _skyBreath?.cancel();
     _glide?.cancel();
     _eyeWhisperTimer?.cancel();
+    _wheelDue?.cancel();
     _camera.dispose();
     super.dispose();
   }
@@ -566,10 +573,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
             // to teach (V3.17).
             if (_showingEyeWhisper) _dismissEyeWhisper();
             _glide?.cancel();
-            _camera.zoomBy(
-              math.pow(1.0015, -signal.scrollDelta.dy).toDouble(),
-              _screenToWorld(signal.position),
-            );
+            // Coalesced at 32 ms (V3.22): a trackpad flick fires
+            // dozens of signals a second, each one rebuilding the
+            // whole sky — the zoom eases at 30 fps instead, factors
+            // multiplied, anchor kept at the freshest cursor.
+            _wheelFactor *=
+                math.pow(1.0015, -signal.scrollDelta.dy).toDouble();
+            _wheelAnchor = _screenToWorld(signal.position);
+            _wheelDue ??= Timer(const Duration(milliseconds: 32), () {
+              _wheelDue = null;
+              _camera.zoomBy(_wheelFactor, _wheelAnchor);
+              _wheelFactor = 1.0;
+            });
           }
         },
         child: Stack(
@@ -1396,9 +1411,13 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
           // no repaint, the wheel finally answers the eye.
           final eyeScale =
               ParallaxMath.zoomScale(widget.camera.zoom);
-          final diameter =
-              ParallaxMath.starDiameter(z) * eyeScale;
-          final hit = diameter + 26; // comfortable touch target
+          // But the TOUCH target barely grows (V3.22): at depth the
+          // whole screen was covered by 250 px boxes stealing each
+          // other's holds — a star must stay catchable, not smother
+          // its neighbours. 1.35 keeps the comfort, loses the plague.
+          final hit =
+              ParallaxMath.starDiameter(z) * math.min(eyeScale, 1.35) +
+              26;
           // The reception field: near = ALIVE (breathing, the 4 Hz
           // swell rides only the eye's neighbourhood), far = a glimmer
           // — it still drifts at frame rate via StarShift, but its

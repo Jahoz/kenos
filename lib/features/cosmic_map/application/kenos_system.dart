@@ -159,13 +159,14 @@ class KenosSystem {
   }
 
   /// Orbital period from the radius: inner thoughts whirl faster —
-  /// and the whole clock runs at a contemplative-but-alive pace
-  /// (15–60 s per orbit: you SEE the drift if you linger).
+  /// at a contemplative pace (V3.22: ×6 slower — at 25-75 s the
+  /// swarms whirled like carousels, dizzying at depth and impossible
+  /// to hold; 150-450 s per orbit still reads alive if you linger).
   static Duration _echoPeriod(Echo echo) {
     final r = _echoOrbitRadius(echo);
-    // Linear across the band: 25 s inside, 75 s at the rim.
+    // Linear across the band: 150 s inside, 450 s at the rim.
     final t = (r - 0.08) / 0.05;
-    return Duration(milliseconds: (25000 + 50000 * t).round());
+    return Duration(milliseconds: (150000 + 300000 * t).round());
   }
 
   /// Planet index for an echo: its intent decides its gravity. The
