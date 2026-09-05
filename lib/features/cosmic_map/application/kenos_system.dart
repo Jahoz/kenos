@@ -147,15 +147,24 @@ class KenosSystem {
 
   // ── Echo orbits ────────────────────────────────────────────────────────
 
+  /// The gravity band's inner edge (V3.23: was 0.08 — the band widens
+  /// from 0.05 to 0.07 of spread, ~40% more room per swarm: at the old
+  /// width, stacked neighbours blanketed each other's catch zones and
+  /// covered stars could not be opened).
+  static const double echoBandMin = 0.075;
+
+  /// The gravity band's width.
+  static const double echoBandSpan = 0.07;
+
   /// An echo's orbit: its planet's gravity, at a radius derived from
   /// its identity (stable per echo, spread across a band).
   static double _echoOrbitRadius(Echo echo) {
     final h = (echo.id.hashCode & 0x7fffffff) % 1000;
-    // The band clears the enlarged bodies (ring span ~0.05 world) and
-    // keeps the farthest echo inside the known ether (0.37 + 0.13 =
-    // 0.50 from the heart). No echoes through the rings, none lost
-    // past the fetch's bounds (V3.12c — collision-free skies).
-    return 0.08 + 0.05 * (h / 999);
+    // Clears the enlarged bodies (ring span ~0.05 world) with room to
+    // breathe; the rim reaches 0.37 + 0.145 = 0.515 from the heart —
+    // Venus's swarm grazes the sky's far edge at its aphelion, a rare
+    // and poetic exile rather than a loss (V3.23).
+    return echoBandMin + echoBandSpan * (h / 999);
   }
 
   /// Orbital period from the radius: inner thoughts whirl faster —
@@ -165,7 +174,7 @@ class KenosSystem {
   static Duration _echoPeriod(Echo echo) {
     final r = _echoOrbitRadius(echo);
     // Linear across the band: 150 s inside, 450 s at the rim.
-    final t = (r - 0.08) / 0.05;
+    final t = (r - echoBandMin) / echoBandSpan;
     return Duration(milliseconds: (150000 + 300000 * t).round());
   }
 

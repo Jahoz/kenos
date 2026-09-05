@@ -68,8 +68,15 @@ void main() {
       final planet =
           KenosSystem.planetPosition(KenosSystem.planetIndexOf(echo), t0);
       final dist = (p - planet).distance;
-      expect(dist, greaterThanOrEqualTo(0.045));
-      expect(dist, lessThanOrEqualTo(0.045 + 0.075 + 1e-9));
+      // V3.23: the band widens (0.075 → 0.145) — stacked neighbours
+      // were blanketing each other's catch zones at the old width.
+      expect(dist, greaterThanOrEqualTo(KenosSystem.echoBandMin - 1e-9));
+      expect(
+        dist,
+        lessThanOrEqualTo(
+          KenosSystem.echoBandMin + KenosSystem.echoBandSpan + 1e-9,
+        ),
+      );
     });
 
     test('déterminisme : même écho, même instant → même ciel partout', () {

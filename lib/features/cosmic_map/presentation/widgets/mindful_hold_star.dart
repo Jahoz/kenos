@@ -431,24 +431,50 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     }
     visual = Opacity(opacity: opacity, child: visual);
 
+    // The catch zone is the CORE, not the glow (V3.23): full-diameter
+    // opaque listeners stacked ~150 px wide blanketed the neighbours —
+    // a covered echo could not be opened until the orbits happened to
+    // part. The visual still overflows the zone (OverflowBox); only
+    // the core's neighbourhood claims the pointer, and depth sorting
+    // lets each stacked star keep its own heart. Zooming separates
+    // cores faster than it grows them — depth becomes the isolation
+    // gesture it always should have been.
+    final coreCatch = coreRadius * 2 * 1.35 + 24;
+
     if (_echo.isMine) {
       // Sealed stars answer a deliberate tap; the Listener below only
       // carries the mindful hold for the readable ether.
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: _onSealedTap,
-        child: Center(child: visual),
+      return SizedBox(
+        width: coreCatch,
+        height: coreCatch,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _onSealedTap,
+          child: OverflowBox(
+            maxWidth: double.infinity,
+            maxHeight: double.infinity,
+            child: visual,
+          ),
+        ),
       );
     }
 
-    return Listener(
-      onPointerDown: _onPointerDown,
-      onPointerMove: _onPointerMove,
-      onPointerUp: (_) => _onPointerUp(),
-      // Cancel (scroll, system gesture) = release.
-      onPointerCancel: (_) => _onPointerUp(),
-      behavior: HitTestBehavior.opaque,
-      child: Center(child: visual),
+    return SizedBox(
+      width: coreCatch,
+      height: coreCatch,
+      child: Listener(
+        onPointerDown: _onPointerDown,
+        onPointerMove: _onPointerMove,
+        onPointerUp: (_) => _onPointerUp(),
+        // Cancel (scroll, system gesture) = release.
+        onPointerCancel: (_) => _onPointerUp(),
+        behavior: HitTestBehavior.opaque,
+        child: OverflowBox(
+          maxWidth: double.infinity,
+          maxHeight: double.infinity,
+          child: visual,
+        ),
+      ),
     );
   }
 
