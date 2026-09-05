@@ -1266,10 +1266,20 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
   final Set<String> _visibleIds = {};
   Size? _viewportSize;
 
+  /// The glimmer field's clock (V3.24): one notifier, one painter —
+  /// the far sky repaints as a single canvas instead of a widget per
+  /// star. Half the frame rate: glimmers drift, they do not race.
+  final ValueNotifier<DateTime?> _glimmerClock = ValueNotifier(null);
+  int _orbitTickCount = 0;
+
   void _onOrbitTick(Duration elapsed) {
     if (!mounted || _reduced) return;
     final now = DateTime.now();
     _driftSkies(now);
+    _orbitTickCount++;
+    if (_orbitTickCount.isEven) {
+      _glimmerClock.value = now;
+    }
     if (now.difference(_lastBreath) >= const Duration(milliseconds: 250)) {
       _lastBreath = now;
       _breathAt = now;
@@ -1344,6 +1354,7 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
   @override
   void dispose() {
     _orbit.dispose();
+    _glimmerClock.dispose();
     for (final notifier in _shifts.values) {
       notifier.dispose();
     }
@@ -1381,17 +1392,15 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
         final h = constraints.maxHeight;
         _viewportSize = Size(w, h);
         _visibleIds.clear();
-        // One pass, four buckets (far → near).
-        final buckets = List.generate(
-          _bucketEdges.length - 1,
-          (_) => <Widget>[],
-        );
+
+        final eyeScale = ParallaxMath.zoomScale(widget.camera.zoom);
+        final eye = widget.camera.center;
+
+        // Pass 1 — every visible sight: position, depth, aliveness.
+        final sights =
+            <({Echo echo, double z, Offset world, Offset sp, double reception})>[
+        ];
         for (final echo in sorted) {
-          final z = echo.resolveZ(now);
-          var b = 0;
-          while (b < _bucketEdges.length - 2 && z >= _bucketEdges[b + 1]) {
-            b++;
-          }
           // A CAUGHT echo (under a finger) computes from its frozen
           // instant: catching a moving light is not a chase.
           final echoNow = (frozenFor == echo.id && frozenAt != null)
@@ -1401,32 +1410,81 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
               ? KenosSystem.echoPosition(echo, echoNow)
               : KenosSystem.echoPosition(echo, now);
           final sp = widget.camera.worldToScreen(world, Size(w, h));
-          // Travel culling: only the visible sky carries widgets. The
-          // ±60 px margin absorbs the drift between two breaths.
+          // Travel culling: only the visible sky is drawn.
           if (sp.dx < -60 || sp.dx > w + 60 || sp.dy < -60 || sp.dy > h + 60) {
             continue;
           }
-          // The eye's depth grows the light with it (V3.17): the
-          // transform rides the star's cached raster — zooming costs
-          // no repaint, the wheel finally answers the eye.
-          final eyeScale =
-              ParallaxMath.zoomScale(widget.camera.zoom);
-          // But the TOUCH target barely grows (V3.22): at depth the
+          sights.add((
+            echo: echo,
+            z: echo.resolveZ(now),
+            world: world,
+            sp: sp,
+            reception: ParallaxMath.receptionIntensity(eye: eye, star: world),
+          ));
+        }
+
+        // Pass 2 — the ALIVE set (V3.24): the reception law made
+        // literal. Only what the eye can truly reach carries a widget
+        // — one's own sealed hearts, the caught light, and the
+        // [aliveBudget] closest sights of the field (stable order).
+        // The rest is the glimmer field: ONE canvas, no widgets, no
+        // hit zones — far lights to approach, never to hold. 180
+        // widget-stars were the wide view's floor; ~24 is its flight.
+        const aliveBudget = 24;
+        final ranked = sights.toList()
+          ..sort((a, b) {
+            final sa = a.echo.isMine
+                ? 2.0
+                : a.echo.id == frozenFor
+                    ? 1.9
+                    : a.reception;
+            final sb = b.echo.isMine
+                ? 2.0
+                : b.echo.id == frozenFor
+                    ? 1.9
+                    : b.reception;
+            if (sa != sb) return sb.compareTo(sa);
+            return a.echo.id.compareTo(b.echo.id);
+          });
+        final alive = <String>{};
+        var taken = 0;
+        for (final s in ranked) {
+          final score = s.echo.isMine
+              ? 2.0
+              : s.echo.id == frozenFor
+                  ? 1.9
+                  : s.reception;
+          if (score <= 0) break;
+          alive.add(s.echo.id);
+          if (++taken >= aliveBudget) break;
+        }
+
+        // Pass 3 — the alive become holdable stars, four buckets deep.
+        final buckets = List.generate(
+          _bucketEdges.length - 1,
+          (_) => <Widget>[],
+        );
+        final glimmers = <Echo>[];
+        for (final s in sights) {
+          final echo = s.echo;
+          final z = s.z;
+          if (!alive.contains(echo.id)) {
+            glimmers.add(echo);
+            continue;
+          }
+          var b = 0;
+          while (b < _bucketEdges.length - 2 && z >= _bucketEdges[b + 1]) {
+            b++;
+          }
+          final sp = s.sp;
+          // The TOUCH target barely grows (V3.22): at depth the
           // whole screen was covered by 250 px boxes stealing each
           // other's holds — a star must stay catchable, not smother
           // its neighbours. 1.35 keeps the comfort, loses the plague.
           final hit =
               ParallaxMath.starDiameter(z) * math.min(eyeScale, 1.35) +
               26;
-          // The reception field: near = ALIVE (breathing, the 4 Hz
-          // swell rides only the eye's neighbourhood), far = a glimmer
-          // — it still drifts at frame rate via StarShift, but its
-          // core never repaints for breath (V3.17c: 180 stars swelling
-          // 4×/s was most of the wide view's raster bill).
-          final reception = ParallaxMath.receptionIntensity(
-            eye: widget.camera.center,
-            star: world,
-          );
+          final reception = s.reception;
           // Fresh base for this frame: the drift accumulates from HERE.
           final shift = _shifts.putIfAbsent(
             echo.id,
@@ -1470,6 +1528,24 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
         }
 
         final layers = <Widget>[];
+        // The glimmer field first (V3.24): the whole far sky in ONE
+        // painter riding the glimmer clock — the depth buckets and
+        // the holdable stars paint above it.
+        layers.add(
+          RepaintBoundary(
+            child: ListenableBuilder(
+              listenable: _glimmerClock,
+              builder: (context, _) => CustomPaint(
+                painter: _GlimmerFieldPainter(
+                  echoes: glimmers,
+                  camera: widget.camera,
+                  now: _glimmerClock.value ?? now,
+                  reduced: _reduced,
+                ),
+              ),
+            ),
+          ),
+        );
         for (var b = 0; b < buckets.length; b++) {
           final children = buckets[b];
           if (children.isEmpty) continue;
@@ -1987,6 +2063,66 @@ class _ConstellationPainter extends CustomPainter {
 /// gentle clock of its own — never waiting for the eye to move.
 /// ~12 fps is imperceptibly fluid for celestial speeds and cheap
 /// under the RepaintBoundary; « réduire les animations » stills it.
+/// V3.24 — the glimmer field: every echo the eye cannot yet reach,
+/// painted as one canvas. No widgets, no hit zones, no rasters — a
+/// far light to approach (the reception law made literal: it becomes
+/// a holdable star only when the eye comes close). Positions are
+/// recomputed inside the paint from the deterministic system math, so
+/// the far sky drifts on its own clock, half the frame rate.
+class _GlimmerFieldPainter extends CustomPainter {
+  _GlimmerFieldPainter({
+    required this.echoes,
+    required this.camera,
+    required this.now,
+    required this.reduced,
+  })  : _center = camera.center,
+        _zoom = camera.zoom;
+
+  final List<Echo> echoes;
+  final TravelCamera camera;
+  final DateTime now;
+  final bool reduced;
+
+  // Camera VALUES captured at construction (the camera is a single
+  // mutable instance — comparing it to itself never fires).
+  final Offset _center;
+  final double _zoom;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final eyeScale = ParallaxMath.zoomScale(_zoom);
+    for (final echo in echoes) {
+      final z = echo.resolveZ(now);
+      final world = KenosSystem.echoPosition(echo, now);
+      final sp = camera.worldToScreen(world, size);
+      if (sp.dx < -24 ||
+          sp.dx > size.width + 24 ||
+          sp.dy < -24 ||
+          sp.dy > size.height + 24) {
+        continue;
+      }
+      final reception = ParallaxMath.receptionIntensity(
+        eye: _center,
+        star: world,
+      );
+      // The same light as a holdable star carries, at glimmer
+      // distance: depth-dimmed, field-dimmed, never breathing.
+      final alpha =
+          ParallaxMath.opacityFor(z) * (0.30 + 0.70 * reception) * 0.85;
+      final paint = Paint()
+        ..color = AppColors.fade(echo.theme.core, alpha);
+      canvas.drawCircle(sp, ParallaxMath.coreRadius(z) * 0.8 * eyeScale, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GlimmerFieldPainter oldDelegate) =>
+      oldDelegate.echoes != echoes ||
+      oldDelegate.now != now ||
+      oldDelegate._center != _center ||
+      oldDelegate._zoom != _zoom;
+}
+
 class _HeavensClock extends StatefulWidget {
   const _HeavensClock({
     required this.builder,
