@@ -1527,6 +1527,8 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
                       echo: echo,
                       z: z,
                       displayScale: dScale,
+                      eyeDistanceAL: (Offset(echo.coordX, echo.coordY) - eye)
+                          .distance,
                       breathAt: (_reduced || reception <= 0)
                           ? null
                           : _breathAt,

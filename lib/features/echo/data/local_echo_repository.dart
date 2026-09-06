@@ -38,6 +38,9 @@ class LocalEchoRepository implements EchoRepository {
   final Map<String, _DemoEcho> _echoes = {};
   final Set<String> _consumed = {};
 
+  /// V3.26 — demo parity: the shore's name a demo author chose.
+  final Map<String, String> _origins = {};
+
   /// The reader's 10-minute decision window (same semantics as
   /// kenos_lineages): momentum + the parent's theme + the text the
   /// reader may re-seal.
@@ -287,6 +290,7 @@ class LocalEchoRepository implements EchoRepository {
       text: text,
       excerpt: excerpt,
       momentum: demo.echo.momentum,
+      origin: _origins[id],
     );
   }
 
@@ -299,12 +303,16 @@ class LocalEchoRepository implements EchoRepository {
     required EchoColorTheme theme,
     EchoMediaDraft? media,
     EchoExcerpt? excerpt,
+    String origin = '',
   }) async {
     await Future<void>.delayed(latency);
     if (media != null && excerpt != null) {
       throw const KenosException(KenosErrorCode.invalid);
     }
     final id = _uuid();
+    if (origin.isNotEmpty) {
+      _origins[id] = origin;
+    }
     final echo = Echo(
       id: id,
       coordX: ParallaxMath.clamp(coordX, 0, 1),

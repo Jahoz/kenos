@@ -75,6 +75,7 @@ class FakeEchoRepository implements EchoRepository {
     required EchoColorTheme theme,
     EchoMediaDraft? media,
     EchoExcerpt? excerpt,
+    String origin = '',
   }) async =>
       Echo(
         id: 'new-${_ether.length + 1}',

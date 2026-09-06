@@ -66,7 +66,11 @@ class SupabaseEchoRepository implements EchoRepository {
       final momentum = (bundle['momentum'] as num?)?.toInt() ?? 0;
       if (key == null || key.isEmpty) {
         // Legacy echo (pre-encryption migration): plaintext passthrough.
-        return ConsumedEcho(text: ciphertext, momentum: momentum);
+        return ConsumedEcho(
+          text: ciphertext,
+          momentum: momentum,
+          origin: bundle['origin'] as String?,
+        );
       }
       // A seal that fails to open (tampered or corrupted in transit)
       // is a dead echo: null, i.e. dissolved — never a transport error.
@@ -114,6 +118,7 @@ class SupabaseEchoRepository implements EchoRepository {
     required EchoColorTheme theme,
     EchoMediaDraft? media,
     EchoExcerpt? excerpt,
+    String origin = '',
   }) async {
     try {
       // The ether's media slot is single: fragment XOR door.
@@ -163,6 +168,7 @@ class SupabaseEchoRepository implements EchoRepository {
           'p_theme': theme.wire,
           'p_media_kind': mediaKindWire,
           'p_media_path': mediaPath,
+          'p_origin': origin,
         },
       );
       final row = (rows as List).first as Map<String, dynamic>;

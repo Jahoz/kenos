@@ -82,6 +82,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
           excerpt: content.excerpt,
           isMine: echo.isMine,
           momentum: content.momentum,
+          origin: content.origin ?? '',
         );
         updated.add(consumed);
       } else {
@@ -144,6 +145,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
     required EchoColorTheme theme,
     EchoMediaDraft? media,
     EchoExcerpt? excerpt,
+    String origin = '',
   }) async {
     final repo = ref.read(echoRepositoryProvider);
     final store = ref.read(localEchoStoreProvider);
@@ -157,6 +159,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
       theme: theme,
       media: media,
       excerpt: excerpt,
+      origin: origin,
     );
     await store.addSealed(echo);
     unawaited(store.recordEchoSent());

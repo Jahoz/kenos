@@ -869,6 +869,34 @@ l'absence de fuite du semeur) ; fixtures `rpc.sql` pliées à la
 cadence (backdating selon la convention du fichier, mains de l'éther
 sans claims). Suite pgTAP complète verte.
 
+## V3.26 — L'origine et le voyage (2026-09-08)
+
+La notion perdue de parcours revient à l'interception : chaque
+lecture devient l'histoire d'un déplacement.
+
+- **Le voyage conté** : la révélation lecteur gagne sa télémétrie —
+  « DÉRIVÉ PENDANT … », « LANCÉ À X A.L. DE TON ŒIL » (distance
+  réelle du point de lancement à l'œil au moment de l'interception,
+  la devise A.L. du compteur de dérive).
+- **L'origine réelle** (opt-in) : « NOMMER L'ORIGINE » au Miroir —
+  le navigateur résout pays · région · ville (lookup IP libre, sans
+  clé, UNE fois par session), l'auteur voit exactement ce que le
+  lecteur apprendra. Le libellé voyage avec le sceau, servi SEULEMENT
+  dans le bundle de consommation atomique — jamais sur la carte,
+  jamais dans aucun fetch (pgTAP le veille). Borné à 96 caractères.
+- **Privacy par architecture** : le lookup se fait dans le navigateur
+  de l'auteur — l'éther ne voit jamais l'IP, seulement le libellé
+  choisi. Anonymat par défaut, origine par choix.
+- Hotfix au passage : un relicte 6-arguments de `launch_echo`
+  (l'aube pré-média du projet) rendait PostgREST ambigu — mort, et
+  sentinelle pgTAP : un seul `launch_echo`, pour toujours.
+
+Gates : +7 pgTAP (`echo_origin.sql` : stockage, bundle, non-fuite
+carte, borne 96, appel 8-args des clients déployés, sentinelle
+d'unicité) ; +3 tests Dart (`origin_voyage_test.dart` : rivage,
+anonymat préservé, distance tue à portée de main) ; parité démo
+complète. 278 Dart verts, analyze 0, preuve live REST en prod.
+
 ## 4. Règles inchangées (rappel)
 
 - Single-read atomique, Ether Seal, RPC-only, ROSE destructif,

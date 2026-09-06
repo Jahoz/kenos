@@ -22,6 +22,7 @@ class Echo {
     this.isMine = false,
     this.momentum = 0,
     this.parentId,
+    this.origin = '',
   });
 
   final String id;
@@ -61,6 +62,12 @@ class Echo {
   /// The echo this one was rebounded from (lineage link, metadata):
   /// lets the map draw the constellation of a thought's journey.
   final String? parentId;
+
+  /// The shore the author CHOSE to name (V3.26: pays · région ·
+  /// ville, opt-in at the Mirror). Empty on every map echo — it is
+  /// set only on the in-memory consumed copy, revealed to the single
+  /// winner. The law holds: fetches never carry it.
+  final String origin;
 
   /// Rendered depth: one's own echoes slowly drift toward the background.
   double resolveZ(DateTime now) =>

@@ -156,7 +156,7 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000
 -- anti-spam breath applies to the winner too.
 select is(
   (select public.consume_echo(tests.echo_by_text('premier secret'))),
-  jsonb_build_object('ciphertext', 'premier secret', 'key', null, 'momentum', 0),
+  jsonb_build_object('ciphertext', 'premier secret', 'key', null, 'momentum', 0, 'origin', null),
   'the winner gets the legacy bundle (plaintext, no key)'
 );
 
@@ -208,7 +208,7 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000
 -- in the same single call as the payload.
 select is(
   (select public.consume_echo(tests.echo_by_text('AAECAwQFBgcICQ=='))),
-  jsonb_build_object('ciphertext', 'AAECAwQFBgcICQ==', 'key', 'a2Vub3Mta2V5LXRlc3Q=', 'momentum', 0),
+  jsonb_build_object('ciphertext', 'AAECAwQFBgcICQ==', 'key', 'a2Vub3Mta2V5LXRlc3Q=', 'momentum', 0, 'origin', null),
   'the interceptor receives the escrowed key (exchange at interception)'
 );
 

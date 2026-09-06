@@ -37,6 +37,8 @@ abstract class EchoRepository {
   /// Returns the created echo (without text — sealing philosophy).
   /// At most ONE attachment: a binary [media] fragment OR a cultural
   /// [excerpt] door — the ether's media slot is single.
+  /// [origin] (V3.26): the shore's name the author chose to attach,
+  /// revealed only to the single reader — '' keeps the light unnamed.
   Future<Echo> sendEcho({
     required String text,
     required double coordX,
@@ -45,6 +47,7 @@ abstract class EchoRepository {
     required EchoColorTheme theme,
     EchoMediaDraft? media,
     EchoExcerpt? excerpt,
+    String origin = '',
   });
 
   /// Reader side: leave the one-line trace after consuming an echo.

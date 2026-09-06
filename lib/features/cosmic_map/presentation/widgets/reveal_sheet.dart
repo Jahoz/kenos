@@ -31,7 +31,11 @@ import '../../application/map_controller.dart';
 /// Reveal modal: glassmorphism, visual decryption, a 10-second reading
 /// window, then dissolution — and the bottle-in-the-sea echo: the reader
 /// may leave ONE trace for the stranger who launched the echo.
-Future<void> showRevealSheet(BuildContext context, {required Echo echo}) {
+Future<void> showRevealSheet(
+  BuildContext context, {
+  required Echo echo,
+  double? eyeDistanceAL,
+}) {
   return showGeneralDialog(
     context: context,
     barrierDismissible: false,
@@ -42,7 +46,7 @@ Future<void> showRevealSheet(BuildContext context, {required Echo echo}) {
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return FadeTransition(
         opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        child: RevealPanel(echo: echo),
+        child: RevealPanel(echo: echo, eyeDistanceAL: eyeDistanceAL),
       );
     },
   );
@@ -51,9 +55,13 @@ Future<void> showRevealSheet(BuildContext context, {required Echo echo}) {
 enum _Phase { reading, trace, sent, rebounded, refused }
 
 class RevealPanel extends ConsumerStatefulWidget {
-  const RevealPanel({super.key, required this.echo});
+  const RevealPanel({super.key, required this.echo, this.eyeDistanceAL});
 
   final Echo echo;
+
+  /// V3.26 — how far the launch point sat from the reader's eye at
+  /// interception, in the map's own currency (world units = A.L.).
+  final double? eyeDistanceAL;
 
   @override
   ConsumerState<RevealPanel> createState() => _RevealPanelState();
@@ -252,6 +260,21 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     // The rite of ashes: the burn simply does not wait.
     _burn.stop();
     _startDissolve();
+  }
+
+  /// V3.26 — the drift as the ether counts it, same voice as the
+  /// author-side signal (days » hours » minutes).
+  String _liveDrift() {
+    final d = DateTime.now().difference(widget.echo.createdAt);
+    if (d.inDays >= 1) {
+      final h = d.inHours % 24;
+      return h == 0 ? '${d.inDays} J' : '${d.inDays} J $h H';
+    }
+    final h = d.inHours;
+    final m = d.inMinutes % 60;
+    if (h == 0) return '$m MIN';
+    final mm = m.toString().padLeft(2, '0');
+    return '$h H $mm MIN';
   }
 
   void _startDissolve() {
@@ -692,6 +715,48 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
                 ),
         ],
         const SizedBox(height: 40),
+        // V3.26 — the voyage, told to the one who waited for it:
+        // where the light was born (if its author chose to say), how
+        // long it drifted, and how far from your own eye it was
+        // launched. The interception becomes a journey's story.
+        if (widget.echo.origin.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+              'PARTI DE ${widget.echo.origin.toUpperCase()}',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppFonts.mono,
+                fontSize: 11,
+                letterSpacing: 3,
+                color: AppColors.fade(AppColors.teal, 0.75),
+              ),
+            ),
+          ),
+        Text(
+          'DÉRIVÉ PENDANT ${_liveDrift()}',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: AppFonts.mono,
+            fontSize: 11,
+            letterSpacing: 3,
+            color: AppColors.fade(AppColors.pureLight, 0.6),
+          ),
+        ),
+        if (widget.eyeDistanceAL != null && widget.eyeDistanceAL! > 0.01) ...[
+          const SizedBox(height: 8),
+          Text(
+            'LANCÉ À ${widget.eyeDistanceAL!.toStringAsFixed(2)} A.L. DE TON ŒIL',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: AppFonts.mono,
+              fontSize: 11,
+              letterSpacing: 3,
+              color: AppColors.fade(AppColors.cyan, 0.7),
+            ),
+          ),
+        ],
+        const SizedBox(height: 28),
         Text(
           'DESTRUCTION IMMINENTE',
           textAlign: TextAlign.center,

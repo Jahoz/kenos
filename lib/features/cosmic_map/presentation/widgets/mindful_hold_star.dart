@@ -36,6 +36,7 @@ class MindfulHoldStar extends ConsumerStatefulWidget {
     this.displayScale = 1.0,
     this.breathAt,
     this.reception = 1.0,
+    this.eyeDistanceAL,
   });
 
   final Echo echo;
@@ -55,6 +56,11 @@ class MindfulHoldStar extends ConsumerStatefulWidget {
   /// toward it is the only way in. One's own sealed stars ignore the
   /// field (they are anchors, not bottles).
   final double reception;
+
+  /// V3.26 — how far this echo's LAUNCH point sits from the eye, in
+  /// world units (the map's own A.L. currency): told to the reader at
+  /// the reveal, the journey made visible.
+  final double? eyeDistanceAL;
 
   /// One far-field whisper per app session (static: survives screen
   /// remounts, like the Awakening's own guard) — the field teaches
@@ -179,7 +185,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
         );
         unawaited(ref.read(audioControllerProvider).playBell(KenosBell.reveal));
         KenosHaptics.pulse(KenosPulse.reveal);
-        await showRevealSheet(context, echo: echo);
+        await showRevealSheet(context, echo: echo, eyeDistanceAL: widget.eyeDistanceAL);
         if (!mounted) return;
         ref.read(mapControllerProvider.notifier).forget(targetId);
       }

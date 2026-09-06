@@ -60,12 +60,22 @@ class EchoMedia {
 /// the text as a phoenix carrying momentum + 1. [excerpt] is the
 /// cultural door, unsealed only for the winner.
 class ConsumedEcho {
-  const ConsumedEcho({required this.text, this.media, this.excerpt, this.momentum = 0});
+  const ConsumedEcho({
+    required this.text,
+    this.media,
+    this.excerpt,
+    this.momentum = 0,
+    this.origin,
+  });
 
   final String text;
   final EchoMedia? media;
   final EchoExcerpt? excerpt;
   final int momentum;
+
+  /// The shore the author chose to name (V3.26): the winner alone
+  /// learns where the light was born. Null = an unnamed light.
+  final String? origin;
 }
 /// Actual audio container of decrypted bytes: web recordings arrive as
 /// webm/opus (EBML magic 0x1A45DFA3), native ones as mp4 (ftyp box at
