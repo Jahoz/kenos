@@ -11,6 +11,7 @@
 """
 import math
 import os
+import random
 import struct
 import wave
 
@@ -29,29 +30,70 @@ def write_wav(path: str, samples: list[float], sr: int = SR) -> None:
             v = int(max(-1.0, min(1.0, s)) * 32767)
             frames += struct.pack("<h", v)
         w.writeframes(bytes(frames))
-    print(f"  {path} ({len(samples) / sr:.1f}s)")
+        print(f"  {path} ({len(samples) / sr:.1f}s)")
 
 
 def drone() -> None:
-    dur = 12.0
+    """V3.27 — a void the ear cannot track.
+
+    The 12 s loop was seamless but SHORT: one breath every 12 s and
+    the ear locked the period within three turns — the loop FELT like
+    a bug. Now 36 s of:
+
+      * the same ~70 Hz signature (beating pair, faint octave and
+        fifth, sub-warmth) on integer-cycle frequencies — seamless
+        by construction, sample-exact at the wrap;
+      * THREE amplitude LFOs at mutually prime cycle counts (5, 1
+        and 13 per loop): the composite breathing never repeats on
+        itself inside one listen;
+      * a slow band of filtered noise, the void's air — made
+        loop-seamless by wrapping its tail into its head with an
+        equal-power crossfade AFTER filtering. Structureless, so
+        there is nothing to recognize, nothing to count.
+    """
+    dur = 36.0
     n = int(SR * dur)
-    # Frequencies = k / dur (integer k) => continuous phase across the loop.
-    f_beat_lo = 840 / dur    # 70.00 Hz
-    f_beat_hi = 841 / dur    # ~70.08 Hz (slow 1/12 Hz beat)
-    f_oct = 1680 / dur       # octave
-    f_fifth = 2522 / dur     # high fifth, discrete
-    lfo = 1 / dur            # breathing: exactly one cycle per loop
+    rnd = random.Random(2026_09_07)
+
+    def k(hz: float) -> float:
+        # Nearest integer-cycle frequency: k / dur.
+        return round(hz * dur) / dur
+
+    f_lo, f_hi = k(70.0), k(70.09)   # the signature slow beat
+    f_oct, f_fifth = k(140.0), k(210.0)
+    f_sub = k(46.7)                  # low warmth
+
+    # The air: low-passed noise, wrapped seamless (crossfade AFTER
+    # filtering — the filter state never sees the seam).
+    extra = SR  # 1 s tail, donated to the wrap
+    alpha = 1 - math.exp(-2 * math.pi * 550 / SR)  # one-pole, ~550 Hz
+    lp = 0.0
+    air = []
+    for _ in range(n + extra):
+        lp += alpha * (rnd.uniform(-1.0, 1.0) - lp)
+        air.append(lp)
+    for i in range(extra):
+        w = (i + 0.5) / extra
+        air[i] = (
+            air[i] * math.sin(w * math.pi / 2)
+            + air[n + i] * math.cos(w * math.pi / 2)
+        )
+    air = air[:n]
+
     out = []
     for i in range(n):
         t = i / SR
-        amp = 0.62 + 0.38 * math.sin(2 * math.pi * lfo * t - math.pi / 2)
-        s = (
-            0.5 * math.sin(2 * math.pi * f_beat_lo * t)
-            + 0.5 * math.sin(2 * math.pi * f_beat_hi * t)
-            + 0.16 * math.sin(2 * math.pi * f_oct * t + 0.7)
-            + 0.05 * math.sin(2 * math.pi * f_fifth * t + 1.3)
+        breath = 0.60 + 0.40 * math.sin(2 * math.pi * 5 / dur * t - math.pi / 2)
+        swell = 0.85 + 0.15 * math.sin(2 * math.pi * 1 / dur * t - math.pi / 2)
+        murmur = 0.96 + 0.04 * math.sin(2 * math.pi * 13 / dur * t + 1.0)
+        tone = (
+            0.46 * math.sin(2 * math.pi * f_lo * t)
+            + 0.46 * math.sin(2 * math.pi * f_hi * t)
+            + 0.15 * math.sin(2 * math.pi * f_oct * t + 0.7)
+            + 0.06 * math.sin(2 * math.pi * f_fifth * t + 1.3)
+            + 0.10 * math.sin(2 * math.pi * f_sub * t)
         )
-        out.append(s * amp * 0.30)
+        out.append((tone * breath * swell + air[i] * 0.030 * murmur) * 0.30)
     write_wav(f"{OUT}/drone_loop.wav", out)
 
 
