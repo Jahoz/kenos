@@ -32,6 +32,12 @@ class OriginNode extends ConsumerWidget {
           'Ton nœud d\'origine — $stardust poussière${stardust > 1 ? 's' : ''} d\'étoile',
       button: true,
       child: GestureDetector(
+        // The whole 64 px box is the target (V3.26b): deferToChild
+        // left only the 18 px ember core tappable — invisible on
+        // desktop, and on phones the wide gates button (painted
+        // above) stole even that sliver. The glow already reads this
+        // big; now the touch agrees with the eye.
+        behavior: HitTestBehavior.opaque,
         onTap: () {
           KenosHaptics.pulse(KenosPulse.themePick, reduceMotion: reduced);
           context.push('/impact');
