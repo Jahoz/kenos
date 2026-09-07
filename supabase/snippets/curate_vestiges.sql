@@ -3,8 +3,10 @@
 --
 -- Real curated culture: quotes (public domain or credited),
 -- etymologies, histories, astronomy facts, haiku. NEVER a fake
--- confession — a Vestige is an artefact, re-readable, carrying no
--- author identity, no reception, no stardust.
+-- confession. A Vestige is PERMANENT culture, re-readable, carrying
+-- no account identity, no reception, no stardust — it is NOT an
+-- artifact (that word is a curated poem ring that lives one moon;
+-- see the CLAUDE.md lexique « du ciel »).
 --
 -- Idempotent: upsert by id — rerun updates texts, adds new, keeps
 -- positions stable. Retire a shard by deleting its line here and

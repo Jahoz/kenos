@@ -16,6 +16,25 @@ peut être lu qu'une seule fois, par une seule personne** — puis il s'autodét
 - Sans identifiants Supabase, l'app démarre en **MODE DÉMO LOCAL** (éther simulé,
   sémantique identique — atomicité comprise).
 
+## Lexique du ciel (canon — ne jamais confondre)
+
+Chaque session relit ceci avant de parler du ciel. « Artefact » n'est pas un
+mot générique ici : il désigne une chose précise, distincte du vestige.
+
+| Terme | Qu'est-ce | Vie |
+|---|---|---|
+| **Écho** | Confidence scellée (AES-256-GCM), lue une seule fois au monde, puis dissolution. | ≤ 30 j à la dérive |
+| **Anneau** (constellation ouverte) | Cadavre exquis en formation : lignes scellées à l'aveugle, rien de lisible tant qu'il est ouvert. Le Jardinier (`pg_cron kenos-garden`) en replante. | 7 j si jamais refermé |
+| **Artefact** (constellation fermée curatorisée) | **Un poème du domaine public, crédité** (`curated_by` = le poète), assemblé ligne par ligne par des mains anonymes ; lisible et re-lisible par tous. | **Une lune** — purge à 30 j. Un naît chaque lundi (`pg_cron kenos-artifact` → backlog `kenos_artifact_backlog`) |
+| **Vestige** | **Un éclat de culture permanente** : citation, étymologie, histoire, fait, haïku — texte clair, aucune identité de compte, aucune réception (une source créditée, pas un auteur) ; multilingue (fr canon + locales). | **Pour toujours** — jamais purgé (`kenos_vestiges`) |
+| **Main** | Compte anonyme déterministe (`curated-hand-N@seed.kenos.local`) portant une ligne curatorisée. | — |
+| **Trace** | Réponse one-shot du lecteur à l'auteur (≤ 140 car., fenêtre 10 min), bouteille à la mer. | voir = brûler |
+
+Règle rapide : **un artefact est un poème et vit une lune ; un vestige est un
+éclat et vit pour toujours.** Le commentaire historique de
+`curate_vestiges.sql` (« a Vestige is an artefact ») entretenait la confusion —
+corrigé ; ne jamais le réécrire.
+
 ## Stack
 
 | Couche | Tech |

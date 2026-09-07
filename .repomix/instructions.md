@@ -20,3 +20,9 @@
 - README.md
 - docs/ROADMAP_V3.md
 - docs/SECURITY.md
+
+## Sky Vocabulary (law — never confuse)
+- artefact = curated public-domain POEM ring: credited poet, readable by all, one 30-day moon, reborn weekly from kenos_artifact_backlog
+- vestige = PERMANENT plaintext culture shard: quote/etymology/fact/haiku, no account identity, never purged
+- echo = sealed confidence, one single read then gone | ring = open cadavre exquis (nothing readable while open)
+- Full lexique: CLAUDE.md « Lexique du ciel »

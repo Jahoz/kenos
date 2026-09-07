@@ -23,6 +23,12 @@
   best-effort, every plugin call wrapped in try/catch.
 - **Sensor-less platforms must stay alive**: accelerometer fallback
   (sinusoidal drift) is a feature, not a workaround.
+- **Sky vocabulary is law** (full lexique in CLAUDE.md): a *vestige* is
+  a permanent plaintext culture shard (quote/etymology/fact, no account
+  identity, never purged); an *artifact* is a curated public-domain poem
+  ring (credited poet, readable by all, one 30-day moon, reborn weekly
+  from the backlog). Never blur the two — never call a vestige "an
+  artefact".
 - Demo mode (no Supabase credentials) must keep exact backend semantics.
 - UI copy stays in **French** (product language); code, comments, commits
   in **English**.
