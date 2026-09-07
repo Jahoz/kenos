@@ -52,6 +52,31 @@ select jsonb_pretty(jsonb_build_object(
         'reports_open',
             (select count(*) from public.kenos_echo_reports)
     ),
+    'culture', (
+        select case when to_regclass('public.kenos_artifact_backlog') is null
+                then jsonb_build_object(
+                    'artifacts_alive',
+                    (select count(*) from public.kenos_constellations
+                      where curated_by is not null))
+                else jsonb_build_object(
+                    'artifacts_alive',
+                        (select count(*) from public.kenos_constellations
+                          where curated_by is not null),
+                    'backlog_remaining',
+                        (select count(*) from public.kenos_artifact_backlog
+                          where released_at is null),
+                    'last_release',
+                        (select poet || ' — ' || title
+                           from public.kenos_artifact_backlog
+                          where released_at is not null
+                          order by released_at desc limit 1),
+                    'oldest_artifact_days',
+                        (select round(extract(epoch from (now() - min(closed_at))) / 86400)::int
+                           from public.kenos_constellations
+                          where curated_by is not null)
+                )
+        end
+    ),
     'db', jsonb_build_object(
         'postmaster_since', pg_postmaster_start_time(),
         'db_size_mb',

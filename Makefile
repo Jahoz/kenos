@@ -1,6 +1,6 @@
 # KENOS — canonical commands (see CONTRIBUTING.md for the full picture)
 .DEFAULT_GOAL := help
-.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web deploy-site serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load db-garden db-curate db-sow-vestiges prod-reset prod-sow prod-desow prod-watch e2e gen-icons gen-audio coverage
+.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web deploy-site serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load db-garden db-curate db-sow-vestiges prod-reset prod-sow prod-desow prod-watch prod-artifact-backlog prod-artifact-release e2e gen-icons gen-audio coverage
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -142,6 +142,12 @@ prod-desow: ## LAUNCH DESOW (cloud): the generated sky goes home — adoption le
 
 prod-watch: ## Daily prod watch (cloud): Observatory ledger + live sky, read-only
 	bash scripts/prod_admin.sh file supabase/snippets/prod_watch.sql
+
+prod-artifact-backlog: ## Load/refresh the artifact backlog corpus (cloud, idempotent)
+	bash scripts/prod_admin.sh filemulti supabase/snippets/artifact_backlog.sql
+
+prod-artifact-release: ## Release the next backlog poem into the sky (cloud)
+	bash scripts/prod_admin.sh sql "select public.kenos_artifact_release()"
 
 e2e: ## Full bottle-in-the-sea loop over the real local PostgREST
 	bash scripts/e2e_local.sh
