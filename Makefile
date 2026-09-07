@@ -1,6 +1,6 @@
 # KENOS — canonical commands (see CONTRIBUTING.md for the full picture)
 .DEFAULT_GOAL := help
-.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web deploy-site serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load db-garden db-curate db-sow-vestiges prod-reset prod-sow prod-desow e2e gen-icons gen-audio coverage
+.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web deploy-site serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load db-garden db-curate db-sow-vestiges prod-reset prod-sow prod-desow prod-watch e2e gen-icons gen-audio coverage
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -139,6 +139,9 @@ prod-desow: ## LAUNCH DESOW (cloud): the generated sky goes home — adoption le
 	bash scripts/prod_admin.sh sql "delete from auth.users where email like 'sky-%@seed.kenos.local'"
 	bash scripts/prod_admin.sh sql "delete from public.kenos_constellations c where c.state = 'OPEN' and not exists (select 1 from public.kenos_constellation_lines l where l.constellation_id = c.id) and c.seeder_id in (select u.id from auth.users u where not exists (select 1 from public.echoes e where e.author_id = u.id) and not exists (select 1 from public.kenos_constellation_lines l where l.contributor_id = u.id))"
 	bash scripts/prod_admin.sh sql "select (select count(*) from public.echoes) as real_echoes, (select count(*) from public.kenos_constellations) as rings, (select count(*) from public.kenos_vestiges) as vestiges"
+
+prod-watch: ## Daily prod watch (cloud): Observatory ledger + live sky, read-only
+	bash scripts/prod_admin.sh file supabase/snippets/prod_watch.sql
 
 e2e: ## Full bottle-in-the-sea loop over the real local PostgREST
 	bash scripts/e2e_local.sh
