@@ -52,8 +52,30 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
   /// V3.26 — the shore's name (opt-in): resolved in the browser when
   /// the author asks, sent only if they keep it.
   String? _origin;
+  bool _originResolving = false;
+  bool _originUnreachable = false;
 
-  void _setOrigin(String? origin) => setState(() => _origin = origin);
+  /// V3.26c — the toggle lives in the mode strip's grammar now: open
+  /// resolves (ipwho.is, then geojs.io), close unnamed. One flight at
+  /// a time; a failure is told below the strip, never blocking.
+  Future<void> _toggleOrigin() async {
+    if (_originResolving) return;
+    if (_origin != null) {
+      setState(() => _origin = null);
+      return;
+    }
+    setState(() {
+      _originResolving = true;
+      _originUnreachable = false;
+    });
+    final label = await OriginWhisper.resolve();
+    if (!mounted) return;
+    setState(() {
+      _originResolving = false;
+      _origin = label;
+      _originUnreachable = label == null;
+    });
+  }
 
   static const _audioLimit = Duration(seconds: 20);
 
@@ -458,10 +480,24 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                               recording: _recording,
                               hasFragment: _media != null,
                               hasDoor: _excerpt != null,
+                              resolvingOrigin: _originResolving,
+                              hasOrigin: _origin != null,
                               onImage: _recording ? null : _pickImage,
                               onSound: _toggleRecording,
                               onDoor: _recording ? null : _pasteExcerptLink,
+                              onOrigin: _recording ? null : _toggleOrigin,
                             ),
+                          // The named shore, told once below its mode —
+                          // exactly what the single future reader will
+                          // learn. One tap unnamed: the name is a gift.
+                          if (_origin != null) ...[
+                            _OriginChip(
+                              label: _origin!,
+                              onRemoved: () => setState(() => _origin = null),
+                            ),
+                            const SizedBox(height: 10),
+                          ] else if (_originUnreachable && !_sealing)
+                            _OriginRetry(onRetry: _toggleOrigin),
                           // The attached fragment, made visible: thumbnail or
                           // waveform, private listen, one-tap removal.
                           if (_media != null) ...[
@@ -497,22 +533,6 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                             ),
                           ),
                           const SizedBox(height: 14),
-                          // V3.26 — the shore's name, opt-in: the reader
-                          // alone will learn where the light was born.
-                          if (!_sealing) _OriginToggle(onChanged: _setOrigin),
-                          const SizedBox(height: 12),
-                          if (_origin != null)
-                            Text(
-                              'TON ÉCHO DIRA : « PARTI DE ${_origin!.toUpperCase()} »',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: AppFonts.mono,
-                                fontSize: 9,
-                                letterSpacing: 2,
-                                color: AppColors.fade(AppColors.teal, 0.7),
-                              ),
-                            ),
-                          const SizedBox(height: 16),
                           OutlinedButton(
                             onPressed: _canSend ? _sealAndLaunch : null,
                             child: Text(
@@ -554,17 +574,23 @@ class _ModeStrip extends StatelessWidget {
     required this.recording,
     required this.hasFragment,
     required this.hasDoor,
+    required this.resolvingOrigin,
+    required this.hasOrigin,
     required this.onImage,
     required this.onSound,
     required this.onDoor,
+    required this.onOrigin,
   });
 
   final bool recording;
   final bool hasFragment;
   final bool hasDoor;
+  final bool resolvingOrigin;
+  final bool hasOrigin;
   final VoidCallback? onImage;
   final VoidCallback? onSound;
   final VoidCallback? onDoor;
+  final VoidCallback? onOrigin;
 
   @override
   Widget build(BuildContext context) {
@@ -620,101 +646,115 @@ class _ModeStrip extends StatelessWidget {
             onDoor,
             hasDoor ? AppColors.teal : null,
           ),
+          dot,
+          // V3.26c — the shore's name is a mode of the echo, not a
+          // lone box crowding the seal: same grammar as its siblings.
+          mode(
+            resolvingOrigin ? 'ORIGINE…' : 'ORIGINE',
+            onOrigin,
+            hasOrigin ? AppColors.teal : null,
+          ),
         ],
       ),
     );
   }
 }
 
-/// V3.26 — NOMMER L'ORIGINE: a quiet opt-in. When the author opens
-/// it, the browser resolves the shore's name (pays · région · ville)
-/// ONCE for the session; the preview says exactly what the future
-/// reader will learn. Unreachable lookup = the option quietly says
-/// so — the launch never depends on it.
-class _OriginToggle extends StatefulWidget {
-  const _OriginToggle({required this.onChanged});
+/// V3.26c — the named shore, told once: the chip says exactly what the
+/// single future reader will learn (« PARTI DE … »). One tap unnamed.
+/// Wraps at two lines, ellipsizes — it can never overflow again.
+class _OriginChip extends StatelessWidget {
+  const _OriginChip({required this.label, required this.onRemoved});
 
-  final ValueChanged<String?> onChanged;
-
-  @override
-  State<_OriginToggle> createState() => _OriginToggleState();
-}
-
-class _OriginToggleState extends State<_OriginToggle> {
-  bool _open = false;
-  bool _resolving = false;
-  String? _label;
-  bool _unreachable = false;
-
-  Future<void> _toggle() async {
-    if (_open) {
-      setState(() => _open = false);
-      widget.onChanged(null);
-      return;
-    }
-    setState(() {
-      _open = true;
-      _resolving = true;
-    });
-    final label = await OriginWhisper.resolve();
-    if (!mounted) return;
-    setState(() {
-      _resolving = false;
-      _label = label;
-      _unreachable = label == null;
-    });
-    widget.onChanged(label);
-  }
+  final String label;
+  final VoidCallback onRemoved;
 
   @override
   Widget build(BuildContext context) {
-    final active = _open && _label != null;
-    return GestureDetector(
-      onTap: _toggle,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: active
-                ? AppColors.fade(AppColors.teal, 0.65)
-                : AppColors.fade(AppColors.pureLight, 0.18),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.fade(AppColors.teal, 0.4)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.public_outlined,
+            size: 15,
+            color: AppColors.fade(AppColors.teal, 0.8),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: active
-                    ? AppColors.fade(AppColors.teal, 0.9)
-                    : Colors.transparent,
-                border: Border.all(
-                  color: AppColors.fade(AppColors.pureLight, 0.4),
-                  width: 1,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ORIGINE NOMMÉE',
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 9,
+                    letterSpacing: 3,
+                    color: AppColors.fade(AppColors.pureLight, 0.75),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 4),
+                Text(
+                  'TON ÉCHO DIRA : « PARTI DE ${label.toUpperCase()} »',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 8.5,
+                    letterSpacing: 1.5,
+                    height: 1.6,
+                    color: AppColors.fade(AppColors.teal, 0.8),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 10),
-            Text(
-              _resolving
-                  ? 'NOMMER L\'ORIGINE…'
-                  : _open && _unreachable
-                      ? 'ORIGINE INJOIGNABLE — TOUCHER POUR RÉESSAYER'
-                      : 'NOMMER L\'ORIGINE',
-              style: TextStyle(
-                fontFamily: AppFonts.mono,
-                fontSize: 9,
-                letterSpacing: 3,
-                color: active
-                    ? AppColors.fade(AppColors.teal, 0.85)
-                    : AppColors.fade(AppColors.pureLight, 0.45),
-              ),
+          ),
+          const SizedBox(width: 6),
+          IconButton(
+            tooltip: 'Retirer le nom',
+            onPressed: onRemoved,
+            icon: Icon(
+              Icons.close,
+              size: 15,
+              color: AppColors.fade(AppColors.pureLight, 0.45),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// V3.26c — both shores silent: a quiet, WRAPPING, tappable line. The
+/// V3.26 box was a fixed-width row whose 40-character failure label
+/// overflowed the border on narrow screens; text that wraps cannot.
+class _OriginRetry extends StatelessWidget {
+  const _OriginRetry({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onRetry,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Text(
+          'ORIGINE INJOIGNABLE — TOUCHER POUR RÉESSAYER',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: AppFonts.mono,
+            fontSize: 8.5,
+            letterSpacing: 2,
+            height: 1.6,
+            color: AppColors.fade(AppColors.pureLight, 0.4),
+          ),
         ),
       ),
     );
