@@ -897,6 +897,42 @@ d'unicité) ; +3 tests Dart (`origin_voyage_test.dart` : rivage,
 anonymat préservé, distance tue à portée de main) ; parité démo
 complète. 278 Dart verts, analyze 0, preuve live REST en prod.
 
+## V3.28 — La Légende du Ciel (2026-09-08)
+
+Le constat (Hugo) : « toujours des problèmes de répartition et
+d'orbite — on doit mieux comprendre visuellement l'organisation pour
+naviguer dans l'espace. » Trois causes structurelles, trois
+arbitrages (2026-09-08), une même loi : le ciel doit se lire.
+
+- **Les essaims en coques** : la bande hash-continue (0.075-0.145)
+  devient TROIS coques discrètes (0.085 / 0.110 / 0.135), chacune à
+  tempo fixe (210/300/390 s) — chaque anneau tourne comme un anneau,
+  trois voies lisibles par planète au lieu d'un brassis. Les guides
+  dessinés disent enfin vrai (l'ancienne paire 0.08/0.13 mentait).
+- **Naître là où on dérive** : les coordonnées de lancement ne sont
+  plus aléatoires — l'écho naît dans la bande de gravité de sa
+  planète d'intention (`launchCoordsFor`). Le fetch par secteur, la
+  télémétrie A.L. et les ancres de lignée racontent la même histoire
+  que l'écran. Parité démo exacte.
+- **Les errants ramenés** : l'anneau 0.62-0.74 vivait largement HORS
+  du ciel naviguable — des rumeurs hors-cadre. Ramené à 0.55-0.65 :
+  le lointain reste le lointain (clair de l'aphélie de Vénus), mais
+  la marge du voyageur le visite vraiment.
+- **LA CARTE DU CIEL** : le bouton CARTE (HUD) ouvre le schéma du
+  système à l'échelle — cœur et exclusion, voies des ancrès et
+  positions vivantes, coques, phare, anneau des errants, champ du
+  repos, ton œil et son rayon de réception. Chaque corps nommé est
+  un départ : la caméra glisse vers sa position vivante. Trois lois
+  en légende : les échos orbitent l'intention qu'on leur confie ·
+  les vestiges reposent — la culture ne tourne pas · les comètes
+  traversent tout : des pensées portées.
+
+Gates : +4 tests Dart (coques : appartenance et tempo par coque ;
+naissance : bande de la bonne planète, bornes, déterminisme ; errants
+bornés ; carte : construction, lois, voyage-referme) ; suite complète
+284 verts, analyze 0. Les positions rendues changent à l'ouverture
+suivante (coques nouvelles) — voulu : c'est la lisibilité demandée.
+
 ## 4. Règles inchangées (rappel)
 
 - Single-read atomique, Ether Seal, RPC-only, ROSE destructif,

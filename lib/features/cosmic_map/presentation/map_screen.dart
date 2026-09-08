@@ -39,6 +39,7 @@ import 'widgets/celestial_plaque.dart';
 import 'widgets/mindful_hold_star.dart';
 import 'widgets/origin_node.dart';
 import 'widgets/scar_field_painter.dart';
+import 'widgets/sky_map_sheet.dart';
 import 'widgets/star_shift.dart';
 import 'widgets/system_painter.dart';
 import 'widgets/vestige.dart';
@@ -1024,6 +1025,21 @@ class _MapScreenState extends ConsumerState<MapScreen>
                         TextButton(
                           onPressed: () => context.push('/impact'),
                           child: const Text('IMPACT'),
+                        ),
+                        TextButton(
+                          // V3.28 — the organization told at a glance:
+                          // the whole system drawn to scale, every
+                          // named body a departure.
+                          onPressed: () => showSkyMapSheet(
+                            context,
+                            eye: _camera.center,
+                            onTravel: (target) {
+                              _glide?.cancel();
+                              _camera.panByWorld(target - _camera.center);
+                              _refreshAfterTravel();
+                            },
+                          ),
+                          child: const Text('CARTE'),
                         ),
                         TextButton(
                           // Recentring only: the sky around the heart

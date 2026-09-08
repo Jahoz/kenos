@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import '../../../core/utils/parallax_math.dart';
+import '../../cosmic_map/application/kenos_system.dart';
 import '../domain/echo.dart';
 import '../domain/echo_cipher.dart';
 import '../domain/echo_color_theme.dart';
@@ -144,16 +145,22 @@ class LocalEchoRepository implements EchoRepository {
     for (final (text, theme, excerpt) in crowd) {
       final id = _uuid();
       final sealed = await EchoCipher.seal(text);
+      // V3.28 — demo parity: a thought is born where it will drift,
+      // inside its intent planet's gravity band (same law as the
+      // cloud's launch).
+      final echoTheme = EchoColorTheme.fromWire(theme);
+      final createdAt = DateTime.now().subtract(
+        Duration(minutes: _random.nextInt(60 * 24 * 30)),
+      );
+      final born = KenosSystem.launchCoordsFor(echoTheme, createdAt, _random);
       _echoes[id] = _DemoEcho(
         echo: Echo(
           id: id,
-          coordX: 0.08 + _random.nextDouble() * 0.84,
-          coordY: 0.14 + _random.nextDouble() * 0.7,
+          coordX: born.dx,
+          coordY: born.dy,
           coordZ: 0.15 + _random.nextDouble() * 0.75,
-          theme: EchoColorTheme.fromWire(theme),
-          createdAt: DateTime.now().subtract(
-            Duration(minutes: _random.nextInt(60 * 24 * 30)),
-          ),
+          theme: echoTheme,
+          createdAt: createdAt,
           // A carried thought travels a wilder arc: some crowd stars
           // are comets, so the demo map shows the phoenix tails too.
           momentum: _random.nextDouble() < 0.08

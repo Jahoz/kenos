@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +11,7 @@ import '../../echo/domain/echo.dart';
 import '../../echo/domain/echo_color_theme.dart';
 import '../../echo/domain/echo_excerpt.dart';
 import '../../echo/domain/echo_media.dart';
+import 'kenos_system.dart';
 import 'travel_camera.dart';
 
 /// Stellar map controller: merges the ether (remote metadata, never the
@@ -110,7 +111,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
         // The comet relaunches from where it was intercepted.
         coordX: source.coordX,
         coordY: source.coordY,
-        coordZ: max(0.3, source.coordZ),
+        coordZ: math.max(0.3, source.coordZ),
       );
       final sealed = phoenix.copyWith(theme: source.theme);
       await store.addSealed(sealed);
@@ -149,12 +150,16 @@ class MapController extends AsyncNotifier<List<Echo>> {
   }) async {
     final repo = ref.read(echoRepositoryProvider);
     final store = ref.read(localEchoStoreProvider);
-    final random = Random();
 
+    // V3.28 — the thought is born where it will drift: its intent
+    // planet's neighbourhood, inside the gravity band. The launch
+    // coordinate, the sector fetch and the A.L. telemetry all agree
+    // with the rendered orbit.
+    final born = KenosSystem.launchCoordsFor(theme, DateTime.now());
     final echo = await repo.sendEcho(
       text: text,
-      coordX: 0.12 + random.nextDouble() * 0.76,
-      coordY: 0.18 + random.nextDouble() * 0.64,
+      coordX: born.dx,
+      coordY: born.dy,
       coordZ: 1.0, // born against the camera, then drifts
       theme: theme,
       media: media,

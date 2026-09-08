@@ -36,9 +36,13 @@ void main() {
       for (var i = 0; i < celestialWanderers.length; i++) {
         final p = CelestialMath.wandererPosition(i, at);
         final dist = Offset(p.dx - 0.5, p.dy - 0.5).distance;
-        expect(dist, greaterThanOrEqualTo(0.62),
-            reason: 'les errants se trouvent en voyageant');
-        expect(dist, lessThanOrEqualTo(0.80));
+        // V3.28: the ring is pulled inside the navigable sky (was
+        // 0.62-0.74, past the frame) — still the far country, clear
+        // of Venus's swarm rim (0.515), now genuinely reachable.
+        expect(dist, greaterThanOrEqualTo(0.55 - 1e-9),
+            reason: 'les errants restent le lointain');
+        expect(dist, lessThanOrEqualTo(0.65 + 1e-9),
+            reason: '…mais un lointain que la marge visite vraiment');
       }
     });
 

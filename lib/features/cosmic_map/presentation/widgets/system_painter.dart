@@ -134,10 +134,12 @@ class SystemPainter extends CustomPainter {
         );
       }
 
-      // The echo lanes: where this world's thoughts whirl — two
-      // breaths of circles travelling with the planet.
+      // The echo lanes: where this world's thoughts whirl — the THREE
+      // true shells travelling with the planet (V3.28: the guides now
+      // draw exactly where the orbits run; the old 0.08/0.13 pair was
+      // a lie the sky kept telling).
       if (i != 2) {
-        for (final lane in [0.08, 0.13]) {
+        for (final lane in KenosSystem.echoShells) {
           canvas.drawCircle(
             p,
             lane * worldScale,
@@ -150,7 +152,7 @@ class SystemPainter extends CustomPainter {
       } else {
         canvas.drawCircle(
           p,
-          0.08 * worldScale,
+          KenosSystem.echoShells.first * worldScale,
           Paint()
             ..style = PaintingStyle.stroke
             ..strokeWidth = 0.5

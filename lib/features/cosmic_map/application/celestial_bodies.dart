@@ -109,9 +109,14 @@ class CelestialMath {
   /// A wanderer's world position: far slow arcs beyond every orbit,
   /// found only by travelling. Each drifts at its own imperceptible
   /// pace; every device agrees on where they are.
+  /// V3.28 — the ring was 0.62-0.74, largely OUTSIDE the [0,1] sky
+  /// the camera can reach: bodies you could never actually meet, only
+  /// rumours past the frame. Pulled to 0.55-0.65: still the far
+  /// country (clear of Venus's swarm rim at 0.515), now a place the
+  /// traveller's margin genuinely visits.
   static Offset wandererPosition(int index, DateTime at) {
     final i = index % celestialWanderers.length;
-    final radius = 0.62 + 0.06 * (i % 3);
+    final radius = 0.55 + 0.05 * (i % 3);
     final periodMs = (6 + 2 * i) * 3600000.0;
     final base = i * math.pi / 2;
     final angle =

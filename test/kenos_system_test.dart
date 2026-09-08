@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/cosmic_map/application/kenos_system.dart';
 import 'package:kenos/features/echo/domain/echo.dart';
@@ -77,6 +79,76 @@ void main() {
           KenosSystem.echoBandMin + KenosSystem.echoBandSpan + 1e-9,
         ),
       );
+      // V3.28: the band is THREE discrete shells — the swarm reads as
+      // three lanes that turn together, not a hash-continuous churn.
+      expect(KenosSystem.echoShells, contains(closeTo(dist, 1e-9)));
+    });
+
+    test('V3.28 — une coque tourne comme une coque (période par coque)', () {
+      // Two echoes riding the same shell keep a CONSTANT separation:
+      // the shell has one tempo, the lane stays legible as a lane.
+      final echoes = [
+        for (var i = 0; i < 24; i++)
+          _echo('shell-$i', EchoColorTheme.teal),
+      ];
+      final byShell = <double, List<Echo>>{};
+      for (final e in echoes) {
+        final r = (KenosSystem.echoPosition(e, t0) -
+                KenosSystem.planetPosition(0, t0))
+            .distance;
+        byShell.putIfAbsent(r, () => []).add(e);
+      }
+      final sameShell = byShell.values.firstWhere((g) => g.length >= 2);
+      final a = sameShell[0];
+      final b = sameShell[1];
+      final t1 = t0.add(const Duration(minutes: 17));
+      final d0 =
+          (KenosSystem.echoPosition(a, t0) - KenosSystem.echoPosition(b, t0))
+              .distance;
+      final d1 = (KenosSystem.echoPosition(a, t1) -
+              KenosSystem.echoPosition(b, t1))
+          .distance;
+      expect(d1, closeTo(d0, 1e-6),
+          reason: 'même coque, même tempo : la séparation ne bouge pas');
+    });
+
+    test('V3.28 — un écho naît là où il dérivera', () {
+      final rng = Random(7);
+      final at = DateTime(2026, 9, 8, 9);
+      for (final theme in EchoColorTheme.values) {
+        final planet = KenosSystem.planetPosition(
+          KenosSystem.themeIndexOf(theme),
+          at,
+        );
+        for (var i = 0; i < 40; i++) {
+          final p = KenosSystem.launchCoordsFor(theme, at, rng);
+          // Inside the known ether...
+          expect(p.dx, inInclusiveRange(0.02, 0.98));
+          expect(p.dy, inInclusiveRange(0.02, 0.98));
+          // ...in its intent planet's gravity band (a hair of clamp
+          // slack at the sky's very edge).
+          final dist = (p - planet).distance;
+          expect(
+            dist,
+            lessThanOrEqualTo(
+              KenosSystem.echoBandMin + KenosSystem.echoBandSpan + 1e-9,
+            ),
+            reason: 'né dans la bande de gravité de sa planète',
+          );
+        }
+      }
+      // Determinism with a seeded hand.
+      final a = KenosSystem.launchCoordsFor(
+        EchoColorTheme.teal,
+        at,
+        Random(42),
+      );
+      final b = KenosSystem.launchCoordsFor(
+        EchoColorTheme.teal,
+        at,
+        Random(42),
+      );
+      expect(a, b);
     });
 
     test('déterminisme : même écho, même instant → même ciel partout', () {

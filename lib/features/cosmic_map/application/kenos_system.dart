@@ -156,36 +156,65 @@ class KenosSystem {
   /// The gravity band's width.
   static const double echoBandSpan = 0.07;
 
-  /// An echo's orbit: its planet's gravity, at a radius derived from
-  /// its identity (stable per echo, spread across a band).
-  static double _echoOrbitRadius(Echo echo) {
-    final h = (echo.id.hashCode & 0x7fffffff) % 1000;
-    // Clears the enlarged bodies (ring span ~0.05 world) with room to
-    // breathe; the rim reaches 0.37 + 0.145 = 0.515 from the heart —
-    // Venus's swarm grazes the sky's far edge at its aphelion, a rare
-    // and poetic exile rather than a loss (V3.23).
-    return echoBandMin + echoBandSpan * (h / 999);
-  }
+  /// V3.28 — the band is no longer a hash-continuous smear but THREE
+  /// discrete shells (0.085 / 0.110 / 0.135): each ring turns as a
+  /// ring, at its own fixed tempo, and the swarm reads as structure —
+  /// three lanes per planet — instead of a churn. Still 100%
+  /// deterministic from the echo's identity; the outer rim (0.145) is
+  /// unchanged, so resting bodies and bounds keep their clearances.
+  static const List<double> echoShells = [0.085, 0.110, 0.135];
 
-  /// Orbital period from the radius: inner thoughts whirl faster —
-  /// at a contemplative pace (V3.22: ×6 slower — at 25-75 s the
-  /// swarms whirled like carousels, dizzying at depth and impossible
-  /// to hold; 150-450 s per orbit still reads alive if you linger).
-  static Duration _echoPeriod(Echo echo) {
-    final r = _echoOrbitRadius(echo);
-    // Linear across the band: 150 s inside, 450 s at the rim.
-    final t = (r - echoBandMin) / echoBandSpan;
-    return Duration(milliseconds: (150000 + 300000 * t).round());
-  }
+  /// One full revolution per shell (V3.22's contemplative range kept:
+  /// minutes per orbit, never a carousel).
+  static const List<Duration> _shellPeriods = [
+    Duration(seconds: 210),
+    Duration(seconds: 300),
+    Duration(seconds: 390),
+  ];
 
-  /// Planet index for an echo: its intent decides its gravity. The
+  /// The shell an echo rides: decided by its identity, stable forever.
+  static int _echoShell(Echo echo) =>
+      (echo.id.hashCode & 0x7fffffff) % echoShells.length;
+
+  /// An echo's orbit: its planet's gravity, on one of the three shells.
+  static double _echoOrbitRadius(Echo echo) =>
+      echoShells[_echoShell(echo)];
+
+  /// Orbital period: constant per shell — a lane that turns together
+  /// stays legible as a lane (V3.28; the radius-linear tempo bred
+  /// relative drift and momentary pile-ups inside the old band).
+  static Duration _echoPeriod(Echo echo) => _shellPeriods[_echoShell(echo)];
+
+  /// Planet index for an intent: the theme decides the gravity. The
   /// rebound keeps the parent's hue — comets inherit their orbit.
-  static int planetIndexOf(Echo echo) =>
-      switch (echo.theme) {
+  static int themeIndexOf(EchoColorTheme theme) => switch (theme) {
         EchoColorTheme.teal => 0,
         EchoColorTheme.indigo => 1,
         _ => 2,
       };
+
+  /// Planet index for an echo: its intent decides its gravity.
+  static int planetIndexOf(Echo echo) => themeIndexOf(echo.theme);
+
+  /// V3.28 — where a new echo is BORN in the server's sky: its intent
+  /// planet's live position plus a point inside the gravity band,
+  /// clamped to the known ether. The sector fetch, the A.L. telemetry
+  /// and the lineage anchors then agree with the rendered orbit: the
+  /// author drops the thought where it will actually drift.
+  static Offset launchCoordsFor(
+    EchoColorTheme theme,
+    DateTime at, [
+    math.Random? rng,
+  ]) {
+    final random = rng ?? math.Random();
+    final planet = planetPosition(themeIndexOf(theme), at);
+    final radius = echoBandMin + random.nextDouble() * echoBandSpan;
+    final angle = random.nextDouble() * 2 * math.pi;
+    return Offset(
+      (planet.dx + radius * math.cos(angle)).clamp(0.02, 0.98),
+      (planet.dy + radius * math.sin(angle)).clamp(0.02, 0.98),
+    );
+  }
 
   /// World position of an echo at a given moment — the orbit everyone
   /// agrees on, derived only from the server timestamp and identity.
