@@ -55,9 +55,9 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
   bool _originResolving = false;
   bool _originUnreachable = false;
 
-  /// V3.26c — the toggle lives in the mode strip's grammar now: open
-  /// resolves (ipwho.is, then geojs.io), close unnamed. One flight at
-  /// a time; a failure is told below the strip, never blocking.
+  /// V3.26d — open resolves (ipwho.is, then geojs.io), close unnamed.
+  /// One flight at a time; a failure is told on the line itself,
+  /// never blocking the launch.
   Future<void> _toggleOrigin() async {
     if (_originResolving) return;
     if (_origin != null) {
@@ -480,24 +480,10 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                               recording: _recording,
                               hasFragment: _media != null,
                               hasDoor: _excerpt != null,
-                              resolvingOrigin: _originResolving,
-                              hasOrigin: _origin != null,
                               onImage: _recording ? null : _pickImage,
                               onSound: _toggleRecording,
                               onDoor: _recording ? null : _pasteExcerptLink,
-                              onOrigin: _recording ? null : _toggleOrigin,
                             ),
-                          // The named shore, told once below its mode —
-                          // exactly what the single future reader will
-                          // learn. One tap unnamed: the name is a gift.
-                          if (_origin != null) ...[
-                            _OriginChip(
-                              label: _origin!,
-                              onRemoved: () => setState(() => _origin = null),
-                            ),
-                            const SizedBox(height: 10),
-                          ] else if (_originUnreachable && !_sealing)
-                            _OriginRetry(onRetry: _toggleOrigin),
                           // The attached fragment, made visible: thumbnail or
                           // waveform, private listen, one-tap removal.
                           if (_media != null) ...[
@@ -532,6 +518,19 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                               color: AppColors.fade(AppColors.pureLight, 0.5),
                             ),
                           ),
+                          const SizedBox(height: 14),
+                          // V3.26d — the origin is INFO about the echo,
+                          // never a fourth fragment type: a quiet meta
+                          // line apart from the modes. Touch names the
+                          // shore, touch again unnamed — the label
+                          // itself is the toggle.
+                          if (!_sealing)
+                            _OriginLine(
+                              label: _origin,
+                              resolving: _originResolving,
+                              unreachable: _originUnreachable,
+                              onToggle: _toggleOrigin,
+                            ),
                           const SizedBox(height: 14),
                           OutlinedButton(
                             onPressed: _canSend ? _sealAndLaunch : null,
@@ -574,23 +573,17 @@ class _ModeStrip extends StatelessWidget {
     required this.recording,
     required this.hasFragment,
     required this.hasDoor,
-    required this.resolvingOrigin,
-    required this.hasOrigin,
     required this.onImage,
     required this.onSound,
     required this.onDoor,
-    required this.onOrigin,
   });
 
   final bool recording;
   final bool hasFragment;
   final bool hasDoor;
-  final bool resolvingOrigin;
-  final bool hasOrigin;
   final VoidCallback? onImage;
   final VoidCallback? onSound;
   final VoidCallback? onDoor;
-  final VoidCallback? onOrigin;
 
   @override
   Widget build(BuildContext context) {
@@ -646,114 +639,55 @@ class _ModeStrip extends StatelessWidget {
             onDoor,
             hasDoor ? AppColors.teal : null,
           ),
-          dot,
-          // V3.26c — the shore's name is a mode of the echo, not a
-          // lone box crowding the seal: same grammar as its siblings.
-          mode(
-            resolvingOrigin ? 'ORIGINE…' : 'ORIGINE',
-            onOrigin,
-            hasOrigin ? AppColors.teal : null,
-          ),
         ],
       ),
     );
   }
 }
 
-/// V3.26c — the named shore, told once: the chip says exactly what the
-/// single future reader will learn (« PARTI DE … »). One tap unnamed.
-/// Wraps at two lines, ellipsizes — it can never overflow again.
-class _OriginChip extends StatelessWidget {
-  const _OriginChip({required this.label, required this.onRemoved});
+/// V3.26d — the origin is complementary INFO, never a fourth type:
+/// a quiet, borderless, WRAPPING meta line. It reads as an attribute
+/// of the echo (« parti de … »), not as one of the fragment modes,
+/// and no label length can ever overflow it.
+class _OriginLine extends StatelessWidget {
+  const _OriginLine({
+    required this.label,
+    required this.resolving,
+    required this.unreachable,
+    required this.onToggle,
+  });
 
-  final String label;
-  final VoidCallback onRemoved;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.fade(AppColors.teal, 0.4)),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.public_outlined,
-            size: 15,
-            color: AppColors.fade(AppColors.teal, 0.8),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'ORIGINE NOMMÉE',
-                  style: TextStyle(
-                    fontFamily: AppFonts.mono,
-                    fontSize: 9,
-                    letterSpacing: 3,
-                    color: AppColors.fade(AppColors.pureLight, 0.75),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'TON ÉCHO DIRA : « PARTI DE ${label.toUpperCase()} »',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: AppFonts.mono,
-                    fontSize: 8.5,
-                    letterSpacing: 1.5,
-                    height: 1.6,
-                    color: AppColors.fade(AppColors.teal, 0.8),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            tooltip: 'Retirer le nom',
-            onPressed: onRemoved,
-            icon: Icon(
-              Icons.close,
-              size: 15,
-              color: AppColors.fade(AppColors.pureLight, 0.45),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// V3.26c — both shores silent: a quiet, WRAPPING, tappable line. The
-/// V3.26 box was a fixed-width row whose 40-character failure label
-/// overflowed the border on narrow screens; text that wraps cannot.
-class _OriginRetry extends StatelessWidget {
-  const _OriginRetry({required this.onRetry});
-
-  final VoidCallback onRetry;
+  final String? label;
+  final bool resolving;
+  final bool unreachable;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
+    final named = label != null;
+    final text = resolving
+        ? 'NOMMER L\'ORIGINE…'
+        : named
+            ? 'PARTI DE ${label!.toUpperCase()} — TOUCHER POUR RETIRER'
+            : unreachable
+                ? 'ORIGINE INJOIGNABLE — TOUCHER POUR RÉESSAYER'
+                : 'NOMMER L\'ORIGINE';
     return GestureDetector(
-      onTap: onRetry,
+      onTap: resolving ? null : onToggle,
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 6),
         child: Text(
-          'ORIGINE INJOIGNABLE — TOUCHER POUR RÉESSAYER',
+          text,
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: AppFonts.mono,
             fontSize: 8.5,
             letterSpacing: 2,
             height: 1.6,
-            color: AppColors.fade(AppColors.pureLight, 0.4),
+            color: named
+                ? AppColors.fade(AppColors.teal, 0.8)
+                : AppColors.fade(AppColors.pureLight, 0.4),
           ),
         ),
       ),
