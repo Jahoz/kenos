@@ -14,6 +14,11 @@ name: smoke-prod
 # Setup (once): add the repository secret SUPABASE_ANON_KEY with the
 # project's publishable key (Supabase → Project Settings → API — the
 # same value as .env.cloud; public by design, kept out of the repo).
+#
+# (2026-09-08) The failure channel was dead on arrival: the issue step
+# used `actions/create-issue@v1`, an action that does not exist — every
+# run since 2026-09-04 died at action resolution BEFORE any check ran,
+# and the broken step WAS the alert. Now plain `gh`, nothing to resolve.
 
 on:
   schedule:
@@ -48,23 +53,18 @@ jobs:
       # per failed night, dated and linking the run log.
       - name: Open failure issue
         if: failure()
-        uses: actions/create-issue@v1
-        with:
-          title: "smoke prod FAIL ${{ env.RUN_DATE }}"
-          body: |
-            The nightly anonymous smoke against production failed.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_TITLE: "smoke prod FAIL ${{ env.RUN_DATE }}"
+          ISSUE_BODY: "The nightly anonymous smoke against production failed.
 
-            - App: ${{ env.APP_URL }}
-            - Ether: ${{ env.SUPABASE_URL }}
-            - Run log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          - App: ${{ env.APP_URL }}
+          - Ether: ${{ env.SUPABASE_URL }}
+          - Run log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-            Re-run locally for the exact failing checks:
+          Re-run locally for the exact failing checks:
 
-            ```
-            APP_URL=${{ env.APP_URL }} SUPABASE_URL=${{ env.SUPABASE_URL }} \
-              SUPABASE_ANON_KEY=<publishable key> bash scripts/smoke_prod.sh
-            ```
+          APP_URL=${{ env.APP_URL }} SUPABASE_URL=${{ env.SUPABASE_URL }} SUPABASE_ANON_KEY=<publishable key> bash scripts/smoke_prod.sh
 
-            If the failure is `SUPABASE_ANON_KEY must be set`, the
-            repository secret is missing (see the header comment of
-            this workflow).
+          If the failure is 'SUPABASE_ANON_KEY must be set', the repository secret is missing (see the header comment of this workflow)."
+        run: gh issue create --title "$ISSUE_TITLE" --body "$ISSUE_BODY"
