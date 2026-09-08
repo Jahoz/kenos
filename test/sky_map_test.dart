@@ -75,4 +75,35 @@ void main() {
     expect(travelled!.dx, closeTo(venus.dx, 0.002));
     expect(travelled!.dy, closeTo(venus.dy, 0.002));
   });
+
+  testWidgets('sur un écran étroit, la carte tient entière (V3.28b)',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 740);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(
+        builder: (context) => Center(
+          child: OutlinedButton(
+            onPressed: () => showSkyMapSheet(
+              context,
+              eye: const Offset(0.5, 0.5),
+              onTravel: (_) {},
+            ),
+            child: const Text('OUVRIR'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('OUVRIR'));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    // The whole point: every control is reachable and tappable on a
+    // phone — REFERMER sits on screen, no overflow kills the layout.
+    expect(find.text('LA CARTE DU CIEL'), findsOneWidget);
+    await tester.ensureVisible(find.text('REFERMER'));
+    await tester.tap(find.text('REFERMER'));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('LA CARTE DU CIEL'), findsNothing);
+  });
 }

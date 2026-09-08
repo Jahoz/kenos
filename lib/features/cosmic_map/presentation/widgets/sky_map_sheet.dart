@@ -51,6 +51,10 @@ class _SkyMapPanel extends StatelessWidget {
     final now = DateTime.now();
     return Dialog(
       backgroundColor: AppColors.voidBlack,
+      // V3.28b — the live phone report: the default 40 px insets
+      // starved a narrow portrait; the sky map takes the room it
+      // needs, and scrolls when even that is not enough.
+      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       shape: RoundedRectangleBorder(
         side: BorderSide(color: AppColors.fade(AppColors.pureLight, 0.18)),
         borderRadius: BorderRadius.circular(8),
@@ -58,91 +62,103 @@ class _SkyMapPanel extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 380),
         child: Padding(
-          padding: const EdgeInsets.all(22),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'LA CARTE DU CIEL',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: AppFonts.mono,
-                  fontSize: 10,
-                  letterSpacing: 4,
-                  color: AppColors.fade(AppColors.cyan, 0.85),
+          padding: const EdgeInsets.all(20),
+          // Scrollable: the diagram + seven departures + the legend
+          // exceed a small portrait viewport — nothing may overflow.
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'LA CARTE DU CIEL',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 10,
+                    letterSpacing: 4,
+                    color: AppColors.fade(AppColors.cyan, 0.85),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              _SkyMapDiagram(eye: eye, now: now, onTravel: (t) => _travel(context, t)),
-              const SizedBox(height: 12),
-              Text(
-                'TOUCHE UN CORPS — LA CAMÉRA VOYAGERA',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: AppFonts.mono,
-                  fontSize: 7.5,
-                  letterSpacing: 2,
-                  color: AppColors.fade(AppColors.pureLight, 0.35),
+                const SizedBox(height: 16),
+                _SkyMapDiagram(
+                  eye: eye,
+                  now: now,
+                  onTravel: (t) => _travel(context, t),
                 ),
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                alignment: WrapAlignment.center,
-                children: [
-                  for (final (i, body) in celestialBodies.indexed)
-                    TextButton(
-                      onPressed: () => _travel(
-                        context,
-                        KenosSystem.planetPosition(i, DateTime.now()),
-                      ),
-                      child: Text(
-                        body.name.toUpperCase(),
-                        style: TextStyle(
-                          fontFamily: AppFonts.mono,
-                          fontSize: 8,
-                          letterSpacing: 2,
-                          color: AppColors.fade(body.theme?.halo ?? AppColors.teal, 0.8),
+                const SizedBox(height: 12),
+                Text(
+                  'TOUCHE UN CORPS — LA CAMÉRA VOYAGERA',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 7.5,
+                    letterSpacing: 2,
+                    color: AppColors.fade(AppColors.pureLight, 0.35),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    for (final (i, body) in celestialBodies.indexed)
+                      TextButton(
+                        onPressed: () => _travel(
+                          context,
+                          KenosSystem.planetPosition(i, DateTime.now()),
+                        ),
+                        child: Text(
+                          body.name.toUpperCase(),
+                          style: TextStyle(
+                            fontFamily: AppFonts.mono,
+                            fontSize: 8,
+                            letterSpacing: 2,
+                            color: AppColors.fade(
+                              body.theme?.halo ?? AppColors.teal,
+                              0.8,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  for (final (i, body) in celestialWanderers.indexed)
-                    TextButton(
-                      onPressed: () => _travel(
-                        context,
-                        CelestialMath.wandererPosition(i, DateTime.now()),
-                      ),
-                      child: Text(
-                        body.name.toUpperCase(),
-                        style: TextStyle(
-                          fontFamily: AppFonts.mono,
-                          fontSize: 8,
-                          letterSpacing: 2,
-                          color: AppColors.fade(AppColors.pureLight, 0.5),
+                    for (final (i, body) in celestialWanderers.indexed)
+                      TextButton(
+                        onPressed: () => _travel(
+                          context,
+                          CelestialMath.wandererPosition(i, DateTime.now()),
+                        ),
+                        child: Text(
+                          body.name.toUpperCase(),
+                          style: TextStyle(
+                            fontFamily: AppFonts.mono,
+                            fontSize: 8,
+                            letterSpacing: 2,
+                            color: AppColors.fade(AppColors.pureLight, 0.5),
+                          ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'les échos orbitent l\'intention qu\'on leur confie\n'
-                'les vestiges reposent — la culture ne tourne pas\n'
-                'les comètes traversent tout : des pensées portées',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: AppFonts.serifItalic,
-                  fontSize: 11.5,
-                  height: 1.8,
-                  color: AppColors.fade(AppColors.pureLight, 0.5),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextButton(
-                onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
-                child: const Text('REFERMER'),
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text(
+                  'les échos orbitent l\'intention qu\'on leur confie\n'
+                  'les vestiges reposent — la culture ne tourne pas\n'
+                  'les comètes traversent tout : des pensées portées',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.serifItalic,
+                    fontSize: 11.5,
+                    height: 1.8,
+                    color: AppColors.fade(AppColors.pureLight, 0.5),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () =>
+                      Navigator.of(context, rootNavigator: true).pop(),
+                  child: const Text('REFERMER'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -158,7 +174,11 @@ class _SkyMapPanel extends StatelessWidget {
 /// The schematic itself: the whole [0,1] sky at true scale, painted
 /// quietly. Named bodies carry generous hit zones (0.07 world).
 class _SkyMapDiagram extends StatelessWidget {
-  const _SkyMapDiagram({required this.eye, required this.now, required this.onTravel});
+  const _SkyMapDiagram({
+    required this.eye,
+    required this.now,
+    required this.onTravel,
+  });
 
   final Offset eye;
   final DateTime now;
@@ -216,14 +236,20 @@ class _SkyMapPainter extends CustomPainter {
     for (var i = 0; i < segments; i += 2) {
       final a0 = 2 * math.pi * i / segments;
       final a1 = 2 * math.pi * (i + 1) / segments;
-      canvas.drawArc(Rect.fromCircle(center: c, radius: r), a0, a1 - a0,
-          false, paint);
+      canvas.drawArc(
+        Rect.fromCircle(center: c, radius: r),
+        a0,
+        a1 - a0,
+        false,
+        paint,
+      );
     }
   }
 
   void _labelAt(Canvas canvas, String text, Offset at) {
-    final tp = TextPainter(text: TextSpan(text: text, style: _label))
-      ..layout();
+    final tp = TextPainter(
+      text: TextSpan(text: text, style: _label),
+    )..layout();
     tp.paint(canvas, at + const Offset(5, -3));
   }
 
@@ -239,7 +265,8 @@ class _SkyMapPainter extends CustomPainter {
     final field = Paint()..color = AppColors.fade(AppColors.pureLight, 0.10);
     for (var i = 0; i < 34; i++) {
       final p = Offset(0.06 + rng.next() * 0.88, 0.06 + rng.next() * 0.88);
-      if ((p - KenosSystem.blackHole).distance < KenosSystem.blackHoleExclusion + 0.03) {
+      if ((p - KenosSystem.blackHole).distance <
+          KenosSystem.blackHoleExclusion + 0.03) {
         continue;
       }
       canvas.drawCircle(w(p), 1.2, field);
@@ -281,12 +308,7 @@ class _SkyMapPainter extends CustomPainter {
       ..strokeWidth = 0.5
       ..color = AppColors.fade(AppColors.pureLight, 0.10);
     for (var i = 0; i < celestialWanderers.length; i++) {
-      _dashedCircle(
-        canvas,
-        hole,
-        (0.55 + 0.05 * (i % 3)) * s,
-        wander,
-      );
+      _dashedCircle(canvas, hole, (0.55 + 0.05 * (i % 3)) * s, wander);
       final p = w(CelestialMath.wandererPosition(i, now));
       canvas.drawCircle(
         p,
