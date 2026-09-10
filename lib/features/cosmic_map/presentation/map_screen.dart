@@ -43,6 +43,7 @@ import 'widgets/sky_map_sheet.dart';
 import 'widgets/star_shift.dart';
 import 'widgets/system_painter.dart';
 import 'widgets/vestige.dart';
+import 'widgets/vestige_library_sheet.dart';
 
 /// The stellar map: KENOS public space.
 /// No lists, no scrolling — a three-dimensional Stack where the void dominates.
@@ -97,7 +98,56 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final unreadVestiges =
         _vestiges.where((v) => !_artifacts.isRead(v.id)).length;
     if (unreadVestiges > 0) parts.add('$unreadVestiges VESTIGES');
+    // V3.30 — the breath: when no readable light drifts within the
+    // eye's field, the sky whispers where to travel.
+    final breath = _breathLine;
+    if (breath != null) parts.add(breath);
     return parts.join(' · ');
+  }
+
+  /// V3.30 — the breath toward the ether. The client only knows what
+  /// it has fetched (the bottle is searched for, never delivered):
+  /// the whisper points at the nearest LOADED light, else at the
+  /// nearest world — the lights gravitate around them by law. A
+  /// direction told, never a GPS.
+  String? get _breathLine {
+    final echoes =
+        ref.read(mapControllerProvider).valueOrNull ?? const <Echo>[];
+    final now = DateTime.now();
+    final eye = _camera.center;
+    Echo? nearestEcho;
+    var bestEcho = double.infinity;
+    for (final e in echoes) {
+      if (e.isMine) continue;
+      final d = (KenosSystem.echoPosition(e, now) - eye).distance;
+      if (d <= ParallaxMath.receptionRadius + ParallaxMath.receptionFade) {
+        return null; // a light drifts here — no whisper needed
+      }
+      if (d < bestEcho) {
+        bestEcho = d;
+        nearestEcho = e;
+      }
+    }
+    if (nearestEcho != null) {
+      final h = ParallaxMath.clockDirection(
+        KenosSystem.echoPosition(nearestEcho, now) - eye,
+      );
+      return 'SOUFFLE VERS $h H';
+    }
+    // Nothing loaded nearby: the worlds carry the lights.
+    var nearestWorld = 0;
+    var bestWorld = double.infinity;
+    for (var i = 0; i < 2; i++) {
+      final d = (KenosSystem.planetPosition(i, now) - eye).distance;
+      if (d < bestWorld) {
+        bestWorld = d;
+        nearestWorld = i;
+      }
+    }
+    final h = ParallaxMath.clockDirection(
+      KenosSystem.planetPosition(nearestWorld, now) - eye,
+    );
+    return 'LES LUMIÈRES GRAVITENT — SOUFFLE VERS $h H';
   }
 
   /// V3.12 — the hovered named body (desktop): its name floats beside
@@ -1041,7 +1091,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
                         TextButton(
                           // V3.28 — the organization told at a glance:
                           // the whole system drawn to scale, every
-                          // named body a departure.
+                          // named body a departure. V3.30 — a LONG
+                          // press opens the library instead: the
+                          // vestiges, readable at leisure.
                           onPressed: () => showSkyMapSheet(
                             context,
                             eye: _camera.center,
@@ -1050,6 +1102,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
                               _camera.panByWorld(target - _camera.center);
                               _refreshAfterTravel();
                             },
+                          ),
+                          onLongPress: () => showVestigeLibrary(
+                            context,
+                            vestiges: _vestiges,
+                            artifacts: _artifacts,
+                            eye: _camera.center,
                           ),
                           child: const Text('CARTE'),
                         ),

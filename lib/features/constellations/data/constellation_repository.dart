@@ -15,6 +15,7 @@ class ConstellationMeta {
     required this.target,
     this.kind = ConstellationKind.poem,
     this.curatedBy,
+    this.createdAt,
   });
 
   final String id;
@@ -33,6 +34,11 @@ class ConstellationMeta {
   /// never pretends strangers wrote it. Null = strangers' own.
   final String? curatedBy;
 
+  /// When the ring was seeded (V3.30): an OPEN ring carries its own
+  /// countdown — the ether forgets it after a week. Null = unknown
+  /// (demo parity, kept relics) and the door simply stays silent.
+  final DateTime? createdAt;
+
   bool get isClosed => state == 'CLOSED';
 
   factory ConstellationMeta.fromJson(Map<String, dynamic> json) =>
@@ -47,6 +53,9 @@ class ConstellationMeta {
             ? ConstellationKind.melody
             : ConstellationKind.poem,
         curatedBy: json['curated_by'] as String?,
+        createdAt: json['created_at'] == null
+            ? null
+            : DateTime.parse(json['created_at'] as String),
       );
 }
 

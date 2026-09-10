@@ -100,4 +100,13 @@ class ParallaxMath {
   /// Double clamp utility.
   static double clamp(double v, double min, double max) =>
       math.max(min, math.min(max, v));
+
+  /// V3.30 — clock direction of a world-space delta: 12 = up (screen
+  /// north), 3 = east, clockwise like the sky's own hours. The breath
+  /// line's compass — a direction told, never a GPS.
+  static int clockDirection(Offset delta) {
+    final angle = math.atan2(delta.dx, -delta.dy);
+    final hours = (angle / (2 * math.pi) * 12).round() % 12;
+    return hours == 0 ? 12 : hours;
+  }
 }

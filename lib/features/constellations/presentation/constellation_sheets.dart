@@ -267,6 +267,17 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
     );
   }
 
+  /// V3.30 — the door tells its own time: an open ring the ether
+  /// forgets after a week (the purge's 7-day rule). A quiet urgency,
+  /// never a threat — the poem goes back to the void.
+  String _openRemainingLabel(DateTime createdAt) {
+    final elapsed = DateTime.now().difference(createdAt).inDays;
+    final left = 7 - elapsed;
+    if (left <= 0) return 'L\'ÉTHER L\'OUBLIE AUJOURD\'HUI';
+    if (left == 1) return 'L\'ÉTHER L\'OUBLIERA DEMAIN';
+    return 'L\'ÉTHER L\'OUBLIERA DANS $left J';
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = widget.constellation;
@@ -313,6 +324,22 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
                 ),
               ),
               const SizedBox(height: 24),
+              // V3.30 — the open ring's own countdown: the ether
+              // forgets an unfinished poem after a week.
+              if (!c.isClosed && c.createdAt != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    _openRemainingLabel(c.createdAt!),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: AppFonts.mono,
+                      fontSize: 8.5,
+                      letterSpacing: 2.5,
+                      color: AppColors.fade(AppColors.pureLight, 0.38),
+                    ),
+                  ),
+                ),
               if (_peeked)
                 if (_previous != null) ...[
                   Text(

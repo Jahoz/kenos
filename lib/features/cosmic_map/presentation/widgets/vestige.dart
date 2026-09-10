@@ -49,7 +49,8 @@ class Vestige {
         'etymology' => 'ÉTYMOLOGIE',
         'haiku' => 'HAÏKU',
         'history' => 'HISTOIRE',
-        _ => 'VESTITVE',
+        'fact' => 'FAIT',
+        _ => 'VESTIGE',
       };
 }
 

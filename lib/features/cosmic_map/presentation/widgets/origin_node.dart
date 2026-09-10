@@ -8,6 +8,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/haptics/kenos_haptics.dart';
 import '../../../../core/utils/motion_preferences.dart';
 import '../../../echo/data/echo_providers.dart';
+import '../../application/reception_controller.dart';
 
 /// The origin node (manifest V2 §2E): the user's warm anchor on the
 /// map. Its ember aura breathes with accumulated stardust — one mote
@@ -26,6 +27,12 @@ class OriginNode extends ConsumerWidget {
     final stardust = stats?.stardust ?? 0;
     final reduced = context.wantsReducedMotion;
     final motes = math.min(stardust, _maxVisibleMotes);
+    // V3.30 — the signals' hearth: when a trace waits on a sealed
+    // echo, home shows it. The pulse already speaks (the map); the
+    // ember now says WHERE it waits.
+    final signals = ref.watch(
+      receptionControllerProvider.select((r) => r.valueOrNull?.length ?? 0),
+    );
 
     return Semantics(
       label:
@@ -61,6 +68,31 @@ class OriginNode extends ConsumerWidget {
               // stays a void, not a trophy shelf.
               for (var i = 0; i < motes; i++)
                 _StardustMote(index: i, total: motes, reduced: reduced),
+              // A trace waits at home: a small ember bead, top-right.
+              if (signals > 0)
+                Positioned(
+                  right: 3,
+                  top: 3,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.ember,
+                      border: Border.all(
+                        color: AppColors.voidBlack,
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.fade(AppColors.ember, 0.5),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

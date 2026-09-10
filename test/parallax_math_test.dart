@@ -82,6 +82,22 @@ void main() {
     });
   });
 
+  group('ParallaxMath.clockDirection (V3.30 — la boussole du souffle)', () {
+    test('12 vers le haut, 3 vers l\'est, comme les heures du ciel', () {
+      expect(ParallaxMath.clockDirection(const Offset(0, -1)), 12);
+      expect(ParallaxMath.clockDirection(const Offset(1, 0)), 3);
+      expect(ParallaxMath.clockDirection(const Offset(0, 1)), 6);
+      expect(ParallaxMath.clockDirection(const Offset(-1, 0)), 9);
+    });
+
+    test('les diagonales tombent juste, jamais 0 h', () {
+      expect(ParallaxMath.clockDirection(const Offset(1, -1)), 2);
+      expect(ParallaxMath.clockDirection(const Offset(1, 1)), 5);
+      expect(ParallaxMath.clockDirection(const Offset(-1, 1)), 7);
+      expect(ParallaxMath.clockDirection(const Offset(-1, -1)), 10);
+    });
+  });
+
   group('ParallaxMath.zoomScale (V3.17 — le zoom que l\'œil voit)', () {
     test("l'œil au repos ne change rien au ciel lancé", () {
       expect(ParallaxMath.zoomScale(ParallaxMath.eyeBaseZoom), 1.0);
