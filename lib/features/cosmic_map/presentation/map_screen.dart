@@ -859,18 +859,30 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                 Offset(cst.seedX, cst.seedY),
                                             Size(c.maxWidth, c.maxHeight),
                                           );
-                                          if (sp.dx < -46 ||
-                                              sp.dx > c.maxWidth + 46 ||
-                                              sp.dy < -46 ||
-                                              sp.dy > c.maxHeight + 46) {
+                                          if (sp.dx < -72 ||
+                                              sp.dx > c.maxWidth + 72 ||
+                                              sp.dy < -72 ||
+                                              sp.dy > c.maxHeight + 72) {
                                             return const SizedBox.shrink();
                                           }
                                           // Gates grow with the eye
                                           // (V3.17): the ring painter
-                                          // reads its box size.
-                                          final gateSide = 46 *
+                                          // reads its box size. V3.29:
+                                          // 46 → 68 and viewport-scaled —
+                                          // the corpses were the smallest
+                                          // things in their own sky.
+                                          final gateSide = 68 *
                                               ParallaxMath.zoomScale(
                                                 _camera.zoom,
+                                              ) *
+                                              math.max(
+                                                ParallaxMath.displayScale(
+                                                  math.min(
+                                                    c.maxWidth,
+                                                    c.maxHeight,
+                                                  ),
+                                                ),
+                                                0.8,
                                               );
                                           return Positioned(
                                             left: sp.dx - gateSide / 2,
@@ -2023,7 +2035,7 @@ class _ConstellationPainter extends CustomPainter {
     // the reliquaire's ember burns at the heart.
     canvas.drawCircle(
       center,
-      kept ? 1.6 : 1.1,
+      kept ? 2.1 : 1.5,
       Paint()
         ..color = AppColors.fade(
           kept ? AppColors.ember : color,
@@ -2037,7 +2049,7 @@ class _ConstellationPainter extends CustomPainter {
         Paint()
           ..color = AppColors.fade(color, kept ? 0.7 : 0.45)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 0.8,
+          ..strokeWidth = 1.1,
       );
     }
 
@@ -2049,7 +2061,7 @@ class _ConstellationPainter extends CustomPainter {
           kept ? AppColors.ember : color,
           closed ? (kept ? 0.6 : 0.5) : 0.28,
         )
-        ..strokeWidth = 0.8
+        ..strokeWidth = 1.1
         ..strokeCap = StrokeCap.round;
       for (var k = 1; k < drawn; k++) {
         canvas.drawLine(station(k - 1), station(k), link);
@@ -2065,11 +2077,11 @@ class _ConstellationPainter extends CustomPainter {
       final paint = Paint()
         ..color = AppColors.fade(color, isFilled ? (closed ? 0.9 : 0.6) : 0.18);
       if (isFilled) {
-        canvas.drawCircle(pos, closed ? 2.0 : 1.8, paint);
+        canvas.drawCircle(pos, closed ? 2.6 : 2.4, paint);
       } else {
         canvas.drawCircle(
           pos,
-          1.4,
+          1.8,
           Paint()
             ..color = AppColors.fade(color, 0.16)
             ..style = PaintingStyle.stroke

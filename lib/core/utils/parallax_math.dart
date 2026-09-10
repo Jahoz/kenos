@@ -29,7 +29,11 @@ class ParallaxMath {
 
   /// Total diameter taken by the star + its charge ring — the hold
   /// target grows with it (tight clusters stay tappable).
-  static double starDiameter(double z) => 30.0 + 62.0 * z;
+  /// V3.29: was 30 + 62z — on a phone a deep sealed ring measured
+  /// half the screen and swallowed the worlds whole (the live
+  /// report). 22 + 42z keeps the light pointed and the sky's
+  /// hierarchy readable; the catch zone keeps its own 44 px floor.
+  static double starDiameter(double z) => 22.0 + 42.0 * z;
 
   /// One sky, every screen (V3.25): star sizes were raw pixels while
   /// planets scale with the viewport — on a phone's narrow window a

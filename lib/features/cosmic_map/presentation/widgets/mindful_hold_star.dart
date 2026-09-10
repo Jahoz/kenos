@@ -436,12 +436,13 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
         opacity = opacity + (1 - opacity) * 0.55 * pulse;
       }
     }
-    // The reception field: far glimmers recede (one's own anchors
-    // never fade — they are the map's fixed hearts).
-    if (!_echo.isMine) {
-      final field = widget.reception.clamp(0.0, 1.0);
-      opacity *= 0.30 + 0.70 * field;
-    }
+    // The reception field: far glimmers recede. V3.29 — the
+    // bottle-in-the-sea law now shapes the sealed hearts too: one's
+    // own rings fade GENTLY with distance (still anchors, never as
+    // deep as the ether's fade) — a far sealed ring outshouting the
+    // readable ether inverted the product's whole hierarchy.
+    final field = widget.reception.clamp(0.0, 1.0);
+    opacity *= _echo.isMine ? 0.45 + 0.55 * field : 0.30 + 0.70 * field;
     visual = Opacity(opacity: opacity, child: visual);
 
     // The catch zone is the CORE, not the glow (V3.23): full-diameter

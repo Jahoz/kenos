@@ -288,10 +288,22 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
                 ),
               ),
               const SizedBox(height: 22),
+              // V3.29 — a ring tells its true state: a VIRGIN ring (the
+              // gardener's, 0 lines) never pretends strangers wrote in
+              // it (« 0 inconnus ont déjà écrit », the live report);
+              // one writer is singular; several, plural.
               Text(
-                _isSong
-                    ? '${c.lineCount} inconnus ont déjà joué,\nsans jamais entendre le tout.\nTa phrase continuera la leur.'
-                    : '${c.lineCount} inconnus ont déjà écrit,\nsans jamais voir le tout.\nTa ligne sera la leur —\nelle ne te reviendra pas.',
+                c.lineCount == 0
+                    ? (_isSong
+                        ? 'Personne n\'a encore joué.\nLa première phrase est à toi.'
+                        : 'Personne n\'a encore écrit.\nLa première ligne est à toi.')
+                    : _isSong
+                        ? (c.lineCount == 1
+                              ? '1 inconnu a déjà joué,\nsans jamais entendre le tout.\nTa phrase continuera la sienne.'
+                              : '${c.lineCount} inconnus ont déjà joué,\nsans jamais entendre le tout.\nTa phrase continuera la leur.')
+                        : (c.lineCount == 1
+                              ? '1 inconnu a déjà écrit,\nsans jamais voir le tout.\nTa ligne sera la sienne —\nelle ne te reviendra pas.'
+                              : '${c.lineCount} inconnus ont déjà écrit,\nsans jamais voir le tout.\nTa ligne sera la leur —\nelle ne te reviendra pas.'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: AppFonts.serifItalic,
