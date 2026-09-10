@@ -86,10 +86,18 @@ make db-sow-vestiges SOW_ARGS="--count 20"  # IA : semer des éclats vérifiés 
 make prod-reset            # LAUNCH RESET (cloud) : efface le vécu de test, garde le généré (artefacts curatorisés + vestiges + KEK), le Jardiner replante 14 anneaux
 make prod-sow              # Sème le ciel cloud : 360 échos dérivants scellés RÉELS (refuse les payloads absents — jamais d'étoile morte en prod)
 make e2e                   # Boucle réelle sur PostgREST local
+make deploy-web            # App PWA → kenos-lemon.vercel.app (build .env.cloud + Vercel CLI, gates intégrés)
 make deploy-site           # Landing → kenos-site.vercel.app (Vercel séparé, SANS lien git ; épingle l'alias — jamais de déploiement par push)
 python3 tool/gen_audio.py  # Régénère les assets audio (std-lib only)
 python3 tool/gen_icons.py  # Régénère les icônes Web/Android/iOS (std-lib only)
 ```
+
+**Déploiements Vercel = CLI uniquement, jamais par push.** Les deux projets
+(`kenos`, `kenos-site`) ont chacun été reliés au repo GitHub par erreur : chaque
+push sur `main` construisait alors la racine du repo (static vide) en production
+et écrasait le déploiement CLI d'un 404. Le `vercel.json` à la racine pose
+`git.deploymentEnabled: false` : tout projet lié à ce repo ignore les pushes,
+lien présent ou non. Ne pas le supprimer, ne jamais `vercel git connect`.
 
 Canaux de test (registry `../LOCAL_DEV_PORTS.json`) :
 

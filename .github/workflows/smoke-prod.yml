@@ -30,6 +30,7 @@ on:
 
 env:
   APP_URL: https://kenos-lemon.vercel.app
+  LANDING_URL: https://kenos-site.vercel.app
   SUPABASE_URL: https://xmbdrzkvjxaaoqwluonx.supabase.co
 
 permissions:

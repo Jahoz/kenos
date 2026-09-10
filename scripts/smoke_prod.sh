@@ -9,6 +9,10 @@
 #
 #   1. the PWA is served: GET / and GET /main.dart.js (200, sane
 #      bundle size, must-revalidate cache policy on the bundle);
+#   1b. the LANDING is served (200 + the KENOS title). A reconnected
+#      Git link once built the repo root as an empty deployment that
+#      shadowed the CLI-deployed landing with a 404 for a full day —
+#      the smoke only watched the app and never noticed;
 #   2. every RPC the client references exists on the PROD schema.
 #      Probed with correctly-typed INERT payloads and the publishable
 #      key alone (role: anon). Every client RPC is granted to
@@ -33,6 +37,7 @@
 set -euo pipefail
 
 APP_URL="${APP_URL:-https://kenos-lemon.vercel.app}"
+LANDING_URL="${LANDING_URL:-https://kenos-site.vercel.app}"
 SUPABASE_URL="${SUPABASE_URL:?SUPABASE_URL must be set (https://<ref>.supabase.co)}"
 SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:?SUPABASE_ANON_KEY must be set (repository secret, publishable key — Project Settings → API)}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -46,7 +51,7 @@ ko() { FAIL=$((FAIL + 1)); FAILURES="${FAILURES}- $1
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 # Pre-created so a curl that never connects still reads as "" bodies.
-: > "$TMP/root" ; : > "$TMP/rpc" ; : > "$TMP/deep" ; : > "$TMP/door"
+: > "$TMP/root" ; : > "$TMP/rpc" ; : > "$TMP/deep" ; : > "$TMP/door" ; : > "$TMP/landing"
 
 # ── RPC identifiers actually referenced by the client ───────────────────
 # Multiline-safe: flatten the Dart sources first, then pick the quoted
@@ -118,6 +123,14 @@ if printf '%s' "$cache" | grep -qi 'must-revalidate'; then
   ok "bundle cache-control: $cache"
 else
   ko "bundle cache-control is '$cache' — expected must-revalidate (stale-bundle risk)"
+fi
+
+# ── 1b. The landing is served (the vitrine shares the prod blast radius) ──
+code=$(curl -sS -o "$TMP/landing" -w '%{http_code}' "$LANDING_URL/") || code="curl-error"
+if [ "$code" = "200" ] && grep -q '<title>KENOS' "$TMP/landing"; then
+  ok "landing GET / → 200, content present"
+else
+  ko "landing GET / → $code (empty redeploy? see Makefile deploy-site gate)"
 fi
 
 # ── 2. Every client RPC exists on the prod schema (never executed) ───────
