@@ -383,120 +383,129 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
               // wide composer escapes the phone's 560 cap (inside it,
               // two columns were two cramped ones in a centered band
               // — the very thing the wide layout came to fix).
-              final wide =
-                  constraints.maxWidth >= AppLayout.mirrorTwoColumns;
-              return SingleChildScrollView(
-                // Fill-or-scroll (V3.42): when the column is smaller
-                // than the window it stretches and centers; when it is
-                // taller (keyboard open, small windows) it simply
-                // scrolls.
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight,
-                  ),
+              final wide = constraints.maxWidth >= AppLayout.mirrorTwoColumns;
+              // Centered like the constellation screen's own panel:
+              // without the Center, the readable column PINS to the
+              // left edge on any wider window (the Aube's old bug,
+              // resurrected by the V3.42 refactor — V3.43d).
+              return Center(
+                child: SingleChildScrollView(
+                  // Fill-or-scroll (V3.42): when the column is smaller
+                  // than the window it stretches and centers; when it is
+                  // taller (keyboard open, small windows) it simply
+                  // scrolls.
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxWidth: wide
-                          ? AppLayout.mirrorWideMaxWidth
-                          : AppLayout.contentMaxWidth,
+                      minHeight: constraints.maxHeight,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(26, 18, 26, 26),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                'MIROIR',
-                                style: TextStyle(
-                                  fontFamily: AppFonts.mono,
-                                  fontSize: 9,
-                                  letterSpacing: 4,
-                                  color: AppColors.fade(AppColors.cyan, 0.6),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: wide
+                            ? AppLayout.mirrorWideMaxWidth
+                            : AppLayout.contentMaxWidth,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(26, 18, 26, 26),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  'MIROIR',
+                                  style: TextStyle(
+                                    fontFamily: AppFonts.mono,
+                                    fontSize: 9,
+                                    letterSpacing: 4,
+                                    color: AppColors.fade(AppColors.cyan, 0.6),
+                                  ),
                                 ),
-                              ),
-                              const Spacer(),
-                              TextButton(
-                                onPressed: _sealing
-                                    ? null
-                                    : () => Navigator.of(context).pop(),
-                                child: const Text('RENONCER'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'La formulation du vide',
-                            style: TextStyle(
-                              fontFamily: AppFonts.serifItalic,
-                              fontSize: 26,
-                              color: AppColors.fade(AppColors.pureLight, 0.92),
+                                const Spacer(),
+                                TextButton(
+                                  onPressed: _sealing
+                                      ? null
+                                      : () => Navigator.of(context).pop(),
+                                  child: const Text('RENONCER'),
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 28),
-                          // V3.42 — THE SENSE OF THE MIRROR: the
-                          // intention comes FIRST (it is the echo's
-                          // gravity), the editor is BOUNDED, and the
-                          // attachments are real chips with a visible
-                          // ＋. V3.43 — wide windows get a DISPOSITION,
-                          // not a stretched phone: past
-                          // [AppLayout.mirrorTwoColumns] the Mirror
-                          // composes in two columns — the secret to
-                          // the left, every choice and the seal to the
-                          // right, nothing to scroll.
-                          if (wide) ...[
-                            _wideComposer(),
-                          ] else ...[
-                            _intentionCaption(),
-                            const SizedBox(height: 8),
-                            _ThemePicker(
-                              selected: _theme,
-                              enabled: !_sealing,
-                              onChanged: (t) => setState(() => _theme = t),
-                            ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 12),
                             Text(
-                              _theme.emotionHint,
-                              textAlign: TextAlign.center,
+                              'La formulation du vide',
                               style: TextStyle(
                                 fontFamily: AppFonts.serifItalic,
-                                fontSize: 13,
-                                color:
-                                    AppColors.fade(AppColors.pureLight, 0.5),
+                                fontSize: 26,
+                                color: AppColors.fade(
+                                  AppColors.pureLight,
+                                  0.92,
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 20),
-                            _editorField(
-                              minHeight: 110,
-                              maxHeight: 260,
-                              minLines: 4,
-                              maxLines: 9,
-                            ),
-                            const SizedBox(height: 16),
-                            _attachSection(),
-                            _previewsSection(),
-                            const SizedBox(height: 8),
-                            _originSection(),
-                            const SizedBox(height: 14),
-                            _sealButton(),
-                            const SizedBox(height: 14),
-                            _sealWhisper(),
+                            const SizedBox(height: 28),
+                            // V3.42 — THE SENSE OF THE MIRROR: the
+                            // intention comes FIRST (it is the echo's
+                            // gravity), the editor is BOUNDED, and the
+                            // attachments are real chips with a visible
+                            // ＋. V3.43 — wide windows get a DISPOSITION,
+                            // not a stretched phone: past
+                            // [AppLayout.mirrorTwoColumns] the Mirror
+                            // composes in two columns — the secret to
+                            // the left, every choice and the seal to the
+                            // right, nothing to scroll.
+                            if (wide) ...[
+                              _wideComposer(),
+                            ] else ...[
+                              _intentionCaption(),
+                              const SizedBox(height: 8),
+                              _ThemePicker(
+                                selected: _theme,
+                                enabled: !_sealing,
+                                onChanged: (t) => setState(() => _theme = t),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                _theme.emotionHint,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontFamily: AppFonts.serifItalic,
+                                  fontSize: 13,
+                                  color: AppColors.fade(
+                                    AppColors.pureLight,
+                                    0.5,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              _editorField(
+                                minHeight: 110,
+                                maxHeight: 260,
+                                minLines: 4,
+                                maxLines: 9,
+                              ),
+                              const SizedBox(height: 16),
+                              _attachSection(),
+                              _previewsSection(),
+                              const SizedBox(height: 8),
+                              _originSection(),
+                              const SizedBox(height: 14),
+                              _sealButton(),
+                              const SizedBox(height: 14),
+                              _sealWhisper(),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               );
-              },
-            ),
+            },
           ),
         ),
-      );
+      ),
+    );
   }
-
   // ── The Mirror's pieces (V3.43) ──────────────────────────────────
   // One set of parts, two dispositions: the phone column (V3.42's
   // pinned order) and the wide composer below. Same widgets, same
@@ -504,14 +513,14 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
 
   /// The intention's quiet caption.
   Widget _intentionCaption() => Text(
-        "L'INTENTION",
-        style: TextStyle(
-          fontFamily: AppFonts.mono,
-          fontSize: 8,
-          letterSpacing: 3,
-          color: AppColors.fade(AppColors.cyan, 0.55),
-        ),
-      );
+    "L'INTENTION",
+    style: TextStyle(
+      fontFamily: AppFonts.mono,
+      fontSize: 8,
+      letterSpacing: 3,
+      color: AppColors.fade(AppColors.cyan, 0.55),
+    ),
+  );
 
   /// The secret's field, bounded. Tall on wide windows (the desktop
   /// owes the confidence room), compact on phones.
@@ -520,49 +529,45 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     required double maxHeight,
     required int minLines,
     required int maxLines,
-  }) =>
-      ConstrainedBox(
-        constraints: BoxConstraints(
-          minHeight: minHeight,
-          maxHeight: maxHeight,
-        ),
-        child: _sealing
-            ? SingleChildScrollView(
-                child: ScrambleText(
-                  text: _input.text,
-                  resolve: false,
-                  style: secretStyle(fontSize: 18),
-                ),
-              )
-            : TextField(
-                controller: _input,
-                focusNode: _focus,
-                maxLines: maxLines,
-                minLines: minLines,
-                autofocus: true,
-                maxLength: _maxLength,
-                cursorColor: AppColors.teal,
-                style: secretStyle(fontSize: 18),
-                decoration: const InputDecoration(
-                  counterStyle: TextStyle(
-                    fontFamily: AppFonts.mono,
-                    fontSize: 9,
-                    letterSpacing: 2,
-                    color: Color(0x66F4F4F6),
-                  ),
-                  border: InputBorder.none,
-                  hintText:
-                      'Écris ce que tu ne dis nulle part.\nPersonne ne saura. Même pas toi, après.',
-                  hintStyle: TextStyle(
-                    fontFamily: AppFonts.serifItalic,
-                    fontSize: 18,
-                    height: 1.75,
-                    color: Color(0x40F4F4F6),
-                  ),
-                ),
-                onChanged: (_) => setState(() {}),
+  }) => ConstrainedBox(
+    constraints: BoxConstraints(minHeight: minHeight, maxHeight: maxHeight),
+    child: _sealing
+        ? SingleChildScrollView(
+            child: ScrambleText(
+              text: _input.text,
+              resolve: false,
+              style: secretStyle(fontSize: 18),
+            ),
+          )
+        : TextField(
+            controller: _input,
+            focusNode: _focus,
+            maxLines: maxLines,
+            minLines: minLines,
+            autofocus: true,
+            maxLength: _maxLength,
+            cursorColor: AppColors.teal,
+            style: secretStyle(fontSize: 18),
+            decoration: const InputDecoration(
+              counterStyle: TextStyle(
+                fontFamily: AppFonts.mono,
+                fontSize: 9,
+                letterSpacing: 2,
+                color: Color(0x66F4F4F6),
               ),
-      );
+              border: InputBorder.none,
+              hintText:
+                  'Écris ce que tu ne dis nulle part.\nPersonne ne saura. Même pas toi, après.',
+              hintStyle: TextStyle(
+                fontFamily: AppFonts.serifItalic,
+                fontSize: 18,
+                height: 1.75,
+                color: Color(0x40F4F4F6),
+              ),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+  );
 
   /// The attachments, SEEN before they are chosen: one line of prose
   /// says what may travel, the chips say it in the hand.
@@ -597,24 +602,24 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
 
   /// The attached fragment and the sealed door, made visible.
   Widget _previewsSection() => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_media != null) ...[
-            MediaDraftPreview(
-              media: _media!,
-              onRemoved: () => setState(() => _media = null),
-            ),
-            const SizedBox(height: 10),
-          ],
-          if (_excerpt != null) ...[
-            _ExcerptDraftChip(
-              excerpt: _excerpt!,
-              onRemoved: () => setState(() => _excerpt = null),
-            ),
-            const SizedBox(height: 10),
-          ],
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      if (_media != null) ...[
+        MediaDraftPreview(
+          media: _media!,
+          onRemoved: () => setState(() => _media = null),
+        ),
+        const SizedBox(height: 10),
+      ],
+      if (_excerpt != null) ...[
+        _ExcerptDraftChip(
+          excerpt: _excerpt!,
+          onRemoved: () => setState(() => _excerpt = null),
+        ),
+        const SizedBox(height: 10),
+      ],
+    ],
+  );
 
   /// V3.26d — the origin is INFO about the echo, never a fourth
   /// fragment type. Touch names the shore, touch again unnamed.
@@ -632,103 +637,103 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
   /// teal-washed surface, teal border, near-full light. Kept an
   /// OutlinedButton: the send-path tests pin it.
   Widget _sealButton() => OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
-          minimumSize: const Size(0, 46),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          backgroundColor: _canSend || _sealing
-              ? Color.alphaBlend(
-                  AppColors.fade(AppColors.teal, 0.10),
-                  AppColors.voidBlack,
-                )
-              : AppColors.voidBlack,
-          side: BorderSide(
-            color: AppColors.fade(
-              AppColors.teal,
-              (_canSend || _sealing) ? 0.85 : 0.35,
-            ),
-            width: 1.2,
-          ),
+    style: OutlinedButton.styleFrom(
+      padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
+      minimumSize: const Size(0, 46),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      backgroundColor: _canSend || _sealing
+          ? Color.alphaBlend(
+              AppColors.fade(AppColors.teal, 0.10),
+              AppColors.voidBlack,
+            )
+          : AppColors.voidBlack,
+      side: BorderSide(
+        color: AppColors.fade(
+          AppColors.teal,
+          (_canSend || _sealing) ? 0.85 : 0.35,
         ),
-        onPressed: _canSend ? _sealAndLaunch : null,
-        child: Text(
-          _sealing ? 'SCELLEMENT…' : 'SCELLER & LANCER',
-          style: TextStyle(
-            fontFamily: AppFonts.mono,
-            fontSize: 10.5,
-            letterSpacing: 4,
-            color: AppColors.fade(
-              AppColors.pureLight,
-              (_canSend || _sealing) ? 0.95 : 0.5,
-            ),
-          ),
+        width: 1.2,
+      ),
+    ),
+    onPressed: _canSend ? _sealAndLaunch : null,
+    child: Text(
+      _sealing ? 'SCELLEMENT…' : 'SCELLER & LANCER',
+      style: TextStyle(
+        fontFamily: AppFonts.mono,
+        fontSize: 10.5,
+        letterSpacing: 4,
+        color: AppColors.fade(
+          AppColors.pureLight,
+          (_canSend || _sealing) ? 0.95 : 0.5,
         ),
-      );
+      ),
+    ),
+  );
 
   Widget _sealWhisper() => Text(
-        'UNE SEULE LECTURE POSSIBLE — AUCUN RETOUR — AUCUNE TRACE',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontFamily: AppFonts.mono,
-          fontSize: 8,
-          letterSpacing: 2,
-          color: AppColors.fade(AppColors.pureLight, 0.3),
-        ),
-      );
+    'UNE SEULE LECTURE POSSIBLE — AUCUN RETOUR — AUCUNE TRACE',
+    textAlign: TextAlign.center,
+    style: TextStyle(
+      fontFamily: AppFonts.mono,
+      fontSize: 8,
+      letterSpacing: 2,
+      color: AppColors.fade(AppColors.pureLight, 0.3),
+    ),
+  );
 
   /// V3.43 — THE WIDE COMPOSER: the secret owns the left column
   /// (tall, unbounded by a thumb's screen), every choice and the seal
   /// stand to its right — the width carries the sense, nothing
   /// scrolls on a window that has room.
   Widget _wideComposer() => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 11,
-            child: _editorField(
-              minHeight: 340,
-              maxHeight: 640,
-              minLines: 12,
-              maxLines: 26,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        flex: 11,
+        child: _editorField(
+          minHeight: 340,
+          maxHeight: 640,
+          minLines: 12,
+          maxLines: 26,
+        ),
+      ),
+      const SizedBox(width: 46),
+      Expanded(
+        flex: 9,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _intentionCaption(),
+            const SizedBox(height: 10),
+            _ThemePicker(
+              selected: _theme,
+              enabled: !_sealing,
+              onChanged: (t) => setState(() => _theme = t),
             ),
-          ),
-          const SizedBox(width: 46),
-          Expanded(
-            flex: 9,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _intentionCaption(),
-                const SizedBox(height: 10),
-                _ThemePicker(
-                  selected: _theme,
-                  enabled: !_sealing,
-                  onChanged: (t) => setState(() => _theme = t),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _theme.emotionHint,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: AppFonts.serifItalic,
-                    fontSize: 13,
-                    color: AppColors.fade(AppColors.pureLight, 0.5),
-                  ),
-                ),
-                const SizedBox(height: 26),
-                _attachSection(),
-                _previewsSection(),
-                const SizedBox(height: 12),
-                _originSection(),
-                const SizedBox(height: 18),
-                _sealButton(),
-                const SizedBox(height: 12),
-                _sealWhisper(),
-              ],
+            const SizedBox(height: 8),
+            Text(
+              _theme.emotionHint,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppFonts.serifItalic,
+                fontSize: 13,
+                color: AppColors.fade(AppColors.pureLight, 0.5),
+              ),
             ),
-          ),
-        ],
-      );
+            const SizedBox(height: 26),
+            _attachSection(),
+            _previewsSection(),
+            const SizedBox(height: 12),
+            _originSection(),
+            const SizedBox(height: 18),
+            _sealButton(),
+            const SizedBox(height: 12),
+            _sealWhisper(),
+          ],
+        ),
+      ),
+    ],
+  );
 }
 
 /// The Mirror's attachments, SEEN: named chips with a visible ＋
@@ -756,11 +761,7 @@ class _AttachRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget chip(
-      String label,
-      VoidCallback? onPressed,
-      bool riding,
-    ) {
+    Widget chip(String label, VoidCallback? onPressed, bool riding) {
       final alive = onPressed != null || riding;
       final ink = riding ? AppColors.teal : AppColors.pureLight;
       return TextButton(
@@ -852,10 +853,10 @@ class _OriginLine extends StatelessWidget {
     final text = resolving
         ? 'NOMMER L\'ORIGINE…'
         : named
-            ? 'PARTI DE ${label!.toUpperCase()} — TOUCHER POUR RETIRER'
-            : unreachable
-                ? 'ORIGINE INJOIGNABLE — TOUCHER POUR RÉESSAYER'
-                : 'NOMMER L\'ORIGINE';
+        ? 'PARTI DE ${label!.toUpperCase()} — TOUCHER POUR RETIRER'
+        : unreachable
+        ? 'ORIGINE INJOIGNABLE — TOUCHER POUR RÉESSAYER'
+        : 'NOMMER L\'ORIGINE';
     return GestureDetector(
       onTap: resolving ? null : onToggle,
       behavior: HitTestBehavior.opaque,

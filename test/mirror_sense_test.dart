@@ -131,6 +131,11 @@ void main() {
     // Stacked, not side by side.
     expect(intention.bottom, lessThan(editor.top),
         reason: 'la colonne honnête : l\'intention au-dessus de l\'éditeur');
+    // And CENTERED — never pinned to the left edge (the Aube's old
+    // bug, resurrected by the V3.42 refactor, caught by Hugo's eye).
+    final title = tester.getRect(find.text('La formulation du vide'));
+    expect((title.center.dx - 955 / 2).abs(), lessThan(40),
+        reason: 'la colonne se tient au centre de la fenêtre');
     // The seal stays REACHABLE — one gesture brings it home (the
     // column scrolls, exactly like the constellation screen's own).
     final seal = find.widgetWithText(OutlinedButton, 'SCELLER & LANCER');

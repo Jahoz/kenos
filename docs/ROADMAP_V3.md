@@ -1434,6 +1434,18 @@ toutes les fenêtres ; au-dessus, le compositeur à pleine mesure.
 Épinglé par test à 955×480 (empilement, sceau atteignable en un
 geste).
 
+**V3.43d — la colonne se tient au centre (2026-09-14)** : le verdict
+final de Hugo tranchait net — le Miroir restait « ferré à gauche »
+tandis que l'écran constellation était juste. Le code ancien du
+Miroir portait un avertissement que la refonte V3.42 a supprimé avec
+le `Center` : « sans le Center, la colonne s'épingle au bord gauche
+(le bug de l'Aube, même famille) ». Le remplir-sinon-scroller a
+remplacé `IntrinsicHeight`+`Center` — et perdu le Centre : toute
+fenêtre plus large que la mesure montrait une colonne ferrée à
+gauche, aucun test n'assertait le centrage. Le `Center` revient, au
+-dessus du ScrollView exactement comme l'écran constellation — et le
+test 955×480 épingle désormais le titre à moins de 40 px du milieu.
+
 ## 4. Règles inchangées (rappel)
 
 
