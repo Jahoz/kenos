@@ -103,7 +103,10 @@ class ContributeResult {
 }
 
 /// What the ether actually said when a line was refused — the
-/// writer deserves the reason, not a shrug.
+/// writer deserves the reason, not a shrug. Every KENOS_* the SQL
+/// grammar can raise has its word here; a PostgREST error with no
+/// known code is a true refusal, anything else is the sky being far
+/// (never "refused": nothing was refused, the ether never answered).
 String contributeRefusalMessage(Object error) {
   final raw = error.toString();
   if (raw.contains('KENOS_ALREADY_CONTRIBUTED')) {
@@ -115,13 +118,41 @@ String contributeRefusalMessage(Object error) {
   if (raw.contains('KENOS_CLOSED')) {
     return 'LE POÈME S\'EST REFERMÉ AILLEURS.';
   }
+  if (raw.contains('KENOS_NOT_FOUND')) {
+    return 'CET ANNEAU A RETOURNÉ AU VIDE.';
+  }
   if (raw.contains('KENOS_INVALID_LENGTH')) {
     return 'LA PHRASE EST TROP LONGUE POUR LE CIEL.';
   }
   if (raw.contains('KENOS_INVITE_UNKNOWN')) {
     return 'LE SALON N\'A PAS RECONNU TA CLÉ.';
   }
+  if (raw.contains('KENOS_UNAUTHENTICATED')) {
+    return 'L\'ÉTHER NE TE RECONNAÎT PLUS.';
+  }
+  if (error is! PostgrestException) {
+    return 'L\'ÉTHER EST INJOIGNABLE — LA LIGNE RESTE À TOI.';
+  }
   return 'L\'ÉTHER A REFUSÉ LA LIGNE.';
+}
+
+/// The same honesty for a refused seed — the two guards a hand meets
+/// (cadence, open-ring cap) both have a remedy, and it is not silence.
+String seedRefusalMessage(Object error) {
+  final raw = error.toString();
+  if (raw.contains('KENOS_RATE_LIMIT')) {
+    return 'LE CIEL SOUFFLE — DEUX MINUTES ENTRE DEUX ANNEAUX.';
+  }
+  if (raw.contains('KENOS_SEED_CAP')) {
+    return 'TA MAIN TIENT DÉJÀ CINQ POÈMES OUVERTS.';
+  }
+  if (raw.contains('KENOS_UNAUTHENTICATED')) {
+    return 'L\'ÉTHER NE TE RECONNAÎT PLUS.';
+  }
+  if (error is! PostgrestException) {
+    return 'L\'ÉTHER EST INJOIGNABLE.';
+  }
+  return 'L\'ÉTHER A REFUSÉ LA CONSTELLATION.';
 }
 
 /// The Exquisite Corpse contract (V3.13 — classic rule): seed,
@@ -159,6 +190,12 @@ abstract class ConstellationRepository {
   /// The tail of an OPEN poem — exactly ONE line (the last), to
   /// continue it. Null when the poem has not started. The whole
   /// stays blind. A salon ring demands its key here too.
+  ///
+  /// The peek is the door's truth: a KENOS_* refusal (the ring went
+  /// back to the void, closed elsewhere, a key the door no longer
+  /// knows) PROPAGATES — the caller must never offer to write into a
+  /// ring the ether will refuse. Only a network-level failure is the
+  /// caller's to swallow (fail-open, like [hasContributed]).
   Future<AssembledLine?> peekPrevious(
     String constellationId, {
     String? inviteToken,
@@ -270,26 +307,26 @@ class SupabaseConstellationRepository implements ConstellationRepository {
     String constellationId, {
     String? inviteToken,
   }) async {
-    try {
-      final result = await _client.rpc(
-        'peek_previous_line',
-        params: {
-          'p_constellation_id': constellationId,
-          'p_invite_token': ?inviteToken,
-        },
-      );
-      if (result == null) return null;
-      final bundle = (result as Map).cast<String, dynamic>();
-      final cipherText = bundle['text'] as String;
-      final key = bundle['key'] as String?;
-      final clear = (key == null || key.isEmpty)
-          ? cipherText
-          : await EchoCipher.openOrNull(key, cipherText);
-      if (clear == null) return null;
-      return AssembledLine(number: 0, text: clear);
-    } catch (_) {
-      return null;
-    }
+    // The ether's refusals cross untouched (KENOS_NOT_FOUND, CLOSED,
+    // INVITE_UNKNOWN): the panel learns the ring's truth BEFORE a
+    // line is ever typed. `null` below stays what it always was —
+    // the poem has not started.
+    final result = await _client.rpc(
+      'peek_previous_line',
+      params: {
+        'p_constellation_id': constellationId,
+        'p_invite_token': ?inviteToken,
+      },
+    );
+    if (result == null) return null;
+    final bundle = (result as Map).cast<String, dynamic>();
+    final cipherText = bundle['text'] as String;
+    final key = bundle['key'] as String?;
+    final clear = (key == null || key.isEmpty)
+        ? cipherText
+        : await EchoCipher.openOrNull(key, cipherText);
+    if (clear == null) return null;
+    return AssembledLine(number: 0, text: clear);
   }
 
   @override

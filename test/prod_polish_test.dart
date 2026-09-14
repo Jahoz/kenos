@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/constellations/data/constellation_repository.dart';
 import 'package:kenos/features/constellations/presentation/constellation_sheets.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// The prod reports, each pinned to its fix:
 ///  - long artifacts overflowed phones with no scroll;
 ///  - the ether's refusals were a shrug ('refused') when the reason
 ///    existed (ALREADY_CONTRIBUTED on a sheet the app itself had
-///    re-offered).
+///    re-offered);
+///  - a reaped or closed ring still offered its keyboard — the truth
+///    now lands at the peek, before a line is ever typed.
 void main() {
   group('contributeRefusalMessage — le refus dit son nom', () {
     test('déjà contribué : ce sont les mêmes mains', () {
@@ -28,7 +31,7 @@ void main() {
       );
     });
 
-    test('refermé ailleurs, trop long, inconnu', () {
+    test('refermé ailleurs, trop long, anneau dissous, méconnaissance', () {
       expect(
         contributeRefusalMessage(const PostgrestExceptionLike('KENOS_CLOSED')),
         'LE POÈME S\'EST REFERMÉ AILLEURS.',
@@ -39,9 +42,66 @@ void main() {
         ),
         contains('TROP LONGUE'),
       );
+      // The reaped ring (OPEN past its seven days): the map can show
+      // it up to a breath late — the refusal must say what happened.
       expect(
-        contributeRefusalMessage(const PostgrestExceptionLike('boom')),
+        contributeRefusalMessage(
+          const PostgrestExceptionLike('KENOS_NOT_FOUND'),
+        ),
+        'CET ANNEAU A RETOURNÉ AU VIDE.',
+      );
+      expect(
+        contributeRefusalMessage(
+          const PostgrestExceptionLike('KENOS_UNAUTHENTICATED'),
+        ),
+        'L\'ÉTHER NE TE RECONNAÎT PLUS.',
+      );
+    });
+
+    test('le serveur a parlé sans code connu : un vrai refus', () {
+      expect(
+        contributeRefusalMessage(const PostgrestException(message: 'boom')),
         'L\'ÉTHER A REFUSÉ LA LIGNE.',
+      );
+    });
+
+    test('rien n\'a été refusé quand l\'éther n\'a pas répondu', () {
+      expect(
+        contributeRefusalMessage(Exception('SocketException: the sky is far')),
+        'L\'ÉTHER EST INJOIGNABLE — LA LIGNE RESTE À TOI.',
+      );
+    });
+  });
+
+  group('seedRefusalMessage — le garde dit son remède', () {
+    test('cadence : deux minutes entre deux anneaux', () {
+      expect(
+        seedRefusalMessage(const PostgrestExceptionLike('KENOS_RATE_LIMIT')),
+        'LE CIEL SOUFFLE — DEUX MINUTES ENTRE DEUX ANNEAUX.',
+      );
+    });
+
+    test('plafond : cinq poèmes ouverts par main', () {
+      expect(
+        seedRefusalMessage(const PostgrestExceptionLike('KENOS_SEED_CAP')),
+        'TA MAIN TIENT DÉJÀ CINQ POÈMES OUVERTS.',
+      );
+    });
+
+    test('méconnaissance, injoignable, refus inconnu', () {
+      expect(
+        seedRefusalMessage(
+          const PostgrestExceptionLike('KENOS_UNAUTHENTICATED'),
+        ),
+        'L\'ÉTHER NE TE RECONNAÎT PLUS.',
+      );
+      expect(
+        seedRefusalMessage(Exception('SocketException: the sky is far')),
+        'L\'ÉTHER EST INJOIGNABLE.',
+      );
+      expect(
+        seedRefusalMessage(const PostgrestException(message: 'boom')),
+        'L\'ÉTHER A REFUSÉ LA CONSTELLATION.',
       );
     });
   });

@@ -11,6 +11,7 @@ import '../../cosmic_map/data/artifact_memory.dart';
 import '../../echo/data/echo_providers.dart';
 import '../../onboarding/presentation/onboarding_screen.dart';
 import '../data/constellation_repository.dart';
+import '../data/salon_anchor_store.dart';
 import '../domain/constellation_figure.dart';
 import 'constellation_sheets.dart';
 
@@ -110,7 +111,28 @@ class _SalonClaimScreenState extends ConsumerState<SalonClaimScreen> {
       constellation: meta,
       inviteToken: widget.token,
     );
-    if (mounted) context.go('/space');
+    if (!mounted) return;
+    // A claimed line makes the door OURS too: the guest keeps an
+    // ember anchor on their own sky, and with it the ring they helped
+    // write — no need to keep the link.
+    if (ref.read(artifactMemoryProvider).contributedTo(meta.id)) {
+      unawaited(
+        ref.read(salonAnchorStoreProvider).remember(
+              SalonAnchor(
+                id: meta.id,
+                token: widget.token,
+                seedX: meta.seedX,
+                seedY: meta.seedY,
+                kind: meta.kind == ConstellationKind.melody
+                    ? 'MELODY'
+                    : 'POEM',
+                target: meta.target,
+                heldSince: DateTime.now().millisecondsSinceEpoch,
+              ),
+            ),
+      );
+    }
+    context.go('/space');
   }
 
   Future<void> _readArtifact() async {

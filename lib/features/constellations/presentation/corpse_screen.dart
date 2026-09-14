@@ -81,7 +81,10 @@ class _CorpseScreenState extends ConsumerState<CorpseScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _dropping = false);
-      showHud(context, 'L\'ÉTHER A REFUSÉ LA CONSTELLATION.');
+      // The ether's reason, not a shrug: the two guards a hand meets
+      // (cadence, five open rings) both have a remedy the seeder can
+      // act on — silence here was the prod wound.
+      showHud(context, seedRefusalMessage(e));
     }
   }
 

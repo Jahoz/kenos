@@ -28,6 +28,7 @@ mot générique ici : il désigne une chose précise, distincte du vestige.
 | **Artefact** (constellation fermée curatorisée) | **Un poème du domaine public, crédité** (`curated_by` = le poète), assemblé ligne par ligne par des mains anonymes ; lisible et re-lisible par tous. | **Une lune** — purge à 30 j. Un naît chaque lundi (`pg_cron kenos-artifact` → backlog `kenos_artifact_backlog`) |
 | **Vestige** | **Un éclat de culture permanente** : citation, étymologie, histoire, fait, haïku — texte clair, aucune identité de compte, aucune réception (une source créditée, pas un auteur) ; multilingue (fr canon + locales). | **Pour toujours** — jamais purgé (`kenos_vestiges`) |
 | **Main** | Compte anonyme déterministe (`curated-hand-N@seed.kenos.local`) portant une ligne curatorisée. | — |
+| **Ancre** | Mémo LOCAL d'une porte de salon tenue (clé en secure_storage, zéro contenu — jamais une ligne) ; graine ember sur la carte, visible du porteur seul. | 7 j (le fauchage) ou la fermeture de l'anneau |
 | **Trace** | Réponse one-shot du lecteur à l'auteur (≤ 140 car., fenêtre 10 min), bouteille à la mer. | voir = brûler |
 
 Règle rapide : **un artefact est un poème et vit une lune ; un vestige est un
@@ -174,6 +175,12 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
   ressemblent). Salon ouvert invisible sur la carte ; refermé,
   l'artefact est public et indiscernable. La purge est inchangée —
   le lien meurt avec l'anneau.
+- **L'Ancre du salon (V3.31)** : le porteur d'une porte (semeur dès
+  le semage, invité dès sa première ligne) garde une ancre locale —
+  clé en `secure_storage`, AUCUN contenu, graine ember visible de
+  lui seul, auto-taillée à 7 jours ou à la fermeture. Le lien reste
+  montré une seule fois ; l'ancre ne rouvre jamais le partage, juste
+  la porte.
 - **Vestiges multilingues (V3.16)** : la voix produit reste FR (canon,
   pour toujours) ; les éclats curatés existent par locale
   (fetch_vestiges(p_locale), normalisation `fr-FR`→`fr`, repli honnête
