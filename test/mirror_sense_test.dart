@@ -95,6 +95,10 @@ void main() {
         reason: 'le sceau vit dans la colonne des choix');
     expect(editor.height, greaterThan(300),
         reason: 'en large, la confidence a de la chambre');
+    expect(editor.width, greaterThan(400),
+        reason: 'le compositeur ÉCHAPPE au cap téléphone de 560 — '
+            'deux colonnes étriquées dans une bande centrée, c\'est '
+            'ce que la disposition large venait corriger (V3.43b)');
 
     // Everything still holds in ONE first look — nothing scrolls.
     for (final probe in [

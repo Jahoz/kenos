@@ -1411,6 +1411,17 @@ et même sol en large ; `mirror_sense_test` : le compositeur — le
 secret à gauche, le sceau à droite, un regard) ; suite complète 347
 verts, analyze 0.
 
+**V3.43b — la mesure suit la disposition (2026-09-14)** : la capture
+de Hugo à 1910×960 montrait le Miroir encore en colonne étriquée — le
+compositeur large vivait TOUJOURS sous le cap téléphone de
+`contentMaxWidth` (560) : deux colonnes serrées dans une bande
+centrée, exactement ce que la disposition large venait corriger. Le
+cap monte avec la disposition (`mirrorWideMaxWidth` 1020) : à 1910,
+l'éditeur tient 507 px à gauche, les choix et le sceau se tiennent à
+droite. Épinglé par le test (« l'éditeur ÉCHAPPE au cap »). Au
+passage : une capture hébergeant un vieux bundle (PWA en cache) peut
+montrer l'avant — recharger l'onglet avant de juger un déploiement.
+
 ## 4. Règles inchangées (rappel)
 
 

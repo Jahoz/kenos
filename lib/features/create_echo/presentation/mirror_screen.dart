@@ -378,27 +378,34 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
         resizeToAvoidBottomInset: true,
         body: SafeArea(
           child: LayoutBuilder(
-            builder: (context, constraints) => SingleChildScrollView(
-              // Fill-or-scroll (V3.42): when the column is smaller
-              // than the window it stretches and centers; when it is
-              // taller (keyboard open, small windows) it simply
-              // scrolls. The old IntrinsicHeight+Center dance needed
-              // an Expanded child to absorb the squeeze — the bounded
-              // editor removed it, and the column overflowed.
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
-                ),
+            builder: (context, constraints) {
+              // V3.43b — the measure follows the disposition: the
+              // wide composer escapes the phone's 560 cap (inside it,
+              // two columns were two cramped ones in a centered band
+              // — the very thing the wide layout came to fix).
+              final wide =
+                  constraints.maxWidth >= AppLayout.mirrorTwoColumns;
+              return SingleChildScrollView(
+                // Fill-or-scroll (V3.42): when the column is smaller
+                // than the window it stretches and centers; when it is
+                // taller (keyboard open, small windows) it simply
+                // scrolls.
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: AppLayout.contentMaxWidth,
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(26, 18, 26, 26),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: wide
+                          ? AppLayout.mirrorWideMaxWidth
+                          : AppLayout.contentMaxWidth,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(26, 18, 26, 26),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
                           Row(
                             children: [
                               Text(
@@ -439,8 +446,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                           // composes in two columns — the secret to
                           // the left, every choice and the seal to the
                           // right, nothing to scroll.
-                          if (constraints.maxWidth >=
-                              AppLayout.mirrorTwoColumns) ...[
+                          if (wide) ...[
                             _wideComposer(),
                           ] else ...[
                             _intentionCaption(),
@@ -483,7 +489,8 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                     ),
                   ),
                 ),
-              ),
+              );
+              },
             ),
           ),
         ),

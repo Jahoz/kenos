@@ -54,4 +54,10 @@ class AppLayout {
 
   /// Past this width the Mirror composes in two columns.
   static const double mirrorTwoColumns = 880;
+
+  /// The wide composer's measure (V3.43b): the Mirror's column cap
+  /// RISES with the disposition — a two-column composer inside the
+  /// phone's 560 cap was two cramped columns in a centered band, the
+  /// very thing the wide layout came to fix.
+  static const double mirrorWideMaxWidth = 1020;
 }
