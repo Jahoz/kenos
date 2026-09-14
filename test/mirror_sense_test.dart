@@ -111,4 +111,32 @@ void main() {
           reason: 'visible sans scroller, même en compositeur');
     }
   });
+
+  testWidgets('V3.43c — une fenêtre Retina 955×480 garde la colonne honnête',
+      (tester) async {
+    // The composer is for GENUINELY wide windows: at this laptop-ish
+    // Retina size it fired edge-to-edge and its tall editor pushed
+    // the seal below the fold. The single column — the constellation
+    // screen's own disposition — serves instead.
+    tester.view.physicalSize = const Size(955, 480);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: MirrorScreen())),
+    );
+    await tester.pump();
+
+    final editor = tester.getRect(find.byType(TextField));
+    final intention = tester.getRect(find.text('APAISER'));
+    // Stacked, not side by side.
+    expect(intention.bottom, lessThan(editor.top),
+        reason: 'la colonne honnête : l\'intention au-dessus de l\'éditeur');
+    // The seal stays REACHABLE — one gesture brings it home (the
+    // column scrolls, exactly like the constellation screen's own).
+    final seal = find.widgetWithText(OutlinedButton, 'SCELLER & LANCER');
+    await tester.ensureVisible(seal);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.getRect(seal).bottom, lessThan(480),
+        reason: 'un geste amène le sceau — jamais noyé');
+  });
 }

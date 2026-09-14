@@ -1422,6 +1422,18 @@ droite. Épinglé par le test (« l'éditeur ÉCHAPPE au cap »). Au
 passage : une capture hébergeant un vieux bundle (PWA en cache) peut
 montrer l'avant — recharger l'onglet avant de juger un déploiement.
 
+**V3.43c — le compositeur est pour les fenêtres VRAIMENT larges
+(2026-09-14)** : la seconde capture de Hugo (après rechargement fort)
+montrait l'écueil inverse — sa fenêtre Retina fait 955×480 LOGIQUES :
+le compositeur s'y déclenchait (≥ 880) et s'étalait bord à bord, mais
+dans 480 px de haut l'éditeur haut poussait le sceau sous le pli.
+Son mot de référence : « la partie constellation est bonne » — la
+colonne unique propre et centrée. Le seuil monte à 1150 logiques :
+sous lui, la colonne honnête (celle de l'écran constellation) sert
+toutes les fenêtres ; au-dessus, le compositeur à pleine mesure.
+Épinglé par test à 955×480 (empilement, sceau atteignable en un
+geste).
+
 ## 4. Règles inchangées (rappel)
 
 

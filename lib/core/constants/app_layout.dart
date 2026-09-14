@@ -52,8 +52,13 @@ class AppLayout {
   /// (stacked below it — the thumb's law holds on phones).
   static const double gatesSideBySide = 560;
 
-  /// Past this width the Mirror composes in two columns.
-  static const double mirrorTwoColumns = 880;
+  /// Past this width the Mirror composes in two columns — for
+  /// GENUINELY wide windows only (V3.43c): at Hugo's Retina 955×480
+  /// logical window the composer fired edge-to-edge and its tall
+  /// editor pushed the seal below the fold — the honest single column
+  /// (the constellation screen's own disposition, the one he calls
+  /// good) serves every window that is not truly wide.
+  static const double mirrorTwoColumns = 1150;
 
   /// The wide composer's measure (V3.43b): the Mirror's column cap
   /// RISES with the disposition — a two-column composer inside the
