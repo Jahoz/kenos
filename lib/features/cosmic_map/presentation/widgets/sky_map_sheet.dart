@@ -142,7 +142,8 @@ class _SkyMapPanel extends StatelessWidget {
                 Text(
                   'les échos orbitent l\'intention qu\'on leur confie\n'
                   'les vestiges reposent — la culture ne tourne pas\n'
-                  'les comètes traversent tout : des pensées portées',
+                  'les comètes traversent tout : des pensées portées\n'
+                  'les pensées non lues retombent vers le monde qui les porte',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: AppFonts.serifItalic,

@@ -821,8 +821,9 @@ poser sa ligne, l'invité entre dans le vide.
   main tendue de l'invitation — ember, avec parcimonie ; ROSE reste
   réservé à la destruction.
 - Roadmap+ : invitations nominatives par siège, universal links /
-  stores, URLs en chemin, ancre locale des salons ouverts pour les
-  participants, métrique `salon_opened`, mémo « mes salons », mélange
+  stores, URLs en chemin, ~~ancre locale des salons ouverts pour les
+  participants, métrique `salon_opened`, mémo « mes salons »~~ (✅
+  ancre locale + mémo « mes salons » → V3.31), mélange
   inconnus/invités dans un même anneau.
 
 Gates : 174 invariants pgTAP (+22 : la clé rendue une fois et
@@ -933,7 +934,260 @@ bornés ; carte : construction, lois, voyage-referme) ; suite complète
 284 verts, analyze 0. Les positions rendues changent à l'ouverture
 suivante (coques nouvelles) — voulu : c'est la lisibilité demandée.
 
+## V3.31 — L'Ancre du Salon ✅ (livrée 2026-09-10)
+
+Le trou était en prod : le semeur refermait les deux feuilles sans
+copier le lien — et sa propre porte lui devenait invisible pour
+toujours (l'anneau ouvert n'existe pas sur la carte, le lien n'est
+montré qu'une fois). L'ancre referme ce trou sans plier une loi :
+
+- **Le mémo des portes** (`SalonAnchorStore`) : chaque appareil
+  retient les salons ouverts qu'il porte — semeur dès le semage,
+  invité dès sa première ligne revendiquée. La clé vit en
+  `secure_storage` : le contrat « la clé existe dans le lien et sur
+  l'appareil du porteur, nulle part ailleurs » tient, littéralement.
+  Aucun contenu : jamais une ligne, jamais un poème — où dort
+  l'anneau, comment frapper, rien d'autre.
+- **La braise sur la carte** : graine ember et halo fin là où dort
+  l'anneau — visible de son porteur seul. Pas de stations : l'anneau
+  caché ne se dessine pas. Mains ayant donné : l'orbite fine « mine »
+  en ember (grammaire partagée avec les cadavres publics). Statique
+  et sobre — ROSE reste réservé à la destruction, rien ne bouge seul.
+- **Le tap frappe à la porte** : ouvert et mains vides → l'offre de
+  contribution (le semeur n'est qu'un étranger de plus pour son
+  poème) ; ligne déjà donnée → « TA LIGNE EST DÉJÀ DANS CE CORPS » ;
+  refermé → l'ancre se dissout, l'artefact public se lit aussitôt
+  (indiscernable, la loi tient) ; mort → « LE SALON S'EST TU »,
+  l'ancre s'en va avec la clé.
+- **La loi des sept jours, en local** : une ancre plus vieille que
+  le fauchage des anneaux ouverts se taille seule au chargement —
+  même coupée du réseau, la mémoire ne garde pas des clés mortes.
+- **Rafraîchissement** : ouverture de la carte et retour au premier
+  plan, jamais dans le souffle des 90 s — les portes ne tirent pas
+  sur l'éther.
+
+Gates : +7 tests Dart (mémoire des portes : survie au redémarrage,
+upsert, ordre, oubli, sept jours, JSON corrompu, zéro contenu) ;
+suite 295 verts, analyze 0. Aucun SQL touché : la base ne sait
+toujours pas qu'une porte est gardée — l'indiscernabilité de
+l'artefact refermé reste totale.
+
+## V3.32 — La Porte Ne Ment Plus ✅ (livrée 2026-09-11)
+
+La plaie venait de prod : partout où l'app proposait une ligne, le
+refus tombait à l'envoi — « L'ÉTHER A REFUSÉ LA LIGNE. », sans
+raison. Deux causes, deux remèdes :
+
+- **Le peek est la vérité de la porte** : la feuille demande déjà la
+  ligne précédente à l'éther en s'ouvrant — elle avalait toutes les
+  réponses et offrait son clavier même à un anneau mort. Un refus
+  `KENOS_*` (anneau fauché à sept jours — `KENOS_NOT_FOUND` —,
+  refermé ailleurs, clé de salon morte) tue maintenant le compositeur
+  avant le premier mot : la feuille dit ce qui est vrai (« CET ANNEAU
+  A RETOURNÉ AU VIDE. », « LE POÈME S'EST REFERMÉ AILLEURS. ») et
+  n'offre plus que « RETOURNER AU VIDE ». Seul un éther injoignable
+  laisse l'offre en place (fail-open, comme `hasContributed`) — rien
+  n'a été refusé, le ciel était loin.
+- **Chaque refus dit son nom** : `KENOS_NOT_FOUND`,
+  `KENOS_UNAUTHENTICATED` et l'injoignable réseau (« L'ÉTHER EST
+  INJOIGNABLE — LA LIGNE RESTE À TOI. ») entrent dans la grammaire de
+  `contributeRefusalMessage` ; le message générique ne survit que
+  pour un vrai refus PostgREST sans code connu. Le semis reçoit la
+  même honnêteté : cadence (« LE CIEL SOUFFLE — DEUX MINUTES ENTRE
+  DEUX ANNEAUX. ») et plafond de cinq anneaux ouverts (« TA MAIN
+  TIENT DÉJÀ CINQ POÈMES OUVERTS. ») — les deux gardes actionnables,
+  avant le silence.
+- **Contrat** : `peekPrevious` propage les refus `KENOS_*` (null
+  reste « le poème n'a pas commencé ») — le panneau de contribution
+  est le seul appelant, la parité démo tient (`SalonKeyRefused`
+  traverse).
+
+Gates : +9 tests Dart (`dead_ring_test` : anneau dissous, refermé,
+clé morte — jamais de clavier, jamais de ligne partie vers un mort ;
+injoignable — fail-open ; mappers contribution et semis exhaustifs) ;
+suite 304 verts, analyze 0. Aucun SQL touché.
+
+## V3.33 — Le Corpus du Lundi ✅ (livrée 2026-09-11)
+
+L'audit du LAUNCH_KIT disait vrai : le backlog d'artefacts ne tenait
+plus que neuf lundis (à sec mi-novembre) — et le lundi de l'artefact
+est un moteur de la vague d'annonces. Vingt slots curatés (11-30)
+portent la réserve à vingt-neuf lundis, jusque début avril 2027.
+
+- **La loi tient** : vrais fragments du domaine public, crédités
+  (poète + œuvre + année), 4-7 lignes — la forme de l'anneau, jamais
+  une ligne inventée. Huit voix françaises (Rimbaud, Apollinaire,
+  Nerval, Lamartine, Verlaine, Mallarmé, Charles d'Orléans, La
+  Fontaine), douze anglophones (Whitman, Byron, Stevenson, Yeats,
+  Housman, Wordsworth, Emily Brontë, Edward Thomas, Hardy, Teasdale,
+  Burns, Clare) — et les ciels y sont chez eux : « Of cloudless
+  climes and starry skies », « Under the wide and starry sky »,
+  « Ma seule étoile est morte ».
+- **Domaine public vérifié poème par poème** : auteur mort depuis
+  plus de 70 ans ET publication d'avant 1929 — les deux régimes
+  satisfaits, l'Union comme l'Amérique disent oui. Au moindre doute
+  sur un texte ou une édition, le poème est écarté, jamais deviné.
+- **Insertion idempotente** au format exact du corpus (apostrophes
+  ASCII dans le JSON, `''` doublé dans les littéraux SQL) ;
+  `on conflict (slot) do update` rafraîchit les textes sans jamais
+  toucher `released_at` — un slot libéré reste dépensé. Gates en
+  conteneur jetable : 30 slots, 4-7 lignes chacun, slugs uniques,
+  re-jeu vert (INSERT 0 30 deux fois).
+
+Aucun code, aucun schéma : la mécanique V3.30
+(`kenos_artifact_release`, cron du lundi 06:45 UTC) reste exactement
+celle qui vit en prod. Déploiement quand la sélection est relue :
+`bash scripts/prod_admin.sh filemulti
+supabase/snippets/artifact_backlog.sql` (l'en-tête du fichier dit
+tout). La relecture de goût n'est pas déléguée.
+
+## V3.34 — La profondeur au voyage ✅ (livrée 2026-09-14)
+
+Le constat (Hugo) : « peut-on améliorer la spatialisation, les notions
+de voyages et distance ? » Le voyage était réel mais PLAT : la
+parallaxe existait (accéléromètre, z par étoile) et ne bougeait pas
+quand on voyageait — un seul plan de vitesse, paner ne donnait aucune
+sensation de traversée.
+
+- **Le champ profond** (`DeepFieldPainter`) : deux couches de poussière
+  ancrées dans le monde mais chevauchant PLUS LENTEMENT que lui —
+  facteurs 0.30 (le champ lointain, 90 motes) et 0.55 (la dérive
+  proche, 48 motes). L'œil avance, le monde défile à sa vitesse, la
+  poussière traîne derrière : le pan devient un passage, pas un
+  scroll. Scenery, jamais matière : rien à lire, rien à tenir, rien
+  compté — IgnorePointer, sous toutes les couches du monde, aucune
+  interaction avec le champ de réception ni le souffle.
+- **Le zoom aussi recule** : les couches profondes grossissent moins
+  sous le pincement (zoom effectif `1 + (z−1)·f`), la poussière reste
+  poussière — jamais un disque.
+- **Déterministe par LCG stable** (pas `Random` : sa graine est
+  définie par l'implémentation, et le ciel lointain doit être le même
+  partout) ; recouvrement de viewport prouvé par test pour tout état
+  légal de la caméra ; culling par mote (une comparaison hors écran).
+  Zéro ticker : le champ lointain ne respire pas, il ne fait que
+  reculer.
+
+Gates : 10 tests Dart (`deep_field_test` : lois des couches,
+déterminisme, bornes du plan, l'exactitude du facteur — la poussière
+recule de f·δ quand le monde défile de δ — recouvrement pour toute
+caméra légale, smoke de peinture, shouldRepaint) ; suite complète
+327 verts, analyze 0. Zéro backend, zéro migration, parité démo
+triviale (le décor n'a pas d'éther).
+
+## V3.35 — Les paysages du vide ✅ (livrés 2026-09-14)
+
+La distance était un nombre (le compteur A.L.) et un rayon (le champ
+de réception) — jamais des LIEUX. Trois territoires, dits par le rayon
+au cœur, alignés sur les lois existantes du ciel :
+
+- **LE GOUFFRE** (r < 0.19) : le quartier du trou noir, juste au-delà
+  de l'exclusion du repos (0.15) — où les comètes frôlent et rien ne
+  repose. **LES JARDINS DE L'INTENTION** (0.19–0.54) : les deux voies
+  et leurs coques — Polaris (r ≈ 0.523) veille le système, elle
+  n'appartient pas au pays lointain. **LE PAYS LOINTAIN** (r ≥ 0.54) :
+  au-delà de la bande de Vénus (0.515), les errants (0.55–0.65) y
+  vivent — le vocabulaire de la CARTE DU CIEL, tenu.
+- **Le HUD dit toujours où dérive l'œil** : la ligne silencieuse porte
+  le territoire (« DÉRIVE 0.42 A.L. · LES JARDINS · … ») — la distance
+  devient un lieu, pas qu'un nombre.
+- **La traversée murmure, une fois** : franchir un territoire le dit
+  en un souffle (titre machine + ligne serif, la grammaire du
+  murmure d'œil), 7 s, IgnorePointer — puis le ciel s'en tait pour
+  toujours. Le territoire de NAISSANCE n'est jamais salué (le ciel ne
+  se salue pas lui-même) ; le franchir au retour, si.
+- **Le drone boit le rayon** : la courbe `droneFactor` — plein dans
+  les jardins (1.0, le son des pensées en orbite), bu par le gouffre
+  (0.5), mince au pays lointain (0.6). L'axe du VOLUME seulement :
+  l'axe du pitch appartient au Mindful Hold, les deux couplages ne se
+  combattent jamais. epsilon 0.05, best-effort, muet en repli.
+
+Gates : 13 tests Dart (`void_territories_test` : bornes honnêtes
+contre l'exclusion, le coin de Polaris (0.523 — elle jardine), la
+bande des errants, nœuds et jambes de la courbe du drone ;
+`territory_whisper_test` : le paysage se dit en le traversant, UNE
+fois — le territoire de naissance jamais salué, le retour si ; le HUD
+dit toujours où dérive l'œil) ; suite complète 327 verts, analyze 0.
+Zéro backend, zéro migration — le murmure vit sur le pouls de la
+caméra, jamais sur un timer propre.
+
+## V3.36 — La chute des jours ✅ (livrée 2026-09-14, révisée à la livraison)
+
+La promesse non tenue de V3.7 : « les échos non interceptés à la
+dérive s'approchent du trou noir jusqu'à la purge des 30 jours ».
+Le retour de Hugo le 14/09 la rendait urgente : « on a du mal à
+comprendre la notion de distance et la durée depuis laquelle un écho
+dérive » — le temps et l'espace du ciel étaient déconnectés, un écho
+de 29 jours orbitait comme un écho frais. La chute les fusionne :
+**l'âge devient une distance**.
+
+- **La loi (révisée)** : l'orbite d'un écho non lu DECROÎT avec l'âge —
+  48 h de grâce dans sa voie (une pensée fraîche ne s'affaisse
+  nulle part), puis chute linéaire sur le reste de sa lune, de sa
+  coque jusqu'au bord du monde qu'on lui a confié (`landingRadius`
+  0.02). La purge à 30 jours est l'atterrissage : **ce qui n'est
+  jamais lu rentre chez son intention**. Autour de chaque monde,
+  l'essaim se lit désormais trié radialement par temps de dérive.
+- **Pourquoi tomber vers le monde et non vers le trou noir** (la
+  variante de la première spec, écartée) : le fetch par secteur croit
+  aux coordonnées de largage STOCKÉES ; une mourante rendue près du
+  cœur serait invisible — son rect d'origine est loin. La chute vers
+  le monde garde chaque mote DANS la bande de sa planète : le culling
+  reste honnête, zéro SQL, zéro fetch en plus. Et le ROSE reste pur —
+  réservé au trou noir, à l'accrétion et au burn ; une pensée qui
+  rentre chez elle n'est pas une destruction. Le puits par union de
+  la première spec : mort avec la variante qui le motivait.
+- **Les arbitrages, pris (réversibles)** : (c) les scellées tombent
+  aussi — même l'auteur voit sa confidence approcher du monde (la loi
+  ne connaît pas l'auteur, testé) ; (b) la touche rose des derniers
+  jours : refusée — la position EST le récit, aucun compteur, aucune
+  étiquette, aucun coût visuel. Les comètes ne tombent pas : elles
+  traversent déjà tout, elles meurent à leur manière (testé).
+- **La distance lisible, aussi** : le souffle du HUD porte désormais
+  ce que coûte la lumière la plus proche — « SOUFFLE VERS 3 H —
+  0.84 A.L. » — la devise A.L. de la carte, enseignée en voyageant.
+  La CARTE DU CIEL gagne sa quatrième loi : « les pensées non lues
+  retombent vers le monde qui les porte ».
+- Reduce-motion : la chute est une POSITION, pas une animation
+  (l'époque gèle, l'âge passe — comme les orbites). Démo : parité
+  exacte, le seed couvre tous les âges.
+
+Gates : +5 tests Dart (`kenos_system_test` : la grâce — 47 h sur SA
+coque à 1e-9 ; la chute monotone, atterrissage à la lune pile ; les
+scellées soumises à la même loi ; les comètes vieillies traversent
+toujours) ; +2 (`parallax_math_test` : la cadence du scintillement) ;
+`sky_map_test` étendu à la quatrième loi ; suite complète verte,
+analyze 0. Aucun SQL touché.
+
+## V3.37 — Le pas des étoiles ✅ (livrée 2026-09-14)
+
+Le signalement de Hugo : « en zoom maximal les échos qui se
+déplacent saccadent ». Deux causes dans la machinerie de dérive :
+
+- **Le layout par étoile et par frame** : `RenderStarShift` répondait
+  à chaque mise à jour d'orbite par un `markNeedsLayout` — un passage
+  de layout complet par étoile visible et par frame, là où l'offset
+  n'est lu que par `paint` et le hit-test (les tailles ne changent
+  jamais). C'est `markNeedsPaint` désormais : le raster en cache se
+  recomposite, rien ne se relayoute.
+- **Le plafond 30 fps du scintillement** : l'horloge des lueurs
+  lointaines ne battait qu'un tick sur deux (la batterie du
+  sanctuaire) — invisible à l'œil au repos, lisible en saccades dès
+  que le zoom ×8 amplifie les vitesses. `glimmerFullRate` : passé
+  `deepWatchZoom` (3×) le champ suit chaque battement ; en dessous le
+  demi-rythme tient.
+- Piste documentée si les saccades persistent sur appareil (non
+  corrigée faute de profil) : les cercles pleins des voies/coques
+  dans `SystemPainter` à 12.5 Hz (des rayons ×2.5 en zoom profond),
+  et le raster des halos soufflants à 4 Hz — candidats à un
+  respiration du pas ou à des arcs clippés, à trancher sur profil
+  DevTools, pas au doigt mouillé.
+
+Gates : +2 tests (`parallax_math_test` : le seuil du plein rythme) ;
+`StarShift` inchangé en comportement visible (la suite widget le
+couvre) ; suite complète verte, analyze 0.
+
 ## 4. Règles inchangées (rappel)
+
 
 - Single-read atomique, Ether Seal, RPC-only, ROSE destructif,
   haptique/audio non bloquants, demo mode iso-sémantique, lints

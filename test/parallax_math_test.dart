@@ -124,6 +124,20 @@ void main() {
     });
   });
 
+  group('ParallaxMath.glimmerFullRate (V3.37 — la cadence du scintillement)',
+      () {
+    test("l'œil au repos garde le demi-rythme (la batterie du sanctuaire)",
+        () {
+      expect(ParallaxMath.glimmerFullRate(1.75), isFalse);
+      expect(ParallaxMath.glimmerFullRate(2.9), isFalse);
+    });
+
+    test('la veille profonde suit chaque battement — 30 fps y saccade', () {
+      expect(ParallaxMath.glimmerFullRate(3.0), isTrue);
+      expect(ParallaxMath.glimmerFullRate(8.0), isTrue);
+    });
+  });
+
   group('champ de réception', () {
     const eye = Offset(0.5, 0.5);
 

@@ -41,7 +41,12 @@ class RenderStarShift extends RenderProxyBox {
     final next = _source?.value ?? Offset.zero;
     if (next == _offset) return;
     _offset = next;
-    markNeedsLayout();
+    // Paint, NEVER layout (V3.37 — the max-zoom judder): the offset
+    // is read by paint and hit-testing alone, sizes never change —
+    // a layout pass per star per frame bought nothing and cost the
+    // pipeline. The cached raster recomposites at the new offset,
+    // which is all this render object ever owed.
+    if (attached) markNeedsPaint();
   }
 
   @override

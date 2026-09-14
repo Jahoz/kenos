@@ -17,6 +17,7 @@ import '../../../core/utils/motion_preferences.dart';
 import '../../../core/utils/parallax_math.dart';
 import '../../../core/widgets/hud.dart';
 import '../../constellations/data/constellation_repository.dart';
+import '../../constellations/data/salon_anchor_store.dart';
 import '../../constellations/domain/constellation_figure.dart';
 import '../../constellations/presentation/constellation_sheets.dart';
 import '../../constellations/presentation/salon_share_sheet.dart';
@@ -31,11 +32,13 @@ import '../application/motion_service.dart';
 import '../application/read_scar_controller.dart';
 import '../application/reception_controller.dart';
 import '../application/travel_camera.dart';
+import '../application/void_territories.dart';
 import '../data/artifact_memory.dart';
 import 'widgets/accretion_painter.dart';
 import 'widgets/awakening_sas.dart';
 import 'widgets/background_painters.dart';
 import 'widgets/celestial_plaque.dart';
+import 'widgets/deep_field_painter.dart';
 import 'widgets/mindful_hold_star.dart';
 import 'widgets/origin_node.dart';
 import 'widgets/scar_field_painter.dart';
@@ -54,6 +57,11 @@ import 'widgets/vestige_library_sheet.dart';
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
+  /// V3.35 — the landscapes already whispered this session (silence
+  /// is the default state): resettable by tests, like the star's own
+  /// once-per-session whisper.
+  static final Set<VoidTerritory> territoriesAnnounced = {};
+
   @override
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
@@ -71,6 +79,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// reliquaire (kept objects stay in THIS sky, local forever).
   late final ArtifactMemory _artifacts = ref.read(artifactMemoryProvider);
 
+  /// L'ANCRE DU SALON: the doors this device holds (sower or claimed
+  /// guest) — ember seeds on the sky, the key that reopens them, all
+  /// strictly local. An open salon stays invisible to the ether; this
+  /// is the one place it shows, to its holder only.
+  late final SalonAnchorStore _salonDoors =
+      ref.read(salonAnchorStoreProvider);
+  List<SalonAnchor> _salonAnchors = const [];
+
   /// The one line that matters: signals first (they pulse), then the
   /// readable ether, then the mode.
   String _hudHeadline({required int readable, required int signals}) {
@@ -83,10 +99,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
   String get _bootLabel =>
       ref.read(bootstrapProvider).supabaseConfigured ? 'LIAISON' : 'DÉMO';
 
-  /// The quiet second line: drift + sealed + vestiges, joined by
-  /// breath marks — presence, never urgency.
+  /// The quiet second line: drift + territory + sealed + vestiges,
+  /// joined by breath marks — presence, never urgency. V3.35: the
+  /// territory label makes distance a PLACE, not just a number (the
+  /// line lives in the camera's builder — the label follows the eye
+  /// without waking the screen).
   String get _readableSilent {
-    final parts = <String>['DÉRIVE ${_camera.driftLabel}'];
+    final parts = <String>[
+      'DÉRIVE ${_camera.driftLabel}',
+      VoidTerritories.hudLabel(
+        VoidTerritories.territoryAt(_camera.center),
+      ),
+    ];
     final sealedCount =
         (ref.read(mapControllerProvider).valueOrNull ?? const <Echo>[])
             .where((e) => e.isMine)
@@ -132,7 +156,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final h = ParallaxMath.clockDirection(
         KenosSystem.echoPosition(nearestEcho, now) - eye,
       );
-      return 'SOUFFLE VERS $h H';
+      // The distance rides the whisper (V3.36): the direction told,
+      // and what it costs to reach — the map's own A.L. currency.
+      return 'SOUFFLE VERS $h H — ${bestEcho.toStringAsFixed(2)} A.L.';
     }
     // Nothing loaded nearby: the worlds carry the lights.
     var nearestWorld = 0;
@@ -174,6 +200,40 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// The sky's quiet breath (see initState).
   Timer? _skyBreath;
 
+  /// V3.35 — the landscape the eye rides: the territory it left (null
+  /// until the first reading), the one being whispered, and the
+  /// whisper's own timer. Crossing a territory speaks ONCE per
+  /// session; the born territory is ridden, never announced — the sky
+  /// does not greet itself.
+  VoidTerritory? _territory;
+  VoidTerritory? _territoryWhispering;
+  Timer? _territoryTimer;
+
+  /// The camera's own pulse (V3.35): territories crossed, drone depth.
+  void _onEyeTravels() {
+    final territory = VoidTerritories.territoryAt(_camera.center);
+    if (territory != _territory) {
+      final wasBorn = _territory == null;
+      _territory = territory;
+      if (wasBorn) return;
+      if (!MapScreen.territoriesAnnounced.contains(territory)) {
+        MapScreen.territoriesAnnounced.add(territory);
+        _territoryTimer?.cancel();
+        setState(() => _territoryWhispering = territory);
+        _territoryTimer = Timer(const Duration(seconds: 7), () {
+          if (mounted) setState(() => _territoryWhispering = null);
+        });
+      }
+    }
+    unawaited(
+      ref
+          .read(audioControllerProvider)
+          .setDroneDepth(VoidTerritories.droneFactor(
+            (_camera.center - VoidTerritories.heart).distance,
+          )),
+    );
+  }
+
   /// A fresh corpse comes back from its door: reload the sky, then
   /// offer the seeder to give the FIRST line — to their own poem they
   /// are just another stranger, as blind as the rest. A salon never
@@ -181,6 +241,24 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// behind the door, then the link — once.
   Future<void> _corpseSeeded(SeededConstellation seeded) async {
     if (seeded.isSalon) {
+      // The door is held from the very drop — even a seeder who
+      // closes both sheets without copying the link keeps their
+      // ember anchor, and the door with it.
+      unawaited(
+        _salonDoors.remember(
+          SalonAnchor(
+            id: seeded.meta.id,
+            token: seeded.inviteToken!,
+            seedX: seeded.meta.seedX,
+            seedY: seeded.meta.seedY,
+            kind: seeded.meta.kind == ConstellationKind.melody
+                ? 'MELODY'
+                : 'POEM',
+            target: seeded.meta.target,
+            heldSince: DateTime.now().millisecondsSinceEpoch,
+          ),
+        ),
+      );
       await showContributeSheet(
         context,
         ref: ref,
@@ -216,6 +294,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _loadVestiges();
     _loadConstellations();
     _loadArtifactMemory();
+    _loadSalonDoors();
     _readCorpseGuide();
     _readEyeGuide();
     // The sky breathes: a quiet pull every 90 s — strangers' lines
@@ -224,8 +303,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _skyBreath = Timer.periodic(const Duration(seconds: 90), (_) {
       if (mounted) _loadConstellations();
     });
+    // V3.35 — the landscapes ride the camera's own pulse (no timers of
+    // their own), and the drone learns the birth radius once it lives.
+    _camera.addListener(_onEyeTravels);
+    _onEyeTravels();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(ref.read(audioControllerProvider).ensureStarted());
+      final audio = ref.read(audioControllerProvider);
+      unawaited(() async {
+        await audio.ensureStarted();
+        await audio.setDroneDepth(
+          VoidTerritories.droneFactor(
+            (_camera.center - VoidTerritories.heart).distance,
+          ),
+        );
+      }());
     });
   }
 
@@ -303,6 +394,99 @@ class _MapScreenState extends ConsumerState<MapScreen>
     }
   }
 
+  /// The doors this device holds, re-read from local memory — then
+  /// each asked the ether's truth in the background: a ring closed
+  /// into its artifact drops its anchor (the artifact is public now,
+  /// and indistinguishable); a reaped one goes too, quietly.
+  Future<void> _loadSalonDoors() async {
+    await _salonDoors.load();
+    if (!mounted) return;
+    setState(() => _salonAnchors = _salonDoors.open());
+    for (final anchor in _salonAnchors) {
+      unawaited(_refreshSalonDoor(anchor));
+    }
+  }
+
+  Future<void> _refreshSalonDoor(SalonAnchor anchor) async {
+    try {
+      final meta = await ref
+          .read(constellationRepositoryProvider)
+          .fetchInvited(anchor.token);
+      if (!meta.isClosed) return;
+      await _salonDoors.forget(anchor.id);
+      if (!mounted) return;
+      setState(() => _salonAnchors = _salonDoors.open());
+      unawaited(_loadConstellations()); // the artifact joins the public sky
+    } catch (e) {
+      if (e.toString().contains('KENOS_INVITE_UNKNOWN')) {
+        // The door died with its ring (reaped at seven days): the
+        // anchor was a memory of a dead key — it goes too.
+        await _salonDoors.forget(anchor.id);
+        if (mounted) setState(() => _salonAnchors = _salonDoors.open());
+        return;
+      }
+      // The sky being far is not the door being dead: the anchor
+      // stays until the ether says otherwise (or day seven).
+    }
+  }
+
+  /// A door held on this device: the tap knocks. Open and these
+  /// hands gave → the honest state; open and empty-handed → the
+  /// contribution offer (to their own poem the seeder is just
+  /// another stranger); closed → the anchor dissolves into its
+  /// public artifact, read whole, right away; dead → it goes.
+  Future<void> _onSalonDoorTap(SalonAnchor anchor) async {
+    KenosHaptics.pulse(KenosPulse.themePick);
+    final ConstellationMeta meta;
+    try {
+      meta = await ref
+          .read(constellationRepositoryProvider)
+          .fetchInvited(anchor.token);
+    } catch (e) {
+      if (!e.toString().contains('KENOS_INVITE_UNKNOWN')) {
+        if (mounted) showHud(context, 'L\'ÉTHER EST INJOIGNABLE.');
+        return;
+      }
+      await _salonDoors.forget(anchor.id);
+      if (!mounted) return;
+      setState(() => _salonAnchors = _salonDoors.open());
+      showHud(context, 'LE SALON S\'EST TU.');
+      return;
+    }
+    if (!mounted) return;
+    if (meta.isClosed) {
+      await _salonDoors.forget(anchor.id);
+      setState(() => _salonAnchors = _salonDoors.open());
+      unawaited(_loadConstellations());
+      final lines = await ref
+          .read(constellationRepositoryProvider)
+          .read(meta.id);
+      if (!mounted) return;
+      if (lines != null && lines.isNotEmpty) {
+        await showConstellationReading(
+          context,
+          lines: lines,
+          figureId: meta.id,
+          curatedBy: meta.curatedBy,
+          memory: _artifacts,
+          keepPosition: Offset(meta.seedX, meta.seedY),
+        );
+      }
+      return;
+    }
+    if (_artifacts.contributedTo(anchor.id)) {
+      showHud(context, 'TA LIGNE EST DÉJÀ DANS CE CORPS.');
+      return;
+    }
+    await showContributeSheet(
+      context,
+      ref: ref,
+      constellation: meta,
+      inviteToken: anchor.token,
+    );
+    if (mounted) unawaited(_loadSalonDoors());
+  }
+
   void _maybeSpeakAube() {
     if (_aubeSpokenThisSession || !mounted) return;
     final receptions = ref.read(receptionControllerProvider).valueOrNull;
@@ -318,6 +502,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _glide?.cancel();
     _eyeWhisperTimer?.cancel();
     _wheelDue?.cancel();
+    _territoryTimer?.cancel();
+    _camera.removeListener(_onEyeTravels);
     _camera.dispose();
     super.dispose();
   }
@@ -330,6 +516,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (state == AppLifecycleState.resumed) {
       _loadConstellations();
       _loadVestiges();
+      _loadSalonDoors();
     }
   }
 
@@ -738,9 +925,31 @@ class _MapScreenState extends ConsumerState<MapScreen>
                           corpseAt[cst.id] = at;
                           staticAnchors.add(at);
                         }
+                        final salonAt = <String, Offset>{};
+                        for (final door in _salonAnchors) {
+                          final at = KenosSystem.resolveResting(
+                            Offset(door.seedX, door.seedY),
+                            occupied: staticAnchors,
+                          );
+                          salonAt[door.id] = at;
+                          staticAnchors.add(at);
+                        }
                         return Stack(
                           fit: StackFit.expand,
                           children: [
+                            // V3.34 — the deep field: the far universe
+                            // behind the ether, riding slower layers than
+                            // the world — the pan becomes a passage, not a
+                            // scroll. Scenery, never matter (IgnorePointer:
+                            // the V3.12b lesson — a childless full-screen
+                            // CustomPaint would starve the holds above).
+                            RepaintBoundary(
+                              child: IgnorePointer(
+                                child: CustomPaint(
+                                  painter: DeepFieldPainter(camera: _camera),
+                                ),
+                              ),
+                            ),
                             // The reader's trail: hollow points where lights
                             // dissolved — local, contentless, fading.
                             if (scars.isNotEmpty)
@@ -981,6 +1190,71 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                   ],
                                 ),
                               ),
+                            // L'ANCRE DU SALON: the doors this device
+                            // holds — ember seeds where hidden rings
+                            // sleep, visible to their holder alone.
+                            if (_salonAnchors.isNotEmpty)
+                              LayoutBuilder(
+                                builder: (context, c) => Stack(
+                                  children: [
+                                    for (final door in _salonAnchors)
+                                      Builder(
+                                        builder: (context) {
+                                          final sp = _camera.worldToScreen(
+                                            salonAt[door.id] ??
+                                                Offset(
+                                                  door.seedX,
+                                                  door.seedY,
+                                                ),
+                                            Size(c.maxWidth, c.maxHeight),
+                                          );
+                                          if (sp.dx < -72 ||
+                                              sp.dx > c.maxWidth + 72 ||
+                                              sp.dy < -72 ||
+                                              sp.dy > c.maxHeight + 72) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          final gateSide = 68 *
+                                              ParallaxMath.zoomScale(
+                                                _camera.zoom,
+                                              ) *
+                                              math.max(
+                                                ParallaxMath.displayScale(
+                                                  math.min(
+                                                    c.maxWidth,
+                                                    c.maxHeight,
+                                                  ),
+                                                ),
+                                                0.8,
+                                              );
+                                          return Positioned(
+                                            key: ValueKey(
+                                              'salon_anchor_${door.id}',
+                                            ),
+                                            left: sp.dx - gateSide / 2,
+                                            top: sp.dy - gateSide / 2,
+                                            width: gateSide,
+                                            height: gateSide,
+                                            child: GestureDetector(
+                                              behavior:
+                                                  HitTestBehavior.opaque,
+                                              onTap: () =>
+                                                  _onSalonDoorTap(door),
+                                              child: CustomPaint(
+                                                painter: _SalonAnchorPainter(
+                                                  mine: _artifacts
+                                                      .contributedTo(
+                                                        door.id,
+                                                      ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              ),
                             // V3.12b — the falls: what dies here spirals
                             // into the black hole, above the stars —
                             // and NEVER intercepts a pointer: a
@@ -1210,6 +1484,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 bottom: 200,
                 child: IgnorePointer(child: _EyeWhisper()),
               ),
+            // The territory's breath (V3.35, once per landscape per
+            // session): the crossing is told, then the sky stays quiet
+            // about it forever. Sits above the wheel whisper's spot —
+            // the two never overlap.
+            if (_territoryWhispering != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 264,
+                child: IgnorePointer(
+                  child: _TerritoryWhisper(territory: _territoryWhispering!),
+                ),
+              ),
           ],
         ),
       ),
@@ -1367,7 +1654,12 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
     final now = DateTime.now();
     _driftSkies(now);
     _orbitTickCount++;
-    if (_orbitTickCount.isEven) {
+    // The glimmer clock: calm half-rate at the resting eye (battery
+    // is part of the sanctuary), EVERY tick on a deep watch (V3.37) —
+    // past deepWatchZoom the far lights race, and 30 fps reads as
+    // judder exactly where the traveller went to watch them move.
+    if (_orbitTickCount.isEven ||
+        ParallaxMath.glimmerFullRate(widget.camera.zoom)) {
       _glimmerClock.value = now;
     }
     if (now.difference(_lastBreath) >= const Duration(milliseconds: 250)) {
@@ -1710,6 +2002,43 @@ class _EyeWhisper extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           'Ici, la molette approche le ciel — comme le pincement des doigts.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: AppFonts.serifItalic,
+            fontSize: 14,
+            color: AppColors.fade(AppColors.pureLight, 0.55),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// V3.35 — the crossing breath: a landscape's name, told once per
+/// session. The machine-whisper grammar (mono caps) over one serif
+/// breath — never a notification, never a counter, never a reward.
+class _TerritoryWhisper extends StatelessWidget {
+  const _TerritoryWhisper({required this.territory});
+
+  final VoidTerritory territory;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          VoidTerritories.whisperTitle(territory),
+          style: TextStyle(
+            fontFamily: AppFonts.mono,
+            fontSize: 9,
+            letterSpacing: 4,
+            color: AppColors.fade(AppColors.cyan, 0.7),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          VoidTerritories.whisperLine(territory),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: AppFonts.serifItalic,
@@ -2270,4 +2599,54 @@ class _HeavensClockState extends State<_HeavensClock> {
 
   @override
   Widget build(BuildContext context) => widget.builder(context, _now);
+}
+
+/// L'ANCRE DU SALON — a door held on this device: an ember seed (la
+/// braise, la main tendue de l'invitation) inside a thin ember halo.
+/// No stations, no segments — the ring is hidden while it is written:
+/// the holder sees WHERE it sleeps, never WHAT it holds. These hands
+/// already gave: a tighter second orbit (the 'mine' grammar, ember).
+/// Parsimonious and still by law: ROSE stays reserved for destruction,
+/// and nothing here moves on its own.
+class _SalonAnchorPainter extends CustomPainter {
+  _SalonAnchorPainter({required this.mine});
+
+  final bool mine;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+
+    // The braise: a warm seed at the door's heart.
+    canvas.drawCircle(
+      center,
+      2.1,
+      Paint()..color = AppColors.fade(AppColors.ember, 0.9),
+    );
+
+    // The halo: a thin ember ring — the door's aura, nothing more.
+    canvas.drawCircle(
+      center,
+      size.shortestSide / 2 - 14,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = AppColors.fade(AppColors.ember, 0.35),
+    );
+
+    if (mine) {
+      // 'Ta main est dans ce corps' — the shared orbit grammar.
+      canvas.drawCircle(
+        center,
+        4.2,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.1
+          ..color = AppColors.fade(AppColors.ember, 0.45),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SalonAnchorPainter old) => old.mine != mine;
 }

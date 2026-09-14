@@ -242,6 +242,107 @@ void main() {
       }
     });
   });
+
+  group('V3.36 — la chute des jours', () {
+    // Echo.copyWith is deliberately narrow (sealed content only) —
+    // the fall is pinned through direct construction.
+    Echo aged(String id, DateTime born,
+            {bool mine = false, int momentum = 0}) =>
+        Echo(
+          id: id,
+          coordX: 0.5,
+          coordY: 0.5,
+          coordZ: 0.5,
+          theme: EchoColorTheme.teal,
+          createdAt: born,
+          isMine: mine,
+          momentum: momentum,
+        );
+
+    double radiusAt(Echo echo, DateTime at) =>
+        (KenosSystem.echoPosition(echo, at) -
+                KenosSystem.planetPosition(
+                  KenosSystem.planetIndexOf(echo),
+                  at,
+                ))
+            .distance;
+
+    test('la grâce : une pensée fraîche reste sur SA coque, exactement',
+        () {
+      final born = DateTime(2026, 9, 1);
+      final echo = aged('grace', born);
+      final shell = KenosSystem.echoShells[
+          (echo.id.hashCode & 0x7fffffff) % KenosSystem.echoShells.length];
+      // 47 h adrift: still in its lane, untouched — the sky it was
+      // launched into is the sky it keeps.
+      final at = born.add(const Duration(hours: 47));
+      expect(radiusAt(echo, at), closeTo(shell, 1e-9));
+      expect(KenosSystem.fallFraction(echo, at), 0.0);
+    });
+
+    test('la chute : chaque jour rapproche la pensée de son monde', () {
+      final born = DateTime(2026, 9, 1);
+      final echo = aged('falling', born);
+      var previous = radiusAt(echo, born.add(const Duration(days: 3)));
+      for (final days in [6, 10, 16, 22, 26, 29]) {
+        final r = radiusAt(echo, born.add(Duration(days: days)));
+        expect(r, lessThan(previous),
+            reason: 'la chute est monotone — l\'âge est une distance');
+        previous = r;
+      }
+      // Still a mote, never a ghost ON the world: the landing keeps
+      // its hair of sky.
+      expect(previous, greaterThan(KenosSystem.landingRadius - 1e-9));
+    });
+
+    test('la lune pleine : la pensée se pose au bord de son monde', () {
+      final born = DateTime(2026, 9, 1);
+      final echo = aged('landed', born);
+      final at = born.add(const Duration(days: 31));
+      expect(
+        radiusAt(echo, at),
+        closeTo(KenosSystem.landingRadius, 1e-9),
+        reason: 'à 30 jours la purge est l\'atterrissage',
+      );
+      expect(KenosSystem.fallFraction(echo, at), 1.0);
+    });
+
+    test('les scellées tombent aussi — même l\'auteur voit la fin venir',
+        () {
+      final born = DateTime(2026, 9, 1);
+      final foreign = aged('foreign', born);
+      final own = aged('own', born, mine: true);
+      final at = born.add(const Duration(days: 20));
+      expect(
+        KenosSystem.fallFraction(own, at),
+        KenosSystem.fallFraction(foreign, at),
+        reason: 'la loi ne connaît pas l\'auteur',
+      );
+      expect(
+        radiusAt(own, at),
+        lessThan(radiusAt(own, born)),
+        reason: 'même l\'auteur voit sa confidence approcher du monde',
+      );
+    });
+
+    test('les comètes ne tombent pas : elles traversent, même vieillies',
+        () {
+      final born = DateTime(2026, 9, 1);
+      final comet = aged('old-comet', born, momentum: 2);
+      // 29 days adrift: still an eccentric crossing, not a fall.
+      var maxD = 0.0;
+      for (var i = 0; i < 240; i++) {
+        final p = KenosSystem.echoPosition(
+          comet,
+          born.add(Duration(minutes: 10 * i)),
+        );
+        final d = (p - KenosSystem.blackHole).distance;
+        if (d > maxD) maxD = d;
+      }
+      expect(maxD, greaterThan(KenosSystem.outerOrbit),
+          reason: 'la comète meurt à sa manière — en traversant');
+    });
+  });
 }
 
 

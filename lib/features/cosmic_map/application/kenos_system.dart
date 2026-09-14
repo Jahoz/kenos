@@ -176,9 +176,43 @@ class KenosSystem {
   static int _echoShell(Echo echo) =>
       (echo.id.hashCode & 0x7fffffff) % echoShells.length;
 
-  /// An echo's orbit: its planet's gravity, on one of the three shells.
-  static double _echoOrbitRadius(Echo echo) =>
-      echoShells[_echoShell(echo)];
+  /// V3.36 — LA CHUTE DES JOURS: an unread thought's orbit decays with
+  /// age. It lingers in its lane for [fallGrace] (a fresh thought
+  /// sags nowhere — the sky it was launched into is the sky it keeps),
+  /// then falls LINEARLY over the rest of its moon, from its shell
+  /// down to [landingRadius], just off the face of the world it was
+  /// confided to. The 30-day purge is the landing: what is never read
+  /// comes home to its intention. The age becomes a DISTANCE — around
+  /// each world, the swarm reads radially sorted by time adrift.
+  ///
+  /// Deterministic from `created_at`: every device sees the same
+  /// falling sky. And the culling stays honest BECAUSE the fall keeps
+  /// every mote within its planet's band — the stored launch
+  /// coordinates remain the truth the sector fetch believes (the
+  /// hole-fall variant of this law was rejected for exactly that:
+  /// decayed motes rendering far from any stored coordinate the fetch
+  /// could know).
+  static const Duration fallGrace = Duration(hours: 48);
+  static const double landingRadius = 0.02;
+  static const Duration echoMoon = Duration(days: 30);
+
+  /// How far along its fall an echo is at [at]: 0 inside the grace,
+  /// 1 at the moon's end.
+  static double fallFraction(Echo echo, DateTime at) {
+    final age = at.difference(echo.createdAt);
+    if (age <= fallGrace) return 0;
+    final span = echoMoon - fallGrace;
+    return ((age - fallGrace).inMilliseconds / span.inMilliseconds)
+        .clamp(0.0, 1.0);
+  }
+
+  /// An echo's orbit: its shell, decayed by the fall of days.
+  static double _echoOrbitRadius(Echo echo, DateTime at) {
+    final shell = echoShells[_echoShell(echo)];
+    final fall = fallFraction(echo, at);
+    if (fall <= 0) return shell;
+    return shell + (landingRadius - shell) * fall;
+  }
 
   /// Orbital period: constant per shell — a lane that turns together
   /// stays legible as a lane (V3.28; the radius-linear tempo bred
@@ -221,12 +255,13 @@ class KenosSystem {
   static Offset echoPosition(Echo echo, DateTime at) {
     // A rebounded echo (momentum > 0) leaves its planet's gravity:
     // a COMET on an eccentric ellipse around the void, crossing the
-    // three orbits — the trace of the humans who carried it.
+    // three orbits — the trace of the humans who carried it. Comets
+    // do not fall: they already cross everything, dying their own way.
     if (echo.momentum > 0) {
       return _cometPosition(echo, at);
     }
     final planet = planetPosition(planetIndexOf(echo), at);
-    final radius = _echoOrbitRadius(echo);
+    final radius = _echoOrbitRadius(echo, at);
     final period = _echoPeriod(echo);
     final phase = (at.millisecondsSinceEpoch + echo.id.hashCode % 9973) /
         period.inMilliseconds;

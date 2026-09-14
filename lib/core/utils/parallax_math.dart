@@ -84,6 +84,14 @@ class ParallaxMath {
     return 1 - (d - receptionRadius) / receptionFade;
   }
 
+  /// V3.37 — the zoom where far lights move fast enough that a 30 fps
+  /// glimmer canvas reads as judder (motion magnified by the eye): at
+  /// and beyond it the glimmer field rides every tick. Below it the
+  /// calm half-rate stands — battery is part of the sanctuary.
+  static const double deepWatchZoom = 3.0;
+
+  static bool glimmerFullRate(double zoom) => zoom >= deepWatchZoom;
+
   /// Slow drift of one's own echoes: launched at z = 1 (against the camera),
   /// they sink into the depth then stabilize far away.
   /// The full drift takes ~11 hours.

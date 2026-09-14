@@ -30,7 +30,7 @@ void main() {
     expect(find.text('VÉNUS'), findsOneWidget);
     expect(find.text('POLARIS'), findsOneWidget);
     expect(find.text('PLUTON'), findsOneWidget);
-    // The legend: the sky's three laws.
+    // The legend: the sky's laws.
     expect(
       find.textContaining("l'intention qu'on leur confie"),
       findsOneWidget,
@@ -40,6 +40,11 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('des pensées portées'), findsOneWidget);
+    // V3.36 — the fourth law: the fall of days, told on the map.
+    expect(
+      find.textContaining('retombent vers le monde qui les porte'),
+      findsOneWidget,
+    );
     expect(find.text('REFERMER'), findsOneWidget);
   });
 

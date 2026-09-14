@@ -27,7 +27,11 @@ class AudioController {
   bool _started = false;
   bool _muted = false;
 
+  /// The drone's fullest voice (V3.35): the volume the depth curve
+  /// multiplies — 1.0 among the gardens, less at the throat and the
+  /// far country. See [setDroneDepth].
   static const double _droneVolume = 0.32;
+  double _depth = 1.0;
 
   bool get isMuted => _muted;
 
@@ -41,7 +45,7 @@ class AudioController {
       await _drone.setVolume(0);
       await _drone.play();
       // Fade in to avoid any startup click.
-      await _drone.setVolume(_droneVolume);
+      await _drone.setVolume(_droneVolume * _depth);
     } catch (e) {
       debugPrint('[kenos.audio] drone unavailable: $e');
     }
@@ -74,10 +78,28 @@ class AudioController {
     }
   }
 
-  Future<void> playBell(KenosBell bell) =>
-      playAsset(bell.asset, volume: 0.5);
+  /// Drone depth (V3.35): the volume rides the traveller's radius —
+  /// full among the gardens, thin at the throat and across the far
+  /// country (see [VoidTerritories.droneFactor]). The volume axis
+  /// ONLY: the pitch axis belongs to the Mindful Hold, the two
+  /// couplings never fight. Called on the camera's own pulse; the
+  /// epsilon gate makes the chatter free, like the pitch's before it.
+  static const _depthEpsilon = 0.05;
 
-  /// One-shot player for any synthesized asset (bells, wave notes).
+  Future<void> setDroneDepth(double factor) async {
+    if (!_started) return;
+    final f = factor.clamp(0.0, 1.0);
+    if ((f - _depth).abs() < _depthEpsilon) return;
+    _depth = f;
+    try {
+      await _drone.setVolume(_muted ? 0 : _droneVolume * f);
+    } catch (_) {
+      // Platforms without volume support: silently ignored.
+    }
+  }
+
+  Future<void> playBell(KenosBell bell) =>
+      playAsset(bell.asset, volume: 0.5);  /// One-shot player for any synthesized asset (bells, wave notes).
   /// Fire-and-forget by contract: the wave plays its full baked
   /// envelope (6 s) without blocking or monitoring.
   Future<void> playAsset(String asset, {double volume = 0.5}) async {
@@ -97,7 +119,7 @@ class AudioController {
   Future<void> toggleMute() async {
     _muted = !_muted;
     try {
-      await _drone.setVolume(_muted ? 0 : _droneVolume);
+      await _drone.setVolume(_muted ? 0 : _droneVolume * _depth);
     } catch (_) {}
   }
 
