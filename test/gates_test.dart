@@ -110,4 +110,37 @@ void main() {
     expect(echoText.style!.fontSize, greaterThan(10));
     expect(echoText.style!.color!.a, greaterThan(0.9));
   });
+
+  testWidgets('V3.43 — la disposition : empilées sur téléphone, côte à côte en large',
+      (tester) async {
+    await boot(tester); // 390×844 — the phone.
+
+    final semer =
+        tester.getRect(find.byKey(const ValueKey('gate-constellation')));
+    final echo = tester.getRect(find.byKey(const ValueKey('gate-echo')));
+    expect(echo.top, greaterThan(semer.bottom),
+        reason: 'sur téléphone, la première porte est sous le pouce');
+
+    // The wide window: two doors, side by side — the disposition of
+    // a threshold, not a stack.
+    tester.view.physicalSize = const Size(1280, 800);
+    await tester.pumpWidget(
+      tester.widget<ProviderScope>(find.byType(ProviderScope)),
+    );
+    await tester.pump(const Duration(seconds: 2));
+    for (final gate in ['TOUCHE POUR ENTRER', 'TOUCHE LE VIDE POUR ENTRER']) {
+      if (find.text(gate).evaluate().isNotEmpty) {
+        await tester.tap(find.text(gate));
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(const Duration(milliseconds: 2100));
+      }
+    }
+    final semerWide =
+        tester.getRect(find.byKey(const ValueKey('gate-constellation')));
+    final echoWide = tester.getRect(find.byKey(const ValueKey('gate-echo')));
+    expect((semerWide.bottom - echoWide.bottom).abs(), lessThan(1),
+        reason: 'côte à côte : posées sur le même sol');
+    expect(semerWide.right, lessThan(echoWide.left),
+        reason: 'la seconde porte à gauche de la première');
+  });
 }

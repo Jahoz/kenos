@@ -71,4 +71,40 @@ void main() {
     expect(editor.height, greaterThan(100),
         reason: 'mais la confidence a de la place');
   });
+
+  testWidgets('V3.43 — le compositeur large : le secret à gauche, les choix à droite',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: MirrorScreen())),
+    );
+    await tester.pump();
+
+    // The secret owns the LEFT column, tall; the choices and the seal
+    // stand to its right.
+    final editor = tester.getRect(find.byType(TextField));
+    final intention = tester.getRect(find.text('APAISER'));
+    final seal = tester.getRect(
+      find.widgetWithText(OutlinedButton, 'SCELLER & LANCER'),
+    );
+    expect(editor.left, lessThan(intention.left),
+        reason: 'la confidence est la colonne dominante');
+    expect(seal.left, greaterThan(editor.right),
+        reason: 'le sceau vit dans la colonne des choix');
+    expect(editor.height, greaterThan(300),
+        reason: 'en large, la confidence a de la chambre');
+
+    // Everything still holds in ONE first look — nothing scrolls.
+    for (final probe in [
+      find.text('PORTE'),
+      find.text('＋'),
+      find.text('APAISER'),
+    ]) {
+      expect(probe.evaluate(), isNotEmpty);
+      expect(tester.getRect(probe.first).bottom, lessThan(800),
+          reason: 'visible sans scroller, même en compositeur');
+    }
+  });
 }

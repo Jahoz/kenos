@@ -41,4 +41,17 @@ class AppLayout {
 
   /// The Mirror gate never drowns under home-indicator territory.
   static const double mirrorGateBottomInset = 30;
+
+  // ── Wide viewports (V3.43) ─────────────────────────────────────────
+  // Tablets and desktops get a DISPOSITION, not a stretched phone:
+  // the map's two doors stand side by side, the Mirror composes in
+  // two columns (the secret to the left, every choice and the seal
+  // to the right).
+
+  /// Past this width the map's two creation doors sit SIDE BY SIDE
+  /// (stacked below it — the thumb's law holds on phones).
+  static const double gatesSideBySide = 560;
+
+  /// Past this width the Mirror composes in two columns.
+  static const double mirrorTwoColumns = 880;
 }

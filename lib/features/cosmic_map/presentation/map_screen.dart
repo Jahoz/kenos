@@ -1465,26 +1465,44 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 minimum: const EdgeInsets.only(
                   bottom: AppLayout.mirrorGateBottomInset,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _GateDoor(
-                      key: const ValueKey('gate-constellation'),
-                      label: 'SEMER UNE CONSTELLATION',
-                      onPressed: () async {
-                        final seeded = await context.push('/cadavre');
-                        if (seeded is SeededConstellation) {
-                          await _corpseSeeded(seeded);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    _GateDoor.first(
-                      key: const ValueKey('gate-echo'),
-                      label: 'FORMULER UN ÉCHO',
-                      onPressed: () => context.push('/mirror'),
-                    ),
-                  ],
+                // V3.43 — wide windows: the two doors stand SIDE BY
+                // SIDE (two doors, côte à côte); phones keep the
+                // stack, where the thumb lives.
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final wide =
+                        constraints.maxWidth >= AppLayout.gatesSideBySide;
+                    return Flex(
+                      direction: wide ? Axis.horizontal : Axis.vertical,
+                      mainAxisSize: MainAxisSize.min,
+                      // Both doors stand on the same floor (the first
+                      // is a breath taller — the hierarchy, again).
+                      crossAxisAlignment: wide
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.center,
+                      children: [
+                        _GateDoor(
+                          key: const ValueKey('gate-constellation'),
+                          label: 'SEMER UNE CONSTELLATION',
+                          onPressed: () async {
+                            final seeded = await context.push('/cadavre');
+                            if (seeded is SeededConstellation) {
+                              await _corpseSeeded(seeded);
+                            }
+                          },
+                        ),
+                        SizedBox(
+                          width: wide ? 14 : 0,
+                          height: wide ? 0 : 10,
+                        ),
+                        _GateDoor.first(
+                          key: const ValueKey('gate-echo'),
+                          label: 'FORMULER UN ÉCHO',
+                          onPressed: () => context.push('/mirror'),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -2356,6 +2374,11 @@ class _GateDoorState extends State<_GateDoor>
             builder: (context, _) {
               final swell = Curves.easeInOut.transform(_breath.value);
               return Container(
+                // No `alignment`: an alignment box EXPANDS to every
+                // loose constraint it is given — in the wide Flex it
+                // stretched each door to 770 px tall and the block
+                // swallowed the lower sky's every touch (V3.43). The
+                // symmetric padding centers the label already.
                 constraints: BoxConstraints(
                   minHeight: widget.first ? 46 : 44,
                 ),
@@ -2363,7 +2386,6 @@ class _GateDoorState extends State<_GateDoor>
                   horizontal: 26,
                   vertical: 14,
                 ),
-                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   // Opaque: the door is a surface, not a window —
                   // no star prints through the words.

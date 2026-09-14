@@ -1376,6 +1376,41 @@ un éditeur né borné) ; preuve structurelle par golden temporaire
 (pastilles sélectionnées teal, puces à bordure, sceau plein cadre,
 rien coupé) ; suite complète 345 verts, analyze 0.
 
+## V3.43 — Les grandes fenêtres ✅ (livrée 2026-09-14)
+
+Le signalement de Hugo : boutons de création comme « miroirs », la
+disposition est à revoir sur tablette et desktop. Large ne devait
+plus être un téléphone étiré :
+
+- **Les deux portes, côte à côte** (≥ 560 px) : deux portes de seuil
+  se tiennent l'une à côté de l'autre, posées sur le même sol — la
+  première garde son souffle de lumière plus haut. Sous 560, le
+  téléphone garde l'empilement, là où vit le pouce.
+- **Le Miroir en compositeur** (≥ 880 px) : la confidence possède la
+  colonne de gauche, HAUTE (12–26 lignes — le desktop doit de la
+  chambre au secret), et tout le reste se tient à droite :
+  l'intention, les attaches ＋, l'origine, le sceau, le murmure. Un
+  seul regard, rien ne scrolle. Sous 880, la colonne téléphonique de
+  V3.42 reste, épinglée par ses tests. Les deux dispositions
+  composent les MÊMES pièces (l'éditeur, les sections, le sceau
+  extraits en méthodes partagées) — une seule loi, deux géométries.
+- **LA LEÇON (attrapée par les tests, la plus chère de la
+  session)** : le `Container` des portes portait
+  `alignment: Alignment.center` — une boîte d'alignment S'ÉTEND à
+  toute contrainte libre qu'on lui donne. Dans la colonne, il
+  étalait la porte en largeur (inoffensif) ; dans le Flex horizontal,
+  il a étiré chaque porte à 770 px de HAUT — le bloc avalait la
+  moitié basse du ciel et **tout toucher de la carte**. Diagnostiqué
+  par la chaîne de hit-test elle-même (`Align → SafeArea → Flex →
+  porte`, au centre de l'écran). L'alignment est mort ; le padding
+  symétrique centre déjà le texte. `CrossAxisAlignment.end` pose les
+  portes sur le même sol.
+
+Gates : +2 tests (`gates_test` : empilées sur téléphone, côte à côte
+et même sol en large ; `mirror_sense_test` : le compositeur — le
+secret à gauche, le sceau à droite, un regard) ; suite complète 347
+verts, analyze 0.
+
 ## 4. Règles inchangées (rappel)
 
 
