@@ -1,4 +1,7 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/cosmic_map/application/kenos_system.dart';
 import 'package:kenos/features/cosmic_map/presentation/widgets/sky_map_sheet.dart';
@@ -110,5 +113,52 @@ void main() {
     await tester.tap(find.text('REFERMER'));
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('LA CARTE DU CIEL'), findsNothing);
+  });
+
+  // V3.39 — the schematic's own labels are painted by a raw
+  // TextPainter inside the CustomPainter; when it threw (missing
+  // textDirection after a Flutter upgrade) the release canvas kept
+  // only what preceded the throw — ONE lane, ONE world, the sheet
+  // empty of everything else, and no widget-level test could see it
+  // (find.text matches never-painted subtrees). A real paintsmoke on
+  // a real canvas is the only honest guard.
+  testWidgets('le schéma se peint SANS exception — toutes ses étiquettes',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(
+        builder: (context) => Center(
+          child: OutlinedButton(
+            onPressed: () => showSkyMapSheet(
+              context,
+              eye: const Offset(0.5, 0.5),
+              onTravel: (_) {},
+            ),
+            child: const Text('OUVRIR'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('OUVRIR'));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    final painters = find
+        .descendant(
+          of: find.byType(Dialog),
+          matching: find.byType(CustomPaint),
+        )
+        .evaluate()
+        .map((e) => e.renderObject)
+        .whereType<RenderCustomPaint>()
+        .where((ro) => ro.painter != null)
+        .toList();
+    expect(painters, isNotEmpty, reason: 'the schematic lives in its painter');
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    for (final ro in painters) {
+      ro.painter!.paint(canvas, ro.size);
+    }
+    recorder.endRecording().dispose();
+    // Reaching here means every label of the diagram laid out and
+    // painted: lanes, worlds, beacon, wanderers, heart, eye.
   });
 }

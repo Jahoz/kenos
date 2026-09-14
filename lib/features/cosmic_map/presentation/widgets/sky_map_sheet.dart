@@ -250,6 +250,12 @@ class _SkyMapPainter extends CustomPainter {
   void _labelAt(Canvas canvas, String text, Offset at) {
     final tp = TextPainter(
       text: TextSpan(text: text, style: _label),
+      // Explicit direction: a bare TextPainter has no ambient
+      // DefaultTextStyle to lean on — without it, layout() throws
+      // mid-paint and the release canvas keeps only what was drawn
+      // before the throw (the V3.39 lesson: one lane, one world, and
+      // the schematic's name erased from the sky).
+      textDirection: TextDirection.ltr,
     )..layout();
     tp.paint(canvas, at + const Offset(5, -3));
   }

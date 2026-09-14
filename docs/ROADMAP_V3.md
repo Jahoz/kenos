@@ -1219,6 +1219,42 @@ Gates : +3 tests Dart (`hover_label_test` : naît à côté jamais dessus,
 suit le monde au pan ~120 px tolérance glide/orbite, quitte le monde
 → nom éteint) ; suite complète 337 verts, analyze 0.
 
+## V3.39 — La carte retrouvée ✅ (livrée 2026-09-14)
+
+Second signalement de Hugo, décisif : « il y a toujours un décalage…
+la carte n'affiche QUE LA LUNE ». Le vrai coupable n'était pas le
+survol (V3.38 a corrigé un vrai défaut, mais pas CELUI-LÀ) : le
+schéma de LA CARTE DU CIEL plantait **en plein peinture**. Son
+`_labelAt` créait un `TextPainter` NU — sans `textDirection` — et
+sous le Flutter courant, `layout()` lève `Bad state`. L'exception
+tombe au PREMIER libellé du schéma… LA LUNE. En release, le canvas
+garde ce qui fut dessiné avant le jet et saute le reste : **une voie,
+un monde sans nom — et plus rien**. Pas de Vénus, pas de Polaris, pas
+d'errants, pas de cœur, pas d'œil. Le « décalage » et le « que la
+lune », mot pour mot.
+
+- **Pourquoi la suite n'a rien vu** : `sky_map_test` affirmait
+  `find.text('LA CARTE DU CIEL')` — or `find` parcourt l'arbre des
+  widgets, jamais les pixels ; une feuille dont le peintre jette
+  reste « trouvable ». Seule une capture raster (golden) a exposé
+  l'exception — le harnais temporaire a rendu la feuille : noire.
+- **Le correctif** : `textDirection: TextDirection.ltr` sur le
+  TextPainter du schéma (un painter nu n'a pas de DefaultTextStyle
+  ambiant à qui se fier). L'Observatoire (`spectrum_bars`) l'avait
+  déjà — le grep des `TextPainter(` nus ne trouve plus que la CARTE.
+- **La garde** : un paintsmoke réel dans `sky_map_test` — les
+  RenderCustomPaint de la feuille peints sur un vrai canvas ; toute
+  exception de peinture tue le test désormais. (Une golden commitée
+  aurait divergé par les fontes entre macOS et la CI ; le paintsmoke
+  est déterministe partout.)
+- Preuve du rétablissement : le golden du harnais passe de 7 Ko de
+  noir quasi pur à 47 Ko de schéma complet (voies, coques, mondes
+  étiquetés, errants, cœur, œil, chips, légende).
+
+Gates : +1 test (`sky_map_test` : le schéma se peint SANS exception) ;
+suite complète 338 verts, analyze 0. Une ligne de code changée — la
+plus rentable du projet.
+
 ## 4. Règles inchangées (rappel)
 
 
