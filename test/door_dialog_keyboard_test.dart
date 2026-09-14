@@ -10,6 +10,11 @@ final Finder dialogField = find.descendant(
 );
 
 Future<void> openMirror(WidgetTester tester) async {
+  // V3.42: the Mirror's column is content-sized now (a phone's first
+  // look holds it whole) — the harness mirrors the real surface.
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
   await tester.pumpWidget(
     const ProviderScope(child: MaterialApp(home: MirrorScreen())),
   );

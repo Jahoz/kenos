@@ -379,28 +379,26 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) => SingleChildScrollView(
-              // Normal case: the column fills the screen exactly
-              // (Expanded works). Keyboard open: the fixed rows scroll
-              // away and the editor keeps its readable window.
-              child: Center(
+              // Fill-or-scroll (V3.42): when the column is smaller
+              // than the window it stretches and centers; when it is
+              // taller (keyboard open, small windows) it simply
+              // scrolls. The old IntrinsicHeight+Center dance needed
+              // an Expanded child to absorb the squeeze — the bounded
+              // editor removed it, and the column overflowed.
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
                 child: ConstrainedBox(
-                  constraints:
-                      BoxConstraints(minHeight: constraints.maxHeight),
-                  child: IntrinsicHeight(
-                    // Full-bleed sky, readable measure: the editor
-                    // stands CENTERED in its column on wide windows —
-                    // without the Center, the tight scroll constraints
-                    // beat the maxWidth and the column pins itself to
-                    // the left edge (the Aube's bug, same family).
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: AppLayout.contentMaxWidth,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(26, 18, 26, 26),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
+                  constraints: const BoxConstraints(
+                    maxWidth: AppLayout.contentMaxWidth,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(26, 18, 26, 26),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
                           Row(
                             children: [
                               Text(
@@ -431,7 +429,46 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                             ),
                           ),
                           const SizedBox(height: 28),
-                          Expanded(
+                          // V3.42 — THE SENSE OF THE MIRROR: the
+                          // intention comes FIRST (it is the echo's
+                          // gravity — what the void will do with it),
+                          // the editor is BOUNDED (it used to be
+                          // Expanded and ate the whole screen, pushing
+                          // every capability below the fold), and the
+                          // attachments are real chips — a visible ＋
+                          // beside each name — not a whisper of
+                          // dotted words at the very bottom.
+                          Text(
+                            "L'INTENTION",
+                            style: TextStyle(
+                              fontFamily: AppFonts.mono,
+                              fontSize: 8,
+                              letterSpacing: 3,
+                              color: AppColors.fade(AppColors.cyan, 0.55),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _ThemePicker(
+                            selected: _theme,
+                            enabled: !_sealing,
+                            onChanged: (t) => setState(() => _theme = t),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _theme.emotionHint,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: AppFonts.serifItalic,
+                              fontSize: 13,
+                              color: AppColors.fade(AppColors.pureLight, 0.5),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              minHeight: 110,
+                              maxHeight: 260,
+                            ),
                             child: _sealing
                                 ? SingleChildScrollView(
                                     child: ScrambleText(
@@ -440,43 +477,53 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                                       style: secretStyle(fontSize: 18),
                                     ),
                                   )
-                                : ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      minHeight: 100,
-                                    ),
-                                    child: TextField(
-                                      controller: _input,
-                                      focusNode: _focus,
-                                      maxLines: null,
-                                      minLines: 3,
-                                      autofocus: true,
-                                      maxLength: _maxLength,
-                                      cursorColor: AppColors.teal,
-                                      style: secretStyle(fontSize: 18),
-                                      decoration: const InputDecoration(
-                                        counterStyle: TextStyle(
-                                          fontFamily: AppFonts.mono,
-                                          fontSize: 9,
-                                          letterSpacing: 2,
-                                          color: Color(0x66F4F4F6),
-                                        ),
-                                        border: InputBorder.none,
-                                        hintText:
-                                            'Écris ce que tu ne dis nulle part.\nPersonne ne saura. Même pas toi, après.',
-                                        hintStyle: TextStyle(
-                                          fontFamily: AppFonts.serifItalic,
-                                          fontSize: 18,
-                                          height: 1.75,
-                                          color: Color(0x40F4F4F6),
-                                        ),
+                                : TextField(
+                                    controller: _input,
+                                    focusNode: _focus,
+                                    maxLines: 9,
+                                    minLines: 4,
+                                    autofocus: true,
+                                    maxLength: _maxLength,
+                                    cursorColor: AppColors.teal,
+                                    style: secretStyle(fontSize: 18),
+                                    decoration: const InputDecoration(
+                                      counterStyle: TextStyle(
+                                        fontFamily: AppFonts.mono,
+                                        fontSize: 9,
+                                        letterSpacing: 2,
+                                        color: Color(0x66F4F4F6),
                                       ),
-                                      onChanged: (_) => setState(() {}),
+                                      border: InputBorder.none,
+                                      hintText:
+                                          'Écris ce que tu ne dis nulle part.\nPersonne ne saura. Même pas toi, après.',
+                                      hintStyle: TextStyle(
+                                        fontFamily: AppFonts.serifItalic,
+                                        fontSize: 18,
+                                        height: 1.75,
+                                        color: Color(0x40F4F4F6),
+                                      ),
                                     ),
+                                    onChanged: (_) => setState(() {}),
                                   ),
                           ),
-                          const SizedBox(height: 18),
-                          if (!_sealing)
-                            _ModeStrip(
+                          const SizedBox(height: 16),
+                          // The attachments, SEEN before they are
+                          // chosen: one line of prose says what may
+                          // travel, the chips say it in the hand.
+                          if (!_sealing) ...[
+                            Text(
+                              'Une seule chose peut voyager avec elle, '
+                              'scellée sous la même clé :',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: AppFonts.serifItalic,
+                                fontSize: 12.5,
+                                height: 1.5,
+                                color: AppColors.fade(AppColors.pureLight, 0.5),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _AttachRow(
                               recording: _recording,
                               hasFragment: _media != null,
                               hasDoor: _excerpt != null,
@@ -484,6 +531,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                               onSound: _toggleRecording,
                               onDoor: _recording ? null : _pasteExcerptLink,
                             ),
+                          ],
                           // The attached fragment, made visible: thumbnail or
                           // waveform, private listen, one-tap removal.
                           if (_media != null) ...[
@@ -503,22 +551,6 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                             const SizedBox(height: 10),
                           ],
                           const SizedBox(height: 8),
-                          _ThemePicker(
-                            selected: _theme,
-                            enabled: !_sealing,
-                            onChanged: (t) => setState(() => _theme = t),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _theme.emotionHint,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontFamily: AppFonts.serifItalic,
-                              fontSize: 13,
-                              color: AppColors.fade(AppColors.pureLight, 0.5),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
                           // V3.26d — the origin is INFO about the echo,
                           // never a fourth fragment type: a quiet meta
                           // line apart from the modes. Touch names the
@@ -532,10 +564,45 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                               onToggle: _toggleOrigin,
                             ),
                           const SizedBox(height: 14),
+                          // The seal, in the first door's family
+                          // (V3.41): opaque teal-washed surface, teal
+                          // border, near-full light — the product's
+                          // own gesture deserves its own door. Kept an
+                          // OutlinedButton: the send-path tests pin it.
                           OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 26,
+                                vertical: 14,
+                              ),
+                              minimumSize: const Size(0, 46),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              backgroundColor: _canSend || _sealing
+                                  ? Color.alphaBlend(
+                                      AppColors.fade(AppColors.teal, 0.10),
+                                      AppColors.voidBlack,
+                                    )
+                                  : AppColors.voidBlack,
+                              side: BorderSide(
+                                color: AppColors.fade(
+                                  AppColors.teal,
+                                  (_canSend || _sealing) ? 0.85 : 0.35,
+                                ),
+                                width: 1.2,
+                              ),
+                            ),
                             onPressed: _canSend ? _sealAndLaunch : null,
                             child: Text(
                               _sealing ? 'SCELLEMENT…' : 'SCELLER & LANCER',
+                              style: TextStyle(
+                                fontFamily: AppFonts.mono,
+                                fontSize: 10.5,
+                                letterSpacing: 4,
+                                color: AppColors.fade(
+                                  AppColors.pureLight,
+                                  (_canSend || _sealing) ? 0.95 : 0.5,
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 14),
@@ -558,18 +625,18 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
             ),
           ),
         ),
-      ),
-    ),
-  );
+      );
   }
 }
 
-/// The Mirror's modes, NAMED: icon-only buttons were invisible to the
-/// finger (tooltips never show on touch) — people launched plain text
-/// without ever knowing a fragment, a door or a corpse existed. Same
-/// grammar as the HUD: quiet mono labels, teal when alive.
-class _ModeStrip extends StatelessWidget {
-  const _ModeStrip({
+/// The Mirror's attachments, SEEN: named chips with a visible ＋
+/// (V3.42 — the old dotted whisper 'IMAGE · SON · PORTE' at 9 px was
+/// a footnote nobody read; the capabilities were secrets). Each chip
+/// is a real target: bordered, 38 px tall, teal when something rides.
+/// The labels stay EXACT ('IMAGE'/'SON'/'PORTE') — the ＋ lives beside
+/// the name, never inside it.
+class _AttachRow extends StatelessWidget {
+  const _AttachRow({
     required this.recording,
     required this.hasFragment,
     required this.hasDoor,
@@ -587,58 +654,73 @@ class _ModeStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget mode(
+    Widget chip(
       String label,
       VoidCallback? onPressed,
-      Color? active,
-    ) =>
-        TextButton(
-          onPressed: onPressed,
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            minimumSize: const Size(0, 34),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontFamily: AppFonts.mono,
-              fontSize: 9,
-              letterSpacing: 3,
-              color: active ?? AppColors.fade(AppColors.pureLight, 0.55),
+      bool riding,
+    ) {
+      final alive = onPressed != null || riding;
+      final ink = riding ? AppColors.teal : AppColors.pureLight;
+      return TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          minimumSize: const Size(0, 38),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+            side: BorderSide(
+              color: AppColors.fade(ink, riding ? 0.75 : 0.28),
+              width: 1,
             ),
           ),
-        );
-    const dot = Text(
-      '·',
-      style: TextStyle(
-        fontFamily: AppFonts.mono,
-        fontSize: 9,
-        color: Color(0x33F4F4F6),
-      ),
-    );
+          backgroundColor: riding
+              ? Color.alphaBlend(
+                  AppColors.fade(AppColors.teal, 0.10),
+                  AppColors.voidBlack,
+                )
+              : AppColors.voidBlack,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              riding ? '·' : '＋',
+              style: TextStyle(
+                fontFamily: AppFonts.mono,
+                fontSize: 11,
+                color: AppColors.fade(ink, riding ? 0.9 : 0.65),
+              ),
+            ),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: AppFonts.mono,
+                fontSize: 9.5,
+                letterSpacing: 2,
+                color: AppColors.fade(ink, riding ? 0.95 : (alive ? 0.7 : 0.4)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return FittedBox(
       fit: BoxFit.scaleDown,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          mode(
-            'IMAGE',
-            onImage,
-            hasFragment ? AppColors.teal : null,
-          ),
-          dot,
-          mode(
+          chip('IMAGE', onImage, hasFragment),
+          const SizedBox(width: 8),
+          chip(
             recording ? 'ARRÊTER' : 'SON',
             onSound,
-            recording ? AppColors.rose : (hasFragment ? AppColors.teal : null),
+            recording || hasFragment,
           ),
-          dot,
-          mode(
-            'PORTE',
-            onDoor,
-            hasDoor ? AppColors.teal : null,
-          ),
+          const SizedBox(width: 8),
+          chip('PORTE', onDoor, hasDoor),
         ],
       ),
     );
@@ -706,6 +788,11 @@ class _ThemePicker extends StatelessWidget {
   final ValueChanged<EchoColorTheme> onChanged;
   final bool enabled;
 
+  /// V3.42 — the intentions as PILLS: the choice is the echo's
+  /// gravity, it comes FIRST and it must look choosable — the old
+  /// plain-text row at the screen's bottom read as a caption. The
+  /// selected pill carries its theme's own light (fill, border,
+  /// text); the others keep a quiet hairline.
   @override
   Widget build(BuildContext context) {
     return FittedBox(
@@ -719,9 +806,24 @@ class _ThemePicker extends StatelessWidget {
               label: theme.emotionLabel,
               child: TextButton(
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  minimumSize: const Size(0, 34),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  minimumSize: const Size(0, 40),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    side: BorderSide(
+                      color: selected == theme
+                          ? AppColors.fade(theme.core, 0.85)
+                          : AppColors.fade(AppColors.pureLight, 0.24),
+                      width: selected == theme ? 1.2 : 1,
+                    ),
+                  ),
+                  backgroundColor: selected == theme
+                      ? Color.alphaBlend(
+                          AppColors.fade(theme.core, 0.14),
+                          AppColors.voidBlack,
+                        )
+                      : AppColors.voidBlack,
                 ),
                 onPressed: enabled
                     ? () {
@@ -734,15 +836,15 @@ class _ThemePicker extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: AppFonts.mono,
                     fontSize: 10,
-                    letterSpacing: 1.5,
+                    letterSpacing: 2,
                     color: selected == theme
-                        ? theme.core
-                        : AppColors.fade(AppColors.pureLight, 0.55),
+                        ? AppColors.fade(theme.core, 0.95)
+                        : AppColors.fade(AppColors.pureLight, 0.6),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
           ],
         ],
       ),

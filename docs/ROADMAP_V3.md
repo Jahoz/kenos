@@ -1329,6 +1329,53 @@ ou lumière (plus de violet), la première porte porte le souffle et la
 voix pleine) ; preuve visuelle par golden temporaire (texte 1,5–2× le
 HUD, hiérarchie lisible) ; suite complète 342 verts, analyze 0.
 
+## V3.42 — Le sens du Miroir ✅ (livrée 2026-09-14)
+
+Le signalement de Hugo : « l'outil de formulation n'a pas le bon
+sens — on ne voit pas qu'on peut catégoriser ou attacher une photo,
+un son, un lien… ça arrive trop en bas et c'est trop discret ».
+L'audit tenait : le champ de texte était `Expanded` — il mangeait
+tout l'écran et poussait SOUS LE PLI, en chuchotant (9 px, alpha
+0,55), tout ce que l'outil propose : l'intention (APAISER · CONFIER ·
+ÉCLAIRER, texte nu), les attaches (`IMAGE · SON · PORTE`, mots
+séparés par des points), l'origine.
+
+- **L'intention d'abord** : les trois intentions montent SOUS le
+  titre, en pastilles véritables — la sélection porte SA lumière
+  (remplissage teinté du thème, bordure, texte), les autres gardent
+  un hairline. Catégoriser se voit AVANT d'écrire : c'est la gravité
+  de l'écho, pas une note de bas de page.
+- **L'éditeur borné** : minLines 4, maxLines 9, plus jamais
+  `Expanded` — la confidence a de la place sans manger l'écran.
+  L'échafaudage `IntrinsicHeight`+`Center` (qui exigeait un enfant
+  flexible pour absorber le clavier) cède la place au pattern
+  remplir-sinon-scroller : la colonne s'étire et se centre quand elle
+  est petite, scrolle quand elle est grande.
+- **Les attaches vues avant d'être choisies** : une ligne serif dit
+  ce qui peut voyager (« Une seule chose peut voyager avec elle,
+  scellée sous la même clé »), et trois puces à bordure portent un
+  **＋ visible** — `＋ IMAGE`, `＋ SON`, `＋ PORTE` (le ＋ vit À CÔTÉ du
+  nom : les libellés exacts restent, les tests du dialogue de porte
+  les épinglent). Attaché → la puce passe teal, le ＋ devient ·.
+  L'enregistrement actif reste ARRÊTER — en teal désormais : arrêter
+  un souffle n'est pas une destruction, le ROSE garde sa loi.
+- **Le sceau en famille** : SCELLER & LANCER revêt la grammaire de la
+  première porte (V3.41) — surface opaque lavée teal, bordure teal,
+  10.5 px, voix pleine quand le sceau est possible, tamisée à 0.35
+  quand il ne l'est pas. Toujours `OutlinedButton` : les tests du
+  chemin d'envoi l'épinglent.
+- **Un premier regard suffit** (loi épinglée par test sur 390×844) :
+  intention, éditeur, attaches et sceau vivent dans le premier écran,
+  dans cet ordre — rien ne se découvre en scrollant. Les harnais PII
+  et porte-clavier passent en surface téléphonique (ils héritaient du
+  800×600 par défaut, où la colonne enrichie dépassait le pli).
+
+Gates : +3 tests (`mirror_sense_test` : l'ordre intention → éditeur →
+attaches → sceau ; tout dans le premier écran ; trois ＋ visibles et
+un éditeur né borné) ; preuve structurelle par golden temporaire
+(pastilles sélectionnées teal, puces à bordure, sceau plein cadre,
+rien coupé) ; suite complète 345 verts, analyze 0.
+
 ## 4. Règles inchangées (rappel)
 
 

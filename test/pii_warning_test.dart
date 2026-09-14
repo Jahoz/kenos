@@ -16,6 +16,11 @@ void main() {
     testWidgets(
       'un numéro → l\'avertissement ; REPRENDRE garde la pensée, et le seuil revient',
       (tester) async {
+        // V3.42: a phone surface — the Mirror's richer column must be
+        // tappable without scrolling on the surface it serves.
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
         await tester.pumpWidget(
           const ProviderScope(child: MaterialApp(home: MirrorScreen())),
         );
