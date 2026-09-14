@@ -1454,6 +1454,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
             // Mirror gate + the corpse's own door: two acts of
             // different natures, two doors — one empties oneself
             // (the Mirror), one opens a space for strangers.
+            // V3.41 — LES DEUX PORTES: one family, two intensities
+            // (the hierarchy rides LIGHT, not noise), opaque fills
+            // so the sky never prints through the words, targets the
+            // thumb can't miss. The corpse's indigo stays on the map
+            // — as a gate on the void it read as mud.
             Align(
               alignment: Alignment.bottomCenter,
               child: SafeArea(
@@ -1463,43 +1468,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // The corpse gate: a real outlined button (a whisper
-                    // text was invisible in the void) — indigo, the
-                    // constellation's color, one breath above the mirror.
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        minimumSize: const Size(0, 36),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        side: BorderSide(
-                          color: AppColors.fade(AppColors.indigo, 0.55),
-                        ),
-                        backgroundColor: AppColors.voidBlack,
-                      ),
-                      // The corpse gate pops with the fresh seed: the
-                      // ring was dropped near the eye — offer the
-                      // seeder the FIRST blind line.
+                    _GateDoor(
+                      key: const ValueKey('gate-constellation'),
+                      label: 'SEMER UNE CONSTELLATION',
                       onPressed: () async {
                         final seeded = await context.push('/cadavre');
                         if (seeded is SeededConstellation) {
                           await _corpseSeeded(seeded);
                         }
                       },
-                      child: Text(
-                        'SEMER UNE CONSTELLATION',
-                        style: TextStyle(
-                          fontFamily: AppFonts.mono,
-                          fontSize: 9,
-                          letterSpacing: 3,
-                          color: AppColors.fade(AppColors.indigo, 0.9),
-                        ),
-                      ),
                     ),
-                    const SizedBox(height: 8),
-                    _AnimatedEchoButton(
+                    const SizedBox(height: 10),
+                    _GateDoor.first(
+                      key: const ValueKey('gate-echo'),
+                      label: 'FORMULER UN ÉCHO',
                       onPressed: () => context.push('/mirror'),
                     ),
                   ],
@@ -2299,87 +2281,141 @@ class _Centered extends StatelessWidget {
   }
 }
 
-class _AnimatedEchoButton extends StatefulWidget {
-  const _AnimatedEchoButton({required this.onPressed});
+/// V3.41 — LES DEUX PORTES: the map's two acts of emptying oneself.
+///
+/// One family, two intensities — the hierarchy is carried by LIGHT,
+/// not by noise: the FIRST door (the Mirror, the product's own
+/// gesture) glows teal; the second (seeding a corpse) keeps a quiet
+/// hairline. Opaque fills — the sky never prints through the words.
+/// The glow BREATHES (a calm ~4 s swell); the text never scales, so
+/// the space between the words stays stable and readable. The
+/// corpse's indigo stays on the map (rings, closed artifacts), where
+/// it has contrast — on the void floor it read as mud.
+class _GateDoor extends StatefulWidget {
+  const _GateDoor({
+    super.key,
+    required this.label,
+    required this.onPressed,
+  })  : first = false;
 
+  const _GateDoor.first({
+    super.key,
+    required this.label,
+    required this.onPressed,
+  })  : first = true;
+
+  final String label;
   final VoidCallback onPressed;
 
+  /// The first door: the teal-lit one.
+  final bool first;
+
   @override
-  State<_AnimatedEchoButton> createState() => _AnimatedEchoButtonState();
+  State<_GateDoor> createState() => _GateDoorState();
 }
 
-class _AnimatedEchoButtonState extends State<_AnimatedEchoButton>
+class _GateDoorState extends State<_GateDoor>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
+  late final AnimationController _breath = AnimationController(
     vsync: this,
-    duration: const Duration(seconds: 2),
+    duration: const Duration(seconds: 4),
   );
 
   @override
   void initState() {
     super.initState();
-    if (!platformDisablesAnimations()) {
-      _controller.repeat(reverse: true);
+    if (widget.first && !platformDisablesAnimations()) {
+      _breath.repeat(reverse: true);
+    } else {
+      _breath.value = 0.5; // a held, calm half-glow
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _breath.dispose();
     super.dispose();
   }
 
+  bool _pressed = false;
+
   @override
   Widget build(BuildContext context) {
+    final dim = _pressed ? 0.72 : 1.0;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTapUp: (_) => setState(() => _pressed = false),
         onTap: widget.onPressed,
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, _) {
-            final pulse = 0.95 + (_controller.value * 0.1);
-            final glow = _controller.value * 0.4;
-            return Transform.scale(
-              scale: pulse,
-              child: Container(
+        child: Semantics(
+          button: true,
+          child: AnimatedBuilder(
+            animation: _breath,
+            builder: (context, _) {
+              final swell = Curves.easeInOut.transform(_breath.value);
+              return Container(
+                constraints: BoxConstraints(
+                  minHeight: widget.first ? 46 : 44,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 26,
+                  vertical: 14,
+                ),
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
+                  // Opaque: the door is a surface, not a window —
+                  // no star prints through the words.
+                  color: widget.first
+                      ? Color.alphaBlend(
+                          AppColors.fade(AppColors.teal, 0.10 * dim),
+                          AppColors.voidBlack,
+                        )
+                      : Color.alphaBlend(
+                          AppColors.fade(AppColors.pureLight, 0.05 * dim),
+                          AppColors.voidBlack,
+                        ),
+                  borderRadius: BorderRadius.circular(6),
                   border: Border.all(
+                    color: widget.first
+                        ? AppColors.fade(AppColors.teal, 0.85 * dim)
+                        : AppColors.fade(
+                            AppColors.pureLight,
+                            0.38 * dim,
+                          ),
+                    width: widget.first ? 1.2 : 1,
+                  ),
+                  boxShadow: widget.first
+                      ? [
+                          // The breath: light, never geometry — the
+                          // text holds still while the door glows.
+                          BoxShadow(
+                            color: AppColors.fade(
+                              AppColors.teal,
+                              (0.10 + 0.12 * swell) * dim,
+                            ),
+                            blurRadius: 18,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : const <BoxShadow>[],
+                ),
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: widget.first ? 10.5 : 10,
+                    letterSpacing: widget.first ? 4 : 3,
                     color: AppColors.fade(
                       AppColors.pureLight,
-                      0.5 + (glow * 0.3),
-                    ),
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.fade(AppColors.cyan, glow * 0.3),
-                      blurRadius: 12 + (glow * 8),
-                      spreadRadius: glow * 2,
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  child: Text(
-                    'FORMULER UN ÉCHO',
-                    style: TextStyle(
-                      fontFamily: AppFonts.mono,
-                      fontSize: 9,
-                      letterSpacing: 2,
-                      color: AppColors.fade(
-                        AppColors.pureLight,
-                        0.7 + (glow * 0.3),
-                      ),
+                      (widget.first ? 0.95 : 0.82) * dim,
                     ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );

@@ -1291,6 +1291,44 @@ tout instant ; le vide reste borné — le monde n'est pas infini) ;
 suite complète 340 verts, analyze 0. Zéro backend : la géométrie du
 voyage vit client.
 
+## V3.41 — Les deux portes ✅ (livrée 2026-09-14)
+
+Le signalement de Hugo : les deux boutons d'action principaux
+(SEMER UNE CONSTELLATION / FORMULER UN ÉCHO) sont « trop discrets, et
+le violet sur fond d'espace est pas top ». L'audit confirmait : 9 px
+de texte, la porte ÉCHO TRANSPARENTE (les étoiles imprimaient à
+travers les mots), la porte CONSTELLATION en indigo 0.55 sur noir (le
+violet boueux), et 36 px de haut — sous le plancher 44 px du projet.
+
+- **Design Readiness Gate** : une seule famille, « LES DEUX PORTES »
+  (`_GateDoor`) — la hiérarchie porte par la LUMIÈRE, pas par le
+  bruit. La première porte (le Miroir, le geste du produit) : remplissage
+  opaque teal 0.10 sur Void Black, bordure teal 0.85, texte pureLight
+  0.95 à 10.5 px, souffle teal ~4 s — la lumière respire, LE TEXTE
+  JAMAIS (plus de scale : l'espace entre les mots reste stable,
+  lisible). La seconde porte : même famille un cran plus bas —
+  hairline pureLight, texte 0.82, sans souffle. Cibles ≥ 44 px,
+  `Semantics(button)`, relâchement qui tamise. **L'indigo meurt sur
+  les portes** — il vit sur la carte (anneaux, artefacts fermés), là
+  où il a du contraste ; registre tenu, aucun jeton neuf, ROSE
+  toujours interdit.
+- **Moins de Material, plus du registre** : le bouton cadavre était
+  un OutlinedButton Material — le registre interdit les widgets
+  brandés par défaut ; les deux portes partagent désormais le même
+  composant signature.
+- Au passage, un défaut de conception des tests de survol (V3.38)
+  fut corrigé : ils visaient La Lune à l'horloge réelle — son orbite
+  basse passe derrière les portes du bas à la mauvaise heure. Les
+  sondes portent désormais La Lune à un point connu par un drag
+  exact sans inertie (doigt immobile au relâcher) : les tests ne
+  dépendent plus de l'heure.
+
+Gates : +2 tests (`gates_test` : deux portes ≥ 44 px, remplissages
+OPAQUES (alpha 1.0 — le ciel n'imprime pas à travers), bordures teal
+ou lumière (plus de violet), la première porte porte le souffle et la
+voix pleine) ; preuve visuelle par golden temporaire (texte 1,5–2× le
+HUD, hiérarchie lisible) ; suite complète 342 verts, analyze 0.
+
 ## 4. Règles inchangées (rappel)
 
 

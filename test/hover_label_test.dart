@@ -12,10 +12,14 @@ import 'package:kenos/features/echo/data/local_echo_repository.dart';
 import 'package:kenos/features/echo/data/local_echo_store.dart';
 
 /// V3.38 — the hover label RIDES its body (desktop eye): it appears
-/// beside the world — never printed on it — and it follows both the
-/// world's own orbit and the sky panning under a still pointer. The
-/// old label froze its coordinates at the first hover and centered
-/// itself over the body (the reported "décalage au survol").
+/// beside the world — never printed on it — and it follows the sky
+/// panning under a still pointer.
+///
+/// The tests are CLOCK-FREE: La Lune is first carried to a known
+/// screen point by an exact drag (the finger held still before
+/// release, so the glide carries nothing) — her low orbit would
+/// otherwise ride behind the bottom gates at the wrong hour, and a
+/// test must not depend on when it runs.
 void main() {
   setUp(() {
     MapScreen.territoriesAnnounced.clear();
@@ -55,9 +59,8 @@ void main() {
     }
   }
 
-  /// Where La Lune rides right now, for an eye born at the heart
-  /// (the screen's own camera defaults — a hair of orbital drift is
-  /// covered by every tolerance below).
+  /// Where La Lune rides right now, for an eye born at the heart —
+  /// the map's own camera is untouched at boot, so the math agrees.
   Offset moonOnScreen() {
     final camera = TravelCamera();
     return camera.worldToScreen(
@@ -66,10 +69,28 @@ void main() {
     );
   }
 
+  /// Carries La Lune to [target] by an exact, glide-free drag: the
+  /// finger holds still before release, so the inertia path is empty
+  /// and the sky lands exactly where the finger said.
+  Future<void> settleMoonAt(WidgetTester tester, Offset target) async {
+    final delta = target - moonOnScreen();
+    final gesture = await tester.startGesture(const Offset(640, 400));
+    for (var i = 1; i <= 3; i++) {
+      await gesture.moveBy(delta / 3);
+      await tester.pump(const Duration(milliseconds: 120));
+    }
+    // Held still: the release velocity is nil, the glide is nothing.
+    await tester.pump(const Duration(milliseconds: 150));
+    await gesture.up();
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+
   testWidgets("l'étiquette naît À CÔTÉ du monde, jamais dessus",
       (tester) async {
     await boot(tester);
-    final moon = moonOnScreen();
+    // A point the gates and the HUD never cover.
+    const moon = Offset(640, 350);
+    await settleMoonAt(tester, moon);
 
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer(location: moon);
@@ -91,7 +112,8 @@ void main() {
   testWidgets("l'étiquette suit le monde quand le ciel glisse sous le pointeur",
       (tester) async {
     await boot(tester);
-    final moon = moonOnScreen();
+    const moon = Offset(640, 350);
+    await settleMoonAt(tester, moon);
 
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer(location: moon);
@@ -102,10 +124,14 @@ void main() {
     expect(before.dx, greaterThan(0));
 
     // The sky follows the finger: dragging LEFT carries every world
-    // (and the label that rides it) LEFT by the same distance.
-    final pan = await tester.startGesture(const Offset(640, 400));
-    await pan.moveBy(const Offset(-120, 0));
-    await tester.pump();
+    // (and the label that rides it) LEFT by the same distance. The
+    // finger stills before release — no glide, the distance is exact.
+    final pan = await tester.startGesture(const Offset(300, 200));
+    for (var i = 1; i <= 3; i++) {
+      await pan.moveBy(const Offset(-40, 0));
+      await tester.pump(const Duration(milliseconds: 120));
+    }
+    await tester.pump(const Duration(milliseconds: 150));
     await pan.up();
     await tester.pump(const Duration(milliseconds: 700));
 
@@ -113,14 +139,15 @@ void main() {
     final after = tester.getTopLeft(find.text('La Lune'));
     expect(
       (after.dx - before.dx).abs(),
-      inInclusiveRange(70, 170),
-      reason: 'le nom a suivi le monde (~120 px, tolérance glide et orbite)',
+      inInclusiveRange(100, 140),
+      reason: 'le nom a suivi le monde (−120 px, sans inertie)',
     );
   });
 
   testWidgets('quitter le monde éteint le nom', (tester) async {
     await boot(tester);
-    final moon = moonOnScreen();
+    const moon = Offset(640, 350);
+    await settleMoonAt(tester, moon);
 
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer(location: moon);
@@ -130,7 +157,7 @@ void main() {
     expect(find.text('La Lune'), findsOneWidget);
 
     // Into the empty sky: no world under the pointer, no name.
-    await mouse.moveTo(const Offset(1000, 120));
+    await mouse.moveTo(const Offset(640, 120));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('La Lune'), findsNothing);
   });
