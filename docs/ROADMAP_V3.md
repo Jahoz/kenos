@@ -1186,6 +1186,39 @@ Gates : +2 tests (`parallax_math_test` : le seuil du plein rythme) ;
 `StarShift` inchangé en comportement visible (la suite widget le
 couvre) ; suite complète verte, analyze 0.
 
+## V3.38 — Le nom qui chevauche son monde ✅ (livrée 2026-09-14)
+
+Le signalement de Hugo : « problèmes d'affichage et de décalage au
+survol sur le module la carte ». Le coupable : l'étiquette de survol
+des corps nommés (desktop) était figée à SA PREMIÈRE position — elle
+ne se recalculait qu'au changement de cible, jamais pendant. Trois
+défauts en découlaient : un monde qui orbite (la Lune, Vénus) ou un
+ciel qui panne sous un pointeur immobile laissait le nom flottant au
+vide ; l'ancrage en pixels fixes (−60/−44) imprimait le nom SUR le
+corps dès le zoom profond ; le clamp supposait une largeur de 128 px.
+
+- **L'état porte la CIBLE, jamais la position** : `_hoverTarget`
+  (record wanderer/index, comparaison par valeur — un déplacement DANS
+  le même monde ne coûte aucun setState). L'étiquette dérive sa place
+  en direct sur le battement des cieux (le monde survolé continue
+  d'orbiter) ET sur le pouls de la caméra (le ciel glisse sous le
+  pointeur immobile). Un `Positioned` statique à l'origine porte une
+  étiquette translatée — le ParentData ne vit jamais dans les
+  builders qui battent.
+- **L'ancrage honnête** : le nom se pose à DROITE de la zone de tap du
+  corps (`planetTapRect`/`wandererTapRect` + 10 px) — à tout zoom la
+  zone grandit avec le monde, le nom ne le recouvre jamais ; clamp
+  rapporté à la largeur réelle du viewport.
+- Reproduit et épinglé par tests AVANT la correction (l'ancien code
+  échoue les trois : nom centré sur le monde, immobile au pan, largeur
+  supposée) ; vérification visuelle tentée sur la PWA locale — le
+  canvas vivant à 60 fps a raison de la surface de capture IAB, le
+  test widget reste la preuve.
+
+Gates : +3 tests Dart (`hover_label_test` : naît à côté jamais dessus,
+suit le monde au pan ~120 px tolérance glide/orbite, quitte le monde
+→ nom éteint) ; suite complète 337 verts, analyze 0.
+
 ## 4. Règles inchangées (rappel)
 
 

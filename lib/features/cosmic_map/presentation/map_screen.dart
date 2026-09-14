@@ -176,10 +176,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
     return 'LES LUMIÈRES GRAVITENT — SOUFFLE VERS $h H';
   }
 
-  /// V3.12 — the hovered named body (desktop): its name floats beside
-  /// it, the cursor says « this is a world ».
-  String? _hoverName;
-  Offset? _hoverPos;
+  /// V3.12/V3.38 — the hovered named body (desktop): its name floats
+  /// beside it, the cursor says « this is a world ». The state holds
+  /// the TARGET, never a position — the label derives its place live
+  /// on the heavens' beat (bodies orbit while hovered) and the
+  /// camera's pulse (the sky pans under the pointer). The old code
+  /// froze the label's coordinates at the first hover: a drifting
+  /// body left its name behind, and the fixed pixel offset printed it
+  /// ON the world at deep zoom.
+  ({bool wanderer, int index})? _hoverTarget;
 
   /// The Constellations: exquisite corpses drifting in the void (V3.8).
   List<ConstellationMeta> _constellations = const [];
@@ -609,8 +614,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Desktop hover: a named body whispers its name before the plaque.
   void _onFieldHover(PointerHoverEvent event) {
     final now = DateTime.now();
-    String? name;
-    Offset? pos;
+    ({bool wanderer, int index})? target;
     final w = wandererHitTest(
       screenPoint: event.position,
       camera: _camera,
@@ -618,11 +622,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       now: now,
     );
     if (w >= 0) {
-      name = celestialWanderers[w].name;
-      pos = _camera.worldToScreen(
-        CelestialMath.wandererPosition(w, now),
-        _viewport,
-      );
+      target = (wanderer: true, index: w);
     } else {
       final p = planetHitTest(
         screenPoint: event.position,
@@ -630,19 +630,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
         viewport: _viewport,
         now: now,
       );
-      if (p >= 0) {
-        name = celestialBodies[p].name;
-        pos = _camera.worldToScreen(
-          KenosSystem.planetPosition(p, now),
-          _viewport,
-        );
-      }
+      if (p >= 0) target = (wanderer: false, index: p);
     }
-    if (name != _hoverName) {
-      setState(() {
-        _hoverName = name;
-        _hoverPos = pos;
-      });
+    // Records compare by value: the setState fires only when the
+    // pointer actually changes worlds — a move WITHIN the same body
+    // costs nothing (the label follows by itself).
+    if (target != _hoverTarget) {
+      setState(() => _hoverTarget = target);
     }
   }
 
@@ -836,16 +830,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 _viewport = Size(constraints.maxWidth, constraints.maxHeight);
                 return MouseRegion(
                   // Desktop: named bodies whisper their name on hover.
-                  cursor: _hoverName != null
+                  cursor: _hoverTarget != null
                       ? SystemMouseCursors.click
                       : MouseCursor.defer,
                   onHover: _onFieldHover,
                   onExit: (_) {
-                    if (_hoverName != null) {
-                      setState(() {
-                        _hoverName = null;
-                        _hoverPos = null;
-                      });
+                    if (_hoverTarget != null) {
+                      setState(() => _hoverTarget = null);
                     }
                   },
                   child: GestureDetector(
@@ -1284,30 +1275,75 @@ class _MapScreenState extends ConsumerState<MapScreen>
               },
             ),
             // V3.12 — the hovered body's name, floating beside it.
-            if (_hoverName != null && _hoverPos != null)
+            // V3.38 — the label RIDES its body: the heavens' beat (a
+            // hovered world keeps orbiting) and the camera's pulse (the
+            // sky pans under a still pointer) each recompute its place,
+            // and it anchors OUTSIDE the body's tap zone — at deep zoom
+            // the old fixed offset printed the name ON the world, and
+            // a drift left it floating mid-void. A static Positioned
+            // at the origin carries a translated label: ParentData
+            // must not live inside the ticking builders.
+            if (_hoverTarget != null)
               Positioned(
-                left: (_hoverPos!.dx - 60).clamp(8.0, _viewport.width - 128),
-                top: (_hoverPos!.dy - 44).clamp(8.0, _viewport.height - 40),
-                child: IgnorePointer(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.fade(AppColors.voidBlack, 0.8),
-                      border: Border.all(color: AppColors.hairlineStrong),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      _hoverName!,
-                      style: TextStyle(
-                        fontFamily: AppFonts.mono,
-                        fontSize: 9,
-                        letterSpacing: 3,
-                        color: AppColors.fade(AppColors.pureLight, 0.75),
-                      ),
-                    ),
+                left: 0,
+                top: 0,
+                child: _HeavensClock(
+                  builder: (context, _) => ListenableBuilder(
+                    listenable: _camera,
+                    builder: (context, _) {
+                      final target = _hoverTarget;
+                      if (target == null) return const SizedBox.shrink();
+                      final now = DateTime.now();
+                      final String name;
+                      final Rect zone;
+                      if (target.wanderer) {
+                        name = celestialWanderers[target.index].name;
+                        zone = wandererTapRect(
+                          index: target.index,
+                          camera: _camera,
+                          viewport: _viewport,
+                          now: now,
+                        );
+                      } else {
+                        name = celestialBodies[target.index].name;
+                        zone = planetTapRect(
+                          index: target.index,
+                          camera: _camera,
+                          viewport: _viewport,
+                          now: now,
+                        );
+                      }
+                      final offset = Offset(
+                        (zone.topRight.dx + 10)
+                            .clamp(8.0, _viewport.width - 150),
+                        (zone.top - 34).clamp(8.0, _viewport.height - 40),
+                      );
+                      return IgnorePointer(
+                        child: Transform.translate(
+                          offset: offset,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.fade(AppColors.voidBlack, 0.8),
+                              border: Border.all(color: AppColors.hairlineStrong),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              name,
+                              style: TextStyle(
+                                fontFamily: AppFonts.mono,
+                                fontSize: 9,
+                                letterSpacing: 3,
+                                color: AppColors.fade(AppColors.pureLight, 0.75),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
