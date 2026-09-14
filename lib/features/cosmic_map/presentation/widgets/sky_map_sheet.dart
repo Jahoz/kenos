@@ -343,8 +343,13 @@ class _SkyMapPainter extends CustomPainter {
         ..color = AppColors.fade(AppColors.rose, 0.55),
     );
 
-    // The traveller's eye and its reception field.
-    final e = w(eye);
+    // The traveller's eye and its reception field. V3.40: the eye may
+    // ride beyond the ether's rim into the traversable void — the
+    // schematic holds it at the square's edge (direction kept, the
+    // void itself is not the map's to draw).
+    final e = w(
+      Offset(eye.dx.clamp(0.03, 0.97), eye.dy.clamp(0.03, 0.97)),
+    );
     canvas.drawCircle(
       e,
       ParallaxMath.receptionRadius * s,

@@ -51,7 +51,7 @@ class DeepFieldLayer {
 const List<DeepFieldLayer> deepFieldLayers = [
   DeepFieldLayer(
     factor: 0.30,
-    dustCount: 90,
+    dustCount: 110,
     radiusMin: 0.35,
     radiusMax: 0.9,
     alphaMin: 0.04,
@@ -60,7 +60,7 @@ const List<DeepFieldLayer> deepFieldLayers = [
   ),
   DeepFieldLayer(
     factor: 0.55,
-    dustCount: 48,
+    dustCount: 60,
     radiusMin: 0.6,
     radiusMax: 1.5,
     alphaMin: 0.06,
@@ -91,11 +91,12 @@ class DeepFieldMath {
   /// (at rest, decor and world coordinates coincide).
   static const Offset base = Offset(0.5, 0.5);
 
-  /// The decor plane: dust lives beyond the known ether so the
-  /// traveller's margin never reaches past it (coverage is pinned by
-  /// test across every legal camera state).
-  static const double planeMin = -0.25;
-  static const double planeMax = 1.25;
+  /// The decor plane: dust lives beyond the known ether — and beyond
+  /// the EYE's own reach (V3.40: the traversable void extends to
+  /// ±0.5 past the ether) — so the traveller never reaches past it.
+  /// Coverage is pinned by test across every legal camera state.
+  static const double planeMin = -0.4;
+  static const double planeMax = 1.4;
 
   /// The layer's eye: the camera's displacement from home, damped by
   /// the layer factor. A pan of δ moves the world by δ and the layer

@@ -8,9 +8,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// The world stays the server's normalized [0,1]² (its coordinates are
 /// guarded by SQL bounds), but the eye no longer owns all of it: a
 /// fixed zoom shows about half the sky at once, and one glides the
-/// void to travel. The camera may drift slightly BEYOND the known
-/// ether ([-margin, 1+margin]) — travelling to the edge means reaching
-/// into emptiness, and emptiness is the point.
+/// void to travel.
+///
+/// V3.40 — the traversable void extends WELL past the known ether
+/// (margin 0.5 → the eye rides [-0.5, 1.5]): the worlds and their
+/// rings are CIRCLES in a SQUARE ether — the wanderers (r up to 0.65)
+/// step past the square's rim along the axes, and Venus at her aphelion
+/// hugged the old +0.1 wall, hard to reach and reading like the edge
+/// of a box. Beyond the last light there is now REAL reachable
+/// emptiness — the far country is genuinely vast, every named body is
+/// centerable, and "the void is more vast" is a traversable truth.
 ///
 /// A [ChangeNotifier]: gestures mutate the eye and ONLY the layers
 /// that look through it rebuild — the screen, the HUD and the gates
@@ -18,7 +25,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class TravelCamera extends ChangeNotifier {
   TravelCamera({
     double zoom = 1.75,
-    this.margin = 0.1,
+    this.margin = 0.5,
     Offset center = const Offset(0.5, 0.5),
   })  : _zoom = zoom.clamp(minZoom, maxZoom),
         _center = center;
@@ -32,7 +39,8 @@ class TravelCamera extends ChangeNotifier {
   static const double minZoom = 1.2;
   static const double maxZoom = 8.0;
 
-  /// How far past the known ether the void still carries the eye.
+  /// How far past the known ether the void still carries the eye —
+  /// emptiness is the point (see the class doc: V3.40).
   final double margin;
 
   Offset _center;

@@ -1255,6 +1255,42 @@ Gates : +1 test (`sky_map_test` : le schéma se peint SANS exception) ;
 suite complète 338 verts, analyze 0. Une ligne de code changée — la
 plus rentable du projet.
 
+## V3.40 — Le vide traversable ✅ (livrée 2026-09-14)
+
+Le signalement de Hugo : « des temps en temps des corps célestes se
+positionnent vraiment trop près du bord de l'espace — difficilement
+atteignables, et ça casse l'aspect immensité ». La cause est
+GÉOMÉTRIQUE : les anneaux sont des cercles autour du cœur, l'éther un
+carré [0,1] (+ une marge d'œil de 0,1). Les errants (r 0,55–0,65)
+DÉPASSENT le carré sur les axes — Europe file jusqu'à x = 1,15 quand
+l'œil ne voyait jamais au-delà de 1,10 : littéralement invisible et
+inatteignable à certains passages. Vénus à son aphélie (0,87) et
+Polaris dans son coin (0,13) colletaient le mur.
+
+- **La réponse : agrandir le vide, pas reculer les corps.** La marge
+  traversable passe de 0,1 à **0,5** — l'œil chevauche [−0,5, 1,5] :
+  au-delà de la dernière lumière il existe du vide VRAI et
+  traversable. Chaque corps nommé devient centrable à tout instant
+  (loi épinglée par test sur 32 échantillons d'un jour et demi — les
+  croisements d'axes compris), et « LE PAYS LOINTAIN — et le vide est
+  plus vaste » devient une vérité qu'on peut parcourir. Le fetch par
+  secteur reste honnête (le rect est clampé à [0,1] serveur ; hors de
+  l'éther, il se dégénère et ne demande rien).
+- **Le champ profond suit** : plan du décor élargi à [−0.4, 1.4],
+  densité portée à 110/60 motes — la traversée du vide garde sa
+  profondeur jusqu'au bout (couverture re-prouvée par le test existant
+  qui énumère les caméras légales).
+- **La CARTE** : l'œil du voyageur au-delà du rim se tient au bord du
+  schéma (la direction gardée — le vide n'est pas la carte à dessiner).
+- Reculer les errants à la place fut écarté : le monde se serait senti
+  plus PETIT (le pays lointain ramassé dans le carré), l'inverse du
+  symptôme signalé.
+
+Gates : +2 tests (`travel_camera_test` : tout corps nommé centrable à
+tout instant ; le vide reste borné — le monde n'est pas infini) ;
+suite complète 340 verts, analyze 0. Zéro backend : la géométrie du
+voyage vit client.
+
 ## 4. Règles inchangées (rappel)
 
 

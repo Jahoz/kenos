@@ -1,6 +1,8 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kenos/features/cosmic_map/application/celestial_bodies.dart';
+import 'package:kenos/features/cosmic_map/application/kenos_system.dart';
 import 'package:kenos/features/cosmic_map/application/travel_camera.dart';
 
 void main() {
@@ -86,6 +88,51 @@ void main() {
       camera.recenter();
       expect(camera.center, const Offset(0.5, 0.5));
       expect(camera.drift, drift, reason: 'le voyage vécu reste compté');
+    });
+  });
+
+  group('V3.40 — le vide traversable : tout corps nommé s\'atteint', () {
+    test('chaque monde, chaque errant : l\'œil au repos PEUT le centrer',
+        () {
+      // The rings are CIRCLES in a SQUARE ether: the wanderers (r up
+      // to 0.65) step past the rim along the axes, and at the old
+      // +0.1 margin they were sometimes UNREACHABLE (the eye saw at
+      // most to 1.1; Europe rides to 1.15). The traversable void now
+      // extends to ±0.5: a fresh eye at its resting zoom can centre
+      // on every named body, at any moment of their arcs — sampled
+      // across a day and a half to catch the axis crossings.
+      final t0 = DateTime(2026, 9, 14);
+      for (var s = 0; s < 32; s++) {
+        final at = t0.add(Duration(hours: s));
+        final bodies = <String, Offset>{
+          for (var i = 0; i < KenosSystem.planets.length; i++)
+            celestialBodies[i].name: KenosSystem.planetPosition(i, at),
+          for (var i = 0; i < celestialWanderers.length; i++)
+            celestialWanderers[i].name:
+                CelestialMath.wandererPosition(i, at),
+        };
+        for (final entry in bodies.entries) {
+          final camera = TravelCamera(); // the resting eye, default void
+          camera.panByWorld(entry.value - camera.center);
+          expect(
+            (camera.center - entry.value).distance,
+            lessThan(1e-9),
+            reason:
+                '${entry.key} doit être centrable à $at (position ${entry.value})',
+          );
+        }
+      }
+    });
+
+    test('au-delà de l\'éther, le vide reste borné — le monde n\'est pas infini',
+        () {
+      final camera = TravelCamera();
+      camera.panByWorld(const Offset(100, 100));
+      expect(camera.center.dx, lessThanOrEqualTo(1.5));
+      expect(camera.center.dy, lessThanOrEqualTo(1.5));
+      camera.panByWorld(const Offset(-200, -200));
+      expect(camera.center.dx, greaterThanOrEqualTo(-0.5));
+      expect(camera.center.dy, greaterThanOrEqualTo(-0.5));
     });
   });
 
