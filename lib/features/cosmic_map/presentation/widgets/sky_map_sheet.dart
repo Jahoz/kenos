@@ -59,8 +59,13 @@ class _SkyMapPanel extends StatelessWidget {
         side: BorderSide(color: AppColors.fade(AppColors.pureLight, 0.18)),
         borderRadius: BorderRadius.circular(8),
       ),
+      // V3.44 — the schematic breathes on tablets: past 700 px the
+      // measure rises (the diagram's rings and labels get their
+      // stature back); the phone keeps its compact card.
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 380),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width >= 700 ? 460 : 380,
+        ),
         child: Padding(
           padding: const EdgeInsets.all(20),
           // Scrollable: the diagram + seven departures + the legend

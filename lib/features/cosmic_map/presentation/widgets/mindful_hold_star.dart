@@ -477,17 +477,26 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     return SizedBox(
       width: coreCatch,
       height: coreCatch,
-      child: Listener(
-        onPointerDown: _onPointerDown,
-        onPointerMove: _onPointerMove,
-        onPointerUp: (_) => _onPointerUp(),
-        // Cancel (scroll, system gesture) = release.
-        onPointerCancel: (_) => _onPointerUp(),
-        behavior: HitTestBehavior.opaque,
-        child: OverflowBox(
-          maxWidth: double.infinity,
-          maxHeight: double.infinity,
-          child: visual,
+      // V3.44 — the desktop cursor says what the star is: a pointer
+      // over a light WITHIN the reception field promises the hold;
+      // beyond it (and over one's own sealed anchors) the cursor
+      // stays honest — nothing to press there.
+      child: MouseRegion(
+        cursor: !_echo.isMine && widget.reception > 0
+            ? SystemMouseCursors.click
+            : MouseCursor.defer,
+        child: Listener(
+          onPointerDown: _onPointerDown,
+          onPointerMove: _onPointerMove,
+          onPointerUp: (_) => _onPointerUp(),
+          // Cancel (scroll, system gesture) = release.
+          onPointerCancel: (_) => _onPointerUp(),
+          behavior: HitTestBehavior.opaque,
+          child: OverflowBox(
+            maxWidth: double.infinity,
+            maxHeight: double.infinity,
+            child: visual,
+          ),
         ),
       ),
     );

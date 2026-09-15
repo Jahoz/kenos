@@ -83,8 +83,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// guest) — ember seeds on the sky, the key that reopens them, all
   /// strictly local. An open salon stays invisible to the ether; this
   /// is the one place it shows, to its holder only.
-  late final SalonAnchorStore _salonDoors =
-      ref.read(salonAnchorStoreProvider);
+  late final SalonAnchorStore _salonDoors = ref.read(salonAnchorStoreProvider);
   List<SalonAnchor> _salonAnchors = const [];
 
   /// The one line that matters: signals first (they pulse), then the
@@ -103,25 +102,28 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// joined by breath marks — presence, never urgency. V3.35: the
   /// territory label makes distance a PLACE, not just a number (the
   /// line lives in the camera's builder — the label follows the eye
-  /// without waking the screen).
-  String get _readableSilent {
+  /// without waking the screen). V3.44: on a narrow phone the COUNTS
+  /// fold away — drift, place and the souffle stay (the way home and
+  /// the where-am-I), the inventory waits for a wider sky.
+  String _readableSilent({required bool compact}) {
     final parts = <String>[
       'DÉRIVE ${_camera.driftLabel}',
-      VoidTerritories.hudLabel(
-        VoidTerritories.territoryAt(_camera.center),
-      ),
+      VoidTerritories.hudLabel(VoidTerritories.territoryAt(_camera.center)),
     ];
-    final sealedCount =
-        (ref.read(mapControllerProvider).valueOrNull ?? const <Echo>[])
-            .where((e) => e.isMine)
-            .length;
-    if (sealedCount > 0) parts.add('$sealedCount SCELLÉES');
-    if (_constellations.isNotEmpty) {
-      parts.add('${_constellations.length} CONSTELLATIONS');
+    if (!compact) {
+      final sealedCount =
+          (ref.read(mapControllerProvider).valueOrNull ?? const <Echo>[])
+              .where((e) => e.isMine)
+              .length;
+      if (sealedCount > 0) parts.add('$sealedCount SCELLÉES');
+      if (_constellations.isNotEmpty) {
+        parts.add('${_constellations.length} CONSTELLATIONS');
+      }
+      final unreadVestiges = _vestiges
+          .where((v) => !_artifacts.isRead(v.id))
+          .length;
+      if (unreadVestiges > 0) parts.add('$unreadVestiges VESTIGES');
     }
-    final unreadVestiges =
-        _vestiges.where((v) => !_artifacts.isRead(v.id)).length;
-    if (unreadVestiges > 0) parts.add('$unreadVestiges VESTIGES');
     // V3.30 — the breath: when no readable light drifts within the
     // eye's field, the sky whispers where to travel.
     final breath = _breathLine;
@@ -233,9 +235,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
     unawaited(
       ref
           .read(audioControllerProvider)
-          .setDroneDepth(VoidTerritories.droneFactor(
-            (_camera.center - VoidTerritories.heart).distance,
-          )),
+          .setDroneDepth(
+            VoidTerritories.droneFactor(
+              (_camera.center - VoidTerritories.heart).distance,
+            ),
+          ),
     );
   }
 
@@ -809,8 +813,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
             // dozens of signals a second, each one rebuilding the
             // whole sky — the zoom eases at 30 fps instead, factors
             // multiplied, anchor kept at the freshest cursor.
-            _wheelFactor *=
-                math.pow(1.0015, -signal.scrollDelta.dy).toDouble();
+            _wheelFactor *= math.pow(1.0015, -signal.scrollDelta.dy).toDouble();
             _wheelAnchor = _screenToWorld(signal.position);
             _wheelDue ??= Timer(const Duration(milliseconds: 32), () {
               _wheelDue = null;
@@ -995,10 +998,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                       camera: _camera,
                                       viewport: _viewport,
                                       now: heavensAt,
-                                      reducedMotion:
-                                          context.wantsReducedMotion,
-                                      echoes: echoes.valueOrNull ??
-                                          const <Echo>[],
+                                      reducedMotion: context.wantsReducedMotion,
+                                      echoes:
+                                          echoes.valueOrNull ?? const <Echo>[],
                                     ),
                                   ),
                                 ),
@@ -1016,83 +1018,88 @@ class _MapScreenState extends ConsumerState<MapScreen>
                               RepaintBoundary(
                                 child: _HeavensClock(
                                   period: const Duration(milliseconds: 250),
-                                  builder: (context, vestigeBeat) =>
-                                      LayoutBuilder(
-                                builder: (context, c) => Stack(
-                                    children: [
-                                      for (final v in vestigesShown)
-                                        Builder(
-                                          builder: (context) {
-                                            final sp = _camera.worldToScreen(
-                                              vestigeAt[v.id] ??
-                                                  Offset(v.offsetX, v.offsetY),
-                                              Size(c.maxWidth, c.maxHeight),
-                                            );
-                                            if (sp.dx < -30 ||
-                                                sp.dx > c.maxWidth + 30 ||
-                                                sp.dy < -30 ||
-                                                sp.dy > c.maxHeight + 30) {
-                                              return const SizedBox.shrink();
-                                            }
-                                            // Shards grow with the eye
-                                            // too (V3.17) — the painter
-                                            // sizes itself to its box.
-                                            final shardSide = 32 *
-                                                ParallaxMath.zoomScale(
-                                                  _camera.zoom,
-                                                );
-                                            return Positioned(
-                                              left: sp.dx - shardSide / 2,
-                                              top: sp.dy - shardSide / 2,
-                                              width: shardSide,
-                                              height: shardSide,
-                                              child: GestureDetector(
-                                                behavior:
-                                                    HitTestBehavior.opaque,
-                                                onTap: () async {
-                                                  await showVestigeSheet(
-                                                    context,
-                                                    vestige: v,
-                                                    memory: _artifacts,
+                                  builder: (context, vestigeBeat) => LayoutBuilder(
+                                    builder: (context, c) => Stack(
+                                      children: [
+                                        for (final v in vestigesShown)
+                                          Builder(
+                                            builder: (context) {
+                                              final sp = _camera.worldToScreen(
+                                                vestigeAt[v.id] ??
+                                                    Offset(
+                                                      v.offsetX,
+                                                      v.offsetY,
+                                                    ),
+                                                Size(c.maxWidth, c.maxHeight),
+                                              );
+                                              if (sp.dx < -30 ||
+                                                  sp.dx > c.maxWidth + 30 ||
+                                                  sp.dy < -30 ||
+                                                  sp.dy > c.maxHeight + 30) {
+                                                return const SizedBox.shrink();
+                                              }
+                                              // Shards grow with the eye
+                                              // too (V3.17) — the painter
+                                              // sizes itself to its box.
+                                              final shardSide =
+                                                  32 *
+                                                  ParallaxMath.zoomScale(
+                                                    _camera.zoom,
                                                   );
-                                                  if (mounted) {
-                                                    setState(() {});
-                                                  }
-                                                },
-                                                child: CustomPaint(
-                                                  painter: VestigePainter(
-                                                    rotation:
-                                                        VestigeMath.rotationAt(
-                                                          v.id,
-                                                          context.wantsReducedMotion
-                                                              ? epoch
-                                                              : DateTime.now(),
-                                                        ),
-                                                    color:
-                                                        _artifacts.isKept(v.id)
-                                                            ? AppColors.ember
-                                                            : AppColors
-                                                                  .pureLight,
-                                                    pulse: 0,
-                                                    read: _artifacts.isRead(
-                                                          v.id,
-                                                        ) &&
-                                                        !_artifacts.isKept(
-                                                          v.id,
-                                                        ),
-                                                    kept: _artifacts.isKept(
-                                                      v.id,
+                                              return Positioned(
+                                                left: sp.dx - shardSide / 2,
+                                                top: sp.dy - shardSide / 2,
+                                                width: shardSide,
+                                                height: shardSide,
+                                                child: GestureDetector(
+                                                  behavior:
+                                                      HitTestBehavior.opaque,
+                                                  onTap: () async {
+                                                    await showVestigeSheet(
+                                                      context,
+                                                      vestige: v,
+                                                      memory: _artifacts,
+                                                    );
+                                                    if (mounted) {
+                                                      setState(() {});
+                                                    }
+                                                  },
+                                                  child: CustomPaint(
+                                                    painter: VestigePainter(
+                                                      rotation:
+                                                          VestigeMath.rotationAt(
+                                                            v.id,
+                                                            context.wantsReducedMotion
+                                                                ? epoch
+                                                                : DateTime.now(),
+                                                          ),
+                                                      color:
+                                                          _artifacts.isKept(
+                                                            v.id,
+                                                          )
+                                                          ? AppColors.ember
+                                                          : AppColors.pureLight,
+                                                      pulse: 0,
+                                                      read:
+                                                          _artifacts.isRead(
+                                                            v.id,
+                                                          ) &&
+                                                          !_artifacts.isKept(
+                                                            v.id,
+                                                          ),
+                                                      kept: _artifacts.isKept(
+                                                        v.id,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                    ],
+                                              );
+                                            },
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
                               ),
                             // The Constellations: exquisite corpses. OPEN =
                             //    contribute a blind line; CLOSED = read it
@@ -1121,7 +1128,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                           // 46 → 68 and viewport-scaled —
                                           // the corpses were the smallest
                                           // things in their own sky.
-                                          final gateSide = 68 *
+                                          final gateSide =
+                                              68 *
                                               ParallaxMath.zoomScale(
                                                 _camera.zoom,
                                               ) *
@@ -1149,7 +1157,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                   closed: cst.isClosed,
                                                   lineCount: cst.lineCount,
                                                   target: cst.target,
-                                                  read: _artifacts.isRead(
+                                                  read:
+                                                      _artifacts.isRead(
                                                         cst.id,
                                                       ) &&
                                                       !_artifacts.isKept(
@@ -1159,9 +1168,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                     cst.id,
                                                   ),
                                                   mine: _artifacts
-                                                      .contributedTo(
-                                                        cst.id,
-                                                      ),
+                                                      .contributedTo(cst.id),
                                                   // Songs read cyan (the waves'
                                                   // instrument), poems white;
                                                   // closed = indigo artifact.
@@ -1193,10 +1200,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                         builder: (context) {
                                           final sp = _camera.worldToScreen(
                                             salonAt[door.id] ??
-                                                Offset(
-                                                  door.seedX,
-                                                  door.seedY,
-                                                ),
+                                                Offset(door.seedX, door.seedY),
                                             Size(c.maxWidth, c.maxHeight),
                                           );
                                           if (sp.dx < -72 ||
@@ -1205,7 +1209,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                               sp.dy > c.maxHeight + 72) {
                                             return const SizedBox.shrink();
                                           }
-                                          final gateSide = 68 *
+                                          final gateSide =
+                                              68 *
                                               ParallaxMath.zoomScale(
                                                 _camera.zoom,
                                               ) *
@@ -1227,16 +1232,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                             width: gateSide,
                                             height: gateSide,
                                             child: GestureDetector(
-                                              behavior:
-                                                  HitTestBehavior.opaque,
+                                              behavior: HitTestBehavior.opaque,
                                               onTap: () =>
                                                   _onSalonDoorTap(door),
                                               child: CustomPaint(
                                                 painter: _SalonAnchorPainter(
                                                   mine: _artifacts
-                                                      .contributedTo(
-                                                        door.id,
-                                                      ),
+                                                      .contributedTo(door.id),
                                                 ),
                                               ),
                                             ),
@@ -1314,8 +1316,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
                         );
                       }
                       final offset = Offset(
-                        (zone.topRight.dx + 10)
-                            .clamp(8.0, _viewport.width - 150),
+                        (zone.topRight.dx + 10).clamp(
+                          8.0,
+                          _viewport.width - 150,
+                        ),
                         (zone.top - 34).clamp(8.0, _viewport.height - 40),
                       );
                       return IgnorePointer(
@@ -1328,7 +1332,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.fade(AppColors.voidBlack, 0.8),
-                              border: Border.all(color: AppColors.hairlineStrong),
+                              border: Border.all(
+                                color: AppColors.hairlineStrong,
+                              ),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -1337,7 +1343,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                 fontFamily: AppFonts.mono,
                                 fontSize: 9,
                                 letterSpacing: 3,
-                                color: AppColors.fade(AppColors.pureLight, 0.75),
+                                color: AppColors.fade(
+                                  AppColors.pureLight,
+                                  0.75,
+                                ),
                               ),
                             ),
                           ),
@@ -1375,7 +1384,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     ListenableBuilder(
                       listenable: _camera,
                       builder: (context, _) => Text(
-                        _readableSilent,
+                        _readableSilent(
+                          compact: MediaQuery.sizeOf(context).width < 430,
+                        ),
                         style: TextStyle(
                           fontFamily: AppFonts.mono,
                           fontSize: 8,
@@ -1385,50 +1396,66 @@ class _MapScreenState extends ConsumerState<MapScreen>
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 0,
-                      runSpacing: 0,
-                      children: [
-                        const _SoundToggle(),
-                        TextButton(
-                          onPressed: () => context.push('/frequencies'),
-                          child: const Text('ONDES'),
-                        ),
-                        TextButton(
-                          onPressed: () => context.push('/impact'),
-                          child: const Text('IMPACT'),
-                        ),
-                        TextButton(
-                          // V3.28 — the organization told at a glance:
-                          // the whole system drawn to scale, every
-                          // named body a departure. V3.30 — a LONG
-                          // press opens the library instead: the
-                          // vestiges, readable at leisure.
-                          onPressed: () => showSkyMapSheet(
-                            context,
-                            eye: _camera.center,
-                            onTravel: (target) {
-                              _glide?.cancel();
-                              _camera.panByWorld(target - _camera.center);
-                              _refreshAfterTravel();
-                            },
-                          ),
-                          onLongPress: () => showVestigeLibrary(
-                            context,
-                            vestiges: _vestiges,
-                            artifacts: _artifacts,
-                            eye: _camera.center,
-                          ),
-                          child: const Text('CARTE'),
-                        ),
-                        TextButton(
-                          // Recentring only: the sky around the heart
-                          // of the ether is already synced (rect dedup)
-                          // — no full refetch, no double call.
-                          onPressed: _recenter,
-                          child: const Text('RECALIBRER'),
-                        ),
-                      ],
+                    // V3.44 — on tablets and desktops the HUD's doors
+                    // gain a breath of size (a finger of tablet
+                    // deserves more than a phone's whisper); phones
+                    // keep the tuned compact line.
+                    Builder(
+                      builder: (context) {
+                        final wide = MediaQuery.sizeOf(context).width >= 700;
+                        final hudDoor = TextStyle(
+                          fontFamily: AppFonts.mono,
+                          fontSize: wide ? 11.0 : 10.0,
+                          letterSpacing: 2.5,
+                          color: AppColors.fade(AppColors.pureLight, 0.55),
+                        );
+                        Widget hudDoorButton(
+                          String label,
+                          VoidCallback? onPressed, {
+                          VoidCallback? onLongPress,
+                        }) => TextButton(
+                          onPressed: onPressed,
+                          onLongPress: onLongPress,
+                          child: Text(label, style: hudDoor),
+                        );
+                        return Wrap(
+                          spacing: 0,
+                          runSpacing: 0,
+                          children: [
+                            const _SoundToggle(),
+                            hudDoorButton(
+                              'ONDES',
+                              () => context.push('/frequencies'),
+                            ),
+                            hudDoorButton(
+                              'IMPACT',
+                              () => context.push('/impact'),
+                            ),
+                            hudDoorButton(
+                              // V3.28 — the organization told at a
+                              // glance. V3.30 — a LONG press opens the
+                              // library: the vestiges, at leisure.
+                              'CARTE',
+                              () => showSkyMapSheet(
+                                context,
+                                eye: _camera.center,
+                                onTravel: (target) {
+                                  _glide?.cancel();
+                                  _camera.panByWorld(target - _camera.center);
+                                  _refreshAfterTravel();
+                                },
+                              ),
+                              onLongPress: () => showVestigeLibrary(
+                                context,
+                                vestiges: _vestiges,
+                                artifacts: _artifacts,
+                                eye: _camera.center,
+                              ),
+                            ),
+                            hudDoorButton('RECALIBRER', _recenter),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -1491,10 +1518,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                             }
                           },
                         ),
-                        SizedBox(
-                          width: wide ? 14 : 0,
-                          height: wide ? 0 : 10,
-                        ),
+                        SizedBox(width: wide ? 14 : 0, height: wide ? 0 : 10),
                         _GateDoor.first(
                           key: const ValueKey('gate-echo'),
                           label: 'FORMULER UN ÉCHO',
@@ -1818,14 +1842,13 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
         // One sky, every screen (V3.25): star lights scale with the
         // viewport like the planets do — on a phone's narrow window
         // raw-pixel stars swallowed the Moon whole.
-        final dScale = ParallaxMath.displayScale(
-          math.min(w, h).toDouble(),
-        );
+        final dScale = ParallaxMath.displayScale(math.min(w, h).toDouble());
 
         // Pass 1 — every visible sight: position, depth, aliveness.
         final sights =
-            <({Echo echo, double z, Offset world, Offset sp, double reception})>[
-        ];
+            <
+              ({Echo echo, double z, Offset world, Offset sp, double reception})
+            >[];
         for (final echo in sorted) {
           // A CAUGHT echo (under a finger) computes from its frozen
           // instant: catching a moving light is not a chase.
@@ -1862,13 +1885,13 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
             final sa = a.echo.isMine
                 ? 2.0
                 : a.echo.id == frozenFor
-                    ? 1.9
-                    : a.reception;
+                ? 1.9
+                : a.reception;
             final sb = b.echo.isMine
                 ? 2.0
                 : b.echo.id == frozenFor
-                    ? 1.9
-                    : b.reception;
+                ? 1.9
+                : b.reception;
             if (sa != sb) return sb.compareTo(sa);
             return a.echo.id.compareTo(b.echo.id);
           });
@@ -1878,8 +1901,8 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
           final score = s.echo.isMine
               ? 2.0
               : s.echo.id == frozenFor
-                  ? 1.9
-                  : s.reception;
+              ? 1.9
+              : s.reception;
           if (score <= 0) break;
           alive.add(s.echo.id);
           if (++taken >= aliveBudget) break;
@@ -1908,8 +1931,7 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
           // other's holds — a star must stay catchable, not smother
           // its neighbours. 1.35 keeps the comfort, loses the plague.
           final hit =
-              ParallaxMath.starDiameter(z) * dScale *
-                  math.min(eyeScale, 1.35) +
+              ParallaxMath.starDiameter(z) * dScale * math.min(eyeScale, 1.35) +
               26;
           final reception = s.reception;
           // Fresh base for this frame: the drift accumulates from HERE.
@@ -1941,11 +1963,9 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
                       echo: echo,
                       z: z,
                       displayScale: dScale,
-                      eyeDistanceAL: (Offset(echo.coordX, echo.coordY) - eye)
-                          .distance,
-                      breathAt: (_reduced || reception <= 0)
-                          ? null
-                          : _breathAt,
+                      eyeDistanceAL:
+                          (Offset(echo.coordX, echo.coordY) - eye).distance,
+                      breathAt: (_reduced || reception <= 0) ? null : _breathAt,
                       // The reception field: near = alive, far = a glimmer
                       // to approach. Sealed anchors ignore it (widget-side).
                       reception: reception,
@@ -2310,17 +2330,14 @@ class _Centered extends StatelessWidget {
 /// corpse's indigo stays on the map (rings, closed artifacts), where
 /// it has contrast — on the void floor it read as mud.
 class _GateDoor extends StatefulWidget {
-  const _GateDoor({
-    super.key,
-    required this.label,
-    required this.onPressed,
-  })  : first = false;
+  const _GateDoor({super.key, required this.label, required this.onPressed})
+    : first = false;
 
   const _GateDoor.first({
     super.key,
     required this.label,
     required this.onPressed,
-  })  : first = true;
+  }) : first = true;
 
   final String label;
   final VoidCallback onPressed;
@@ -2357,11 +2374,18 @@ class _GateDoorState extends State<_GateDoor>
 
   bool _pressed = false;
 
+  /// V3.44 — the desktop hover: the door LIVES under the cursor —
+  /// border and wash brighten, so a pointer knows the way in.
+  bool _hovered = false;
+
   @override
   Widget build(BuildContext context) {
     final dim = _pressed ? 0.72 : 1.0;
+    final hover = _hovered && !_pressed ? 1.0 : 0.0;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
         onTapDown: (_) => setState(() => _pressed = true),
         onTapCancel: () => setState(() => _pressed = false),
@@ -2379,9 +2403,7 @@ class _GateDoorState extends State<_GateDoor>
                 // stretched each door to 770 px tall and the block
                 // swallowed the lower sky's every touch (V3.43). The
                 // symmetric padding centers the label already.
-                constraints: BoxConstraints(
-                  minHeight: widget.first ? 46 : 44,
-                ),
+                constraints: BoxConstraints(minHeight: widget.first ? 46 : 44),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 26,
                   vertical: 14,
@@ -2391,20 +2413,29 @@ class _GateDoorState extends State<_GateDoor>
                   // no star prints through the words.
                   color: widget.first
                       ? Color.alphaBlend(
-                          AppColors.fade(AppColors.teal, 0.10 * dim),
+                          AppColors.fade(
+                            AppColors.teal,
+                            (0.10 + 0.08 * hover) * dim,
+                          ),
                           AppColors.voidBlack,
                         )
                       : Color.alphaBlend(
-                          AppColors.fade(AppColors.pureLight, 0.05 * dim),
+                          AppColors.fade(
+                            AppColors.pureLight,
+                            (0.05 + 0.05 * hover) * dim,
+                          ),
                           AppColors.voidBlack,
                         ),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
                     color: widget.first
-                        ? AppColors.fade(AppColors.teal, 0.85 * dim)
+                        ? AppColors.fade(
+                            AppColors.teal,
+                            (0.85 + 0.15 * hover) * dim,
+                          )
                         : AppColors.fade(
                             AppColors.pureLight,
-                            0.38 * dim,
+                            (0.38 + 0.30 * hover) * dim,
                           ),
                     width: widget.first ? 1.2 : 1,
                   ),
@@ -2600,8 +2631,8 @@ class _GlimmerFieldPainter extends CustomPainter {
     required this.camera,
     required this.now,
     required this.reduced,
-  })  : _center = camera.center,
-        _zoom = camera.zoom;
+  }) : _center = camera.center,
+       _zoom = camera.zoom;
 
   final List<Echo> echoes;
   final TravelCamera camera;
@@ -2635,8 +2666,7 @@ class _GlimmerFieldPainter extends CustomPainter {
       // distance: depth-dimmed, field-dimmed, never breathing.
       final alpha =
           ParallaxMath.opacityFor(z) * (0.30 + 0.70 * reception) * 0.85;
-      final paint = Paint()
-        ..color = AppColors.fade(echo.theme.core, alpha);
+      final paint = Paint()..color = AppColors.fade(echo.theme.core, alpha);
       canvas.drawCircle(
         sp,
         ParallaxMath.coreRadius(z) * 0.8 * eyeScale * dScale,

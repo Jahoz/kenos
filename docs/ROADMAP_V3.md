@@ -1446,6 +1446,50 @@ gauche, aucun test n'assertait le centrage. Le `Center` revient, au
 -dessus du ScrollView exactement comme l'écran constellation — et le
 test 955×480 épingle désormais le titre à moins de 40 px du milieu.
 
+## V3.44 — Tous les supports, civilisés ✅ (livrée 2026-09-15)
+
+L'audit demandé par Hugo après la série des grandes fenêtres :
+qu'est-ce qui reste rugueux, par support ? Six livraisons d'un lot.
+
+- **Le murmure « L'ÉTHER S'EST RAFRAÎCHI » (PWA)** : le service
+  worker sert le dernier bundle INSTALLÉ jusqu'à la fermeture de
+  tous les onglets — un correctif déployé y semblait « pas déployé »
+  (cette confusion a mal jugé deux livraisons le 14/09). La barre
+  (grammaire de la barre d'installation) parle quand un worker plus
+  récent attend : RECHARGER recharge en contournant le cache
+  (`?fresh=`), la frame suivante est le nouveau ciel. Vérifié au
+  chargement, au focus, chaque minute — et `reg.update()` force le
+  navigateur à chercher maintenant (il ne revient de lui-même que
+  toutes les ~24 h).
+- **ÉCHAP, le réflexe universel** : le Miroir se renonce au clavier
+  (jamais pendant le scellement — une pensée en cours de scellement
+  est au-delà du retrait, le geste aussi) ; les feuilles natives
+  (CARTE, plaques) refermées par Échap sont désormais ÉPINGLÉES par
+  test — un cadeau du framework qu'aucun test ne gardait.
+- **La porte vit sous le curseur** : bordure et lavis se vivifient
+  au survol des deux portes (pleine lumière), et les étoiles à
+  portée de réception prennent le curseur main — le pointeur
+  desktop sait enfin ce qui se tient.
+- **Le téléphone plie l'inventaire** : sous 430 px, la ligne
+  silencieuse garde DÉRIVE, le lieu et le souffle (le chemin de la
+  maison et le où-suis-je) — les comptes (SCELLÉES,
+  CONSTELLATIONS, VESTIGES) attendent un ciel plus large. Les puces
+  ＋ passent à 44 px, le plancher du pouce.
+- **La CARTE respire sur tablette** : ≥ 700 px, la mesure du
+  schéma monte à 460 (les anneaux reprennent leur stature) ; les
+  portes du HUD gagnent un cran de taille (11 px) au-dessus de 700.
+
+Gates : +5 tests (`desktop_polish_test` : Échap renonce le Miroir,
+Échap referme la CARTE, le survol vivifie la porte — alpha pleine
+lumière, 390 px plie l'inventaire, la CARTE 460/compacte) ; suite
+complète 353 verts, analyze 0.
+
+Roadmap+ (arbitrages Hugo, hors lot) : **tenir une étoile au
+clavier** (maintenir ESPACE 3 s comme le doigt — accessibilité et
+desktop d'un coup, mais le rituel du hold se touche : à trancher) ·
+**liens profonds du ciel** (un lieu du vide partageable en hash,
+comme les salons `/#/c/<clé>` — généraliser le mécanisme).
+
 ## 4. Règles inchangées (rappel)
 
 
