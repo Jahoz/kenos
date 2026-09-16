@@ -29,6 +29,7 @@ import '../application/celestial_bodies.dart';
 import '../application/kenos_system.dart';
 import '../application/map_controller.dart';
 import '../application/motion_service.dart';
+import '../application/poem_breath.dart';
 import '../application/read_scar_controller.dart';
 import '../application/reception_controller.dart';
 import '../application/travel_camera.dart';
@@ -136,7 +137,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// the whisper points at the nearest LOADED light, else at the
   /// nearest world — the lights gravitate around them by law. A
   /// direction told, never a GPS.
+  ///
+  /// V3.45 — the poem outranks everything: a corpse these hands
+  /// helped write, closed and unread, takes the breath until read —
+  /// the participant can FIND their own artifact in the immensity.
   String? get _breathLine {
+    final poem = PoemBreath.line(_constellations, _artifacts, _camera.center);
+    if (poem != null) return poem;
     final echoes =
         ref.read(mapControllerProvider).valueOrNull ?? const <Echo>[];
     final now = DateTime.now();
@@ -215,6 +222,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
   VoidTerritory? _territory;
   VoidTerritory? _territoryWhispering;
   Timer? _territoryTimer;
+
+  /// V3.45 — the one-time closure whisper (a poem of these hands,
+  /// closed and unread): its constellation id while it shows.
+  String? _closureWhisper;
+  Timer? _closureTimer;
 
   /// The camera's own pulse (V3.35): territories crossed, drone depth.
   void _onEyeTravels() {
@@ -398,8 +410,33 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final repo = ref.read(constellationRepositoryProvider);
       final visible = await repo.fetchVisible();
       if (mounted) setState(() => _constellations = visible);
+      _tellClosedPoems(visible);
     } catch (e) {
       debugPrint('[kenos.constellations] unreachable: $e');
+    }
+  }
+
+  /// V3.45 — the closure whisper: a corpse these hands helped write,
+  /// CLOSED and not yet read, is told ONCE — then the ember orbit and
+  /// the souffle carry it. The sky does not nag: told closures are
+  /// remembered, read ones need no telling at all.
+  void _tellClosedPoems(List<ConstellationMeta> visible) {
+    if (!mounted || _closureWhisper != null) return;
+    for (final cst in visible) {
+      if (!cst.isClosed) continue;
+      if (!_artifacts.contributedTo(cst.id)) continue;
+      if (_artifacts.closureTold(cst.id)) continue;
+      if (_artifacts.isRead(cst.id) || _artifacts.isKept(cst.id)) {
+        // Already lived with: no telling, just remembered.
+        unawaited(_artifacts.markClosureTold(cst.id));
+        continue;
+      }
+      unawaited(_artifacts.markClosureTold(cst.id));
+      setState(() => _closureWhisper = cst.id);
+      _closureTimer = Timer(const Duration(seconds: 7), () {
+        if (mounted) setState(() => _closureWhisper = null);
+      });
+      return; // one poem at a time; the next visit tells the next
     }
   }
 
@@ -512,6 +549,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _eyeWhisperTimer?.cancel();
     _wheelDue?.cancel();
     _territoryTimer?.cancel();
+    _closureTimer?.cancel();
     _camera.removeListener(_onEyeTravels);
     _camera.dispose();
     super.dispose();
@@ -1557,6 +1595,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   child: _TerritoryWhisper(territory: _territoryWhispering!),
                 ),
               ),
+            // The closure whisper (V3.45, once per poem): a corpse
+            // these hands wrote in has closed — the artifact waits,
+            // ember-orbited, and the souffle knows the way. Shares the
+            // territory's slot: the sky speaks one thing at a time.
+            if (_closureWhisper != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 264,
+                child: const IgnorePointer(child: _ClosureWhisper()),
+              ),
           ],
         ),
       ),
@@ -2070,6 +2119,44 @@ class _EyeWhisper extends StatelessWidget {
   }
 }
 
+/// V3.45 — the closure whisper: a poem these hands helped write has
+/// closed. The artifact is public and re-readable; the ember orbit
+/// marks it, the souffle knows the way. One breath, once — then the
+/// sky trusts the traveller's eye.
+class _ClosureWhisper extends StatelessWidget {
+  const _ClosureWhisper();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          "UN POÈME DE TA MAIN S'EST REFERMÉ",
+          style: TextStyle(
+            fontFamily: AppFonts.mono,
+            fontSize: 9,
+            letterSpacing: 4,
+            color: AppColors.fade(AppColors.indigo, 0.85),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Refermé, il t’attend — lisible autant de fois que tu voudras.\n'
+          'L’orbite ember le garde, le souffle en connaît le chemin.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: AppFonts.serifItalic,
+            fontSize: 14,
+            height: 1.7,
+            color: AppColors.fade(AppColors.pureLight, 0.6),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// V3.35 — the crossing breath: a landscape's name, told once per
 /// session. The machine-whisper grammar (mono caps) over one serif
 /// breath — never a notification, never a counter, never a reward.
@@ -2555,13 +2642,17 @@ class _ConstellationPainter extends CustomPainter {
         ),
     );
     if (mine) {
+      // V3.45 — the hand's mark in EMBER (the salon grammar: hands
+      // having given carry the warm orbit), not the ring's own color:
+      // on a closed indigo artifact the old same-hue orbit was
+      // invisible — the participant could not find their own poem.
       canvas.drawCircle(
         center,
-        4.2,
+        kept ? 6.5 : 5.5,
         Paint()
-          ..color = AppColors.fade(color, kept ? 0.7 : 0.45)
+          ..color = AppColors.fade(AppColors.ember, kept ? 0.9 : 0.8)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.1,
+          ..strokeWidth = 1.3,
       );
     }
 

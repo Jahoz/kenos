@@ -1490,6 +1490,43 @@ desktop d'un coup, mais le rituel du hold se touche : à trancher) ·
 **liens profonds du ciel** (un lieu du vide partageable en hash,
 comme les salons `/#/c/<clé>` — généraliser le mécanisme).
 
+## V3.45 — Ta main dans ce corps ✅ (livrée 2026-09-15)
+
+Le signalement de Hugo : « j'ai du mal à repérer une constellation
+fermée dans laquelle j'ai participé… on devrait au moins pouvoir
+voir le résultat du cadavre exquis en tant que participant. L'aube
+l'annonce pourtant. » L'audit a trouvé TROIS trous enchaînés — la
+machinerie existait presque tout entière (mémoire des contributions
+V3.31, lecture du poème refermé pour tous V3.13) mais elle ne se
+voyait pas, ne guidait pas, et l'Aube mentait :
+
+- **Le marqueur était invisible** : l'orbite « mine » faisait 4,2 px
+  à alpha 0,45 DANS LA COULEUR DE L'ANNEAU — sur un artefact fermé
+  indigo, une orbite indigo pâle parmi cent anneaux indigo. Elle
+  passe en **EMBER** (la grammaire des salons : « mains ayant donné »
+  — l'orbite ember), 5,5 px, alpha 0,85 : ta main se lit d'un coup
+  d'œil sur tout ciel.
+- **L'Aube prédisait des fermetures** : son compteur grimpe à la
+  LIGNE (anneau encore ouvert), mais elle disait « s'est refermée ».
+  Désormais elle dit vrai (« Ta main porte des poèmes d'étrangers…
+  l'orbite ember les garde ») — et la fermeture RÉELLE est annoncée
+  par la carte : au chargement des constellations, un poème de ta
+  main refermé et non lu déclenche un murmure une-fois (« UN POÈME
+  DE TA MAIN S'EST REFERMÉ » — refermé, lisible, ember) ; dit =
+  mémoire persistante (`closureTold`), le ciel ne radote pas.
+- **Rien ne menait au poème** : le souffle du HUD prend désormais la
+  priorité du poème — « UN POÈME DE TA MAIN S'EST REFERMÉ — SOUFFLE
+  VERS 3 H » jusqu'à la lecture (`PoemBreath`, pur). Le participant
+  ne chasse plus : il suit le souffle, reconnaît l'ember, tape,
+  relit.
+
+Gates : +4 tests (`poem_breath_test` : le poème de ta main prend le
+souffle — horaire exact ; ouvert/étranger/lu/gardé jamais ; le plus
+proche gagne ; `closureTold` traverse le redémarrage) ; ligne d'Aube
+épinglée réécrite (`awakening_test`) ; suite complète 357 verts,
+analyze 0. Zéro SQL : toute la machinerie est locale, le poème
+refermé reste public et indiscernable pour l'éther.
+
 ## 4. Règles inchangées (rappel)
 
 

@@ -51,7 +51,7 @@ void main() {
       expect(stats.awakeningLines().single, contains('Commence doucement'));
     });
 
-    test('une constellation touchée fait parler l\'Aube (une fois)', () {
+    test('une constellation touchée fait parler l\'Aube (sans mentir)', () {
     final stats = _stats(sent: 2, receptions: 2, seen: 2).copyWith(
       constellationsTouched: 1,
       lastVisitAt: DateTime.now(),
@@ -59,10 +59,15 @@ void main() {
     expect(stats.hasAwakeningToTell, isTrue,
         reason: 'le murmure constellation est un signal d\'aube');
     final lines = stats.awakeningLines();
-    expect(lines.first, contains('constellation'));
-    expect(lines.first, contains('refermée'));
-    expect(lines.last, contains('lisible'),
-        reason: 'V3.13 : le poème refermé est un artefact qui attend');
+    // V3.45 — the Aube no longer claims a closure it cannot know
+    // (the counter climbs at the LINE, not the closing): the truth is
+    // the hand, the ember orbit, and the wait. The closure itself is
+    // told on the map, once, by the closure whisper.
+    expect(lines.first, contains('poèmes'));
+    expect(lines.first, isNot(contains('refermée')),
+        reason: 'touché n\'est pas refermé — l\'Aube ne prédit pas');
+    expect(lines.last, contains('ember'),
+        reason: 'l\'orbite ember est le repère sur la carte');
   });
 
   test('le sas ne se rouvre pas pour ce qui a déjà été vu', () {

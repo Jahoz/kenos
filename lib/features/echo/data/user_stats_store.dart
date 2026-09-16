@@ -85,9 +85,13 @@ class UserStats {
       ];
     }
     if (constellationsTouched > 0) {
+      // V3.45 — the truth only: touched ≠ closed (the counter climbs
+      // at the LINE; the ring closes later, elsewhere). The closure
+      // itself is told on the MAP (once, by the closure whisper) —
+      // here, only that one's hand carries strangers' poems.
       return [
-        'Une constellation que tu as touchée s\'est refermée.',
-        'Le poème des inconnus t\'attend — refermé, lisible.',
+        'Ta main porte des poèmes d\'étrangers.',
+        'Refermés, ils t\'attendront — l\'orbite ember les garde.',
       ];
     }
     if (totalEchosSent > 0) {

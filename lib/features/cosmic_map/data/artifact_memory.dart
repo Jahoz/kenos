@@ -31,6 +31,10 @@ class ArtifactMemory {
   final Map<String, int> _readAt = {};
   final List<KeptArtifact> _kept = [];
   final Set<String> _contributed = {};
+
+  /// V3.45 — corpse closures these hands were already told about
+  /// (the closure whisper speaks ONCE per corpse, then stays quiet).
+  final Set<String> _closureTold = {};
   bool _loaded = false;
 
   /// Loads and prunes (expired read markers die quietly). Call once
@@ -57,6 +61,10 @@ class ArtifactMemory {
         for (final id in (data['contributed'] as List? ?? const []))
           id as String,
       ]);
+      _closureTold.addAll([
+        for (final id in (data['closureTold'] as List? ?? const []))
+          id as String,
+      ]);
     } catch (e) {
       debugPrint('[kenos.artifacts] memory corrupted, starting fresh: $e');
     }
@@ -76,6 +84,18 @@ class ArtifactMemory {
 
   Future<void> markContributed(String id) async {
     _contributed.add(id);
+    await _persist();
+  }
+
+  /// V3.45 — closures already TOLD: when a corpse these hands touched
+  /// closes, the map whispers it ONCE (then the ember orbit and the
+  /// souffle carry it until read). The memory keeps the telling from
+  /// repeating every visit — the sky does not nag.
+  bool closureTold(String id) => _closureTold.contains(id);
+
+  Future<void> markClosureTold(String id) async {
+    if (_closureTold.contains(id)) return;
+    _closureTold.add(id);
     await _persist();
   }
 
@@ -111,6 +131,7 @@ class ArtifactMemory {
         'read': _readAt,
         'kept': [for (final k in _kept) k.toJson()],
         'contributed': _contributed.toList(),
+        'closureTold': _closureTold.toList(),
       }),
     );
   }
