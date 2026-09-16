@@ -1571,6 +1571,57 @@ nouveaux (« Les tout vides sont des anneaux plantés »). Épinglé par
 test (le mot « planté », la mesure d'accord : tout creux). 361
 verts, analyze 0.
 
+## V3.48 — Tenir au clavier ✅ (livrée 2026-09-16)
+
+Le premier des deux arbitrages laissés ouverts par V3.44. La
+friction du rituel est les 3 secondes et le champ de réception —
+JAMAIS le doigt : ESPACE tenue sur une étoile focalisée arme le
+même hold, ESPACE relâchée l'achève (chemin partagé `_startHold`,
+répétition matérielle filtrée par l'état). Tab traverse les étoiles
+vivantes (les scellées ne se focalisent pas — leur geste est une
+affaire de pointeur délibéré), et l'étoile focalisée porte un fin
+anneau teal — le pointeur du clavier, discret par nature. Au-delà
+du champ, le murmure « TROP LOIN » — même loi, même voix. Un
+`debugPrint` de diagnostic errant est parti avec.
+
+Gates : +3 tests (`keyboard_hold_test`, harnais autonome à
+contrôleur espion : ESPACE tenue 3 s consomme ; relâchée à 0,9 s ne
+consume rien ; hors champ jamais) ; suite 368 verts (avec V3.49),
+analyze 0.
+
+## V3.49 — Les liens du ciel ✅ (livrée 2026-09-16)
+
+Le second arbitrage : un lieu du vide partageable en hash, comme
+les salons. `/#/ciel/<x>/<y>` pose l'œil là où l'inconnu se tenait
+(`SkyLink` : format à deux décimales, parse fail-open au cœur sur
+lien forgé, URL construite sur l'origine réelle — la règle salon).
+La plaque des corps nommés porte « PARTAGER CE LIEU » (position
+VIVANTE du corps ; fire-and-forget comme l'audio). Aucun contenu,
+aucune identité : une coordonnée publique, déjà servie à tous.
+
+- **LA LEÇON (une journée entière de diagnostic pour un mensonge
+  d'impression)** : le test de route échouait avec un œil
+  « Offset(0.9, 0.9) » pour une URL « 0.95/0.95 » — après
+  instrumentation croisée, `dart:ui` imprime les Offset à UNE
+  décimale : les valeurs étaient exactes depuis le début. Le VRAI
+  défaut : les pages `_fade` sans clé partagent l'élément Navigator
+  — la carte vivait `didUpdateWidget`, pas `initState`, et le pan
+  n'arrivait jamais. L'arrivée d'un lien se traite désormais dans
+  `didUpdateWidget` (pan + rect + murmure « UN ŒIL T'A CONDUIT
+  ICI »), robuste aux deux montages.
+- Au passage, le test de lecture unique d'`app_flow` est dé-
+  horloge : il épinglait un TOTAL d'étoiles (les voyages du pick
+  fusionnent légitimement des voisines, selon l'heure des orbites) ;
+  il épingle désormais l'ID de l'étoile tenue — la loi, pas le
+  compteur.
+
+Gates : +4 tests (`sky_link_test` : build/parse bornes et fail-open,
+l'URL porte le hash ; la route pose l'œil au pays lointain et
+murmure l'arrivée) ; suite complète 368 verts, analyze 0. Roadmap+
+restant : le seuil d'onboarding pour un lien ciel chez un visiteur
+neuf (aujourd'hui il voit la carte directement — même trou
+préexistant que /mirror).
+
 ## 4. Règles inchangées (rappel)
 
 

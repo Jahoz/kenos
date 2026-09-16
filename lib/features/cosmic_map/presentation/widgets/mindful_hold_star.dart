@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/audio/audio_controller.dart';
@@ -37,6 +38,7 @@ class MindfulHoldStar extends ConsumerStatefulWidget {
     this.breathAt,
     this.reception = 1.0,
     this.eyeDistanceAL,
+    this.focusNode,
   });
 
   final Echo echo;
@@ -62,6 +64,10 @@ class MindfulHoldStar extends ConsumerStatefulWidget {
   /// the reveal, the journey made visible.
   final double? eyeDistanceAL;
 
+  /// V3.48 — the keyboard's anchor. External nodes let callers (and
+  /// tests) own the traversal; null gives the star its own.
+  final FocusNode? focusNode;
+
   /// One far-field whisper per app session (static: survives screen
   /// remounts, like the Awakening's own guard) — the field teaches
   /// itself once, then stays quiet.
@@ -84,11 +90,18 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   bool _busy = false;
   Offset? _downPosition;
 
+  /// V3.48 — the keyboard's anchor: external when the caller (or a
+  /// test) owns the traversal, internal otherwise. The focus RING is
+  /// the traveller's only way to know WHERE the keyboard points.
+  late final FocusNode _focusNode = widget.focusNode ?? FocusNode();
+  bool get _ownsNode => widget.focusNode == null;
+
   Echo get _echo => widget.echo;
 
   @override
   void initState() {
     super.initState();
+    _focusNode.addListener(_onFocusChanged);
     final reduced = platformDisablesAnimations();
     if (_echo.isMine) {
       // The sealed shield rotates slowly — decorative, frozen when the
@@ -120,7 +133,13 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     }
     _beatTimer?.cancel();
     _controller.dispose();
+    _focusNode.removeListener(_onFocusChanged);
+    if (_ownsNode) _focusNode.dispose();
     super.dispose();
+  }
+
+  void _onFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   /// Slow heartbeat while the hold charges — the friction has a pulse.
@@ -221,8 +240,53 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     showHud(context, message);
   }
 
+  /// V3.48 — holding by KEYBOARD: the ritual's friction is the 3 s
+  /// and the reception field, never the finger. SPACE held down on a
+  /// focused star arms the same hold, SPACE released ends it — one
+  /// path with the pointer, accessibility and desktop in one gesture.
+  /// `_spaceDown` filters the hardware key-repeat (held means HELD,
+  /// not re-pressed).
+  bool _keyboardHold = false;
+  bool _spaceDown = false;
+
+  KeyEventResult _onFocusKey(FocusNode node, KeyEvent event) {
+    final isSpace = event.logicalKey == LogicalKeyboardKey.space;
+    if (event is KeyDownEvent && isSpace) {
+      if (_spaceDown) return KeyEventResult.handled; // key repeat
+      _spaceDown = true;
+      if (_busy || _echo.isMine) return KeyEventResult.ignored;
+      if (widget.reception <= 0) {
+        if (!MindfulHoldStar.farWhisperSpoken) {
+          MindfulHoldStar.farWhisperSpoken = true;
+          _toast('TROP LOIN. RAPPROCHE-TOI.');
+        }
+        return KeyEventResult.handled;
+      }
+      _keyboardHold = true;
+      _startHold();
+      return KeyEventResult.handled;
+    }
+    if (event is KeyUpEvent && isSpace) {
+      _spaceDown = false;
+      if (_keyboardHold) {
+        _keyboardHold = false;
+        _onPointerUp();
+      }
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  /// The hold itself, device-agnostic (pointer and keyboard arrive
+  /// here): the star freezes, the charge ring begins.
+  void _startHold() {
+    ref.read(heldEchoIdProvider.notifier).state = _echo.id;
+    KenosHaptics.pulse(KenosPulse.holdStart);
+    _startBeats();
+    _controller.forward();
+  }
+
   void _onPointerDown(PointerDownEvent event) {
-    debugPrint('[diag] down');
     if (_busy) return;
     if (_echo.isMine) {
       // Sealed echo: consult the bottle-in-the-sea signal (never the
@@ -244,10 +308,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     _downPosition = event.position;
     // Caught: the star holds still under the finger — its orbit
     // freezes, the sky keeps breathing around it.
-    ref.read(heldEchoIdProvider.notifier).state = _echo.id;
-    KenosHaptics.pulse(KenosPulse.holdStart);
-    _startBeats();
-    _controller.forward();
+    _startHold();
   }
 
   /// One's own sealed star: a deliberate tap (not a pan, not a drag)
@@ -331,6 +392,22 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
       child: Stack(
         clipBehavior: Clip.none,
         children: [
+          // V3.48 — the keyboard's mark: a thin teal circle tells the
+          // traveller where SPACE would hold. Quiet by design — the
+          // focus is a pointer, not a spotlight.
+          if (_focusNode.hasFocus)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  shape: CircleBorder(
+                    side: BorderSide(
+                      color: AppColors.fade(AppColors.teal, 0.55),
+                      width: 1,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           // The comet tail: momentum made visible (a count of humans,
           // never a content). Decorative — hidden under reduce-motion.
           if (_echo.momentum > 0 && !context.wantsReducedMotion)
@@ -477,25 +554,33 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     return SizedBox(
       width: coreCatch,
       height: coreCatch,
-      // V3.44 — the desktop cursor says what the star is: a pointer
+      // V3.48 — the desktop cursor says what the star is: a pointer
       // over a light WITHIN the reception field promises the hold;
       // beyond it (and over one's own sealed anchors) the cursor
       // stays honest — nothing to press there.
-      child: MouseRegion(
-        cursor: !_echo.isMine && widget.reception > 0
-            ? SystemMouseCursors.click
-            : MouseCursor.defer,
-        child: Listener(
-          onPointerDown: _onPointerDown,
-          onPointerMove: _onPointerMove,
-          onPointerUp: (_) => _onPointerUp(),
-          // Cancel (scroll, system gesture) = release.
-          onPointerCancel: (_) => _onPointerUp(),
-          behavior: HitTestBehavior.opaque,
-          child: OverflowBox(
-            maxWidth: double.infinity,
-            maxHeight: double.infinity,
-            child: visual,
+      child: Focus(
+        focusNode: _focusNode,
+        onKeyEvent: _onFocusKey,
+        // Sealed anchors hold nothing: the keyboard never points at
+        // them (their tap is a deliberate pointer matter).
+        canRequestFocus: !_echo.isMine,
+        skipTraversal: _echo.isMine,
+        child: MouseRegion(
+          cursor: !_echo.isMine && widget.reception > 0
+              ? SystemMouseCursors.click
+              : MouseCursor.defer,
+          child: Listener(
+            onPointerDown: _onPointerDown,
+            onPointerMove: _onPointerMove,
+            onPointerUp: (_) => _onPointerUp(),
+            // Cancel (scroll, system gesture) = release.
+            onPointerCancel: (_) => _onPointerUp(),
+            behavior: HitTestBehavior.opaque,
+            child: OverflowBox(
+              maxWidth: double.infinity,
+              maxHeight: double.infinity,
+              child: visual,
+            ),
           ),
         ),
       ),

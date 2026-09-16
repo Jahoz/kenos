@@ -56,7 +56,12 @@ import 'widgets/vestige_library_sheet.dart';
 /// [_ParallaxStarLayer]) watch the tilt stream — the HUD and the screen
 /// itself never rebuild at sensor rate.
 class MapScreen extends ConsumerStatefulWidget {
-  const MapScreen({super.key});
+  const MapScreen({super.key, this.eye});
+
+  /// V3.49 — where a deep link lands the eye (`/#/ciel/x/y`): the
+  /// sky opens already standing where a stranger stood, and murmurs
+  /// it once. Null: the heart, as always.
+  final Offset? eye;
 
   /// V3.35 — the landscapes already whispered this session (silence
   /// is the default state): resettable by tests, like the star's own
@@ -223,6 +228,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
   VoidTerritory? _territoryWhispering;
   Timer? _territoryTimer;
 
+  /// V3.49 — the eye arrived by a place link: one murmured welcome,
+  /// then the sky keeps quiet about it.
+  bool _landedByLink = false;
+
   /// V3.45 — the one-time closure whisper (a poem of these hands,
   /// closed and unread): its constellation id while it shows.
   String? _closureWhisper;
@@ -312,6 +321,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // V3.49 — a place link stands its ground BEFORE the first frame:
+    // the sky opens where the stranger stood, then loads its own
+    // rect (the default first gaze is skipped by the dedup union).
+    final landed = widget.eye;
+    if (landed != null && landed != const Offset(0.5, 0.5)) {
+      _camera.panByWorld(landed - _camera.center);
+      _landedByLink = true;
+    }
     _loadVestiges();
     _loadConstellations();
     _loadArtifactMemory();
@@ -328,7 +345,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // their own), and the drone learns the birth radius once it lives.
     _camera.addListener(_onEyeTravels);
     _onEyeTravels();
+    if (_landedByLink) {
+      // The first gaze at the landed rect (the default heart rect is
+      // already covered by the union dedup).
+      _refreshAfterTravel();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_landedByLink) showHud(context, 'UN ŒIL T\'A CONDUIT ICI.');
       final audio = ref.read(audioControllerProvider);
       unawaited(() async {
         await audio.ensureStarted();
@@ -556,6 +579,24 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   @override
+  void didUpdateWidget(MapScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // V3.49 — a place link arriving at a LIVING map (the router
+    // reuses the page element when the pages carry no keys): stand
+    // the eye where the stranger stood, load that rect, murmur it.
+    final landed = widget.eye;
+    if (landed != null && landed != oldWidget.eye) {
+      _glide?.cancel();
+      _camera.panByWorld(landed - _camera.center);
+      _landedByLink = true;
+      _refreshAfterTravel();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) showHud(context, 'UN ŒIL T\'A CONDUIT ICI.');
+      });
+    }
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Coming back to the sky: the ether has written meanwhile — the
     // corpses' truth (lines, states) and the shards' daily rotation
@@ -697,7 +738,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
     );
     if (wanderer >= 0) {
       KenosHaptics.pulse(KenosPulse.themePick);
-      await showCelestialPlaque(context, body: celestialWanderers[wanderer]);
+      await showCelestialPlaque(
+        context,
+        body: celestialWanderers[wanderer],
+        sharePosition:
+            CelestialMath.wandererPosition(wanderer, DateTime.now()),
+      );
       return;
     }
     final hit = planetHitTest(
@@ -717,6 +763,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       context,
       body: celestialBodies[hit],
       orbitCount: orbitCount,
+      sharePosition: KenosSystem.planetPosition(hit, DateTime.now()),
       onTravel: () {
         final target = KenosSystem.planetPosition(hit, DateTime.now());
         _glide?.cancel();

@@ -6,6 +6,7 @@ import '../core/constants/app_durations.dart';
 import '../core/utils/motion_preferences.dart';
 import '../features/constellations/presentation/corpse_screen.dart';
 import '../features/constellations/presentation/salon_claim_screen.dart';
+import '../features/cosmic_map/application/sky_link.dart';
 import '../features/cosmic_map/presentation/impact_screen.dart';
 import '../features/cosmic_map/presentation/map_screen.dart';
 import '../features/create_echo/presentation/mirror_screen.dart';
@@ -60,6 +61,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _fade(
           context,
           child: SalonClaimScreen(token: state.pathParameters['token'] ?? ''),
+        ),
+      ),
+      // V3.49 — a PLACE in the void: `/#/ciel/<x>/<y>` lands the eye
+      // where a stranger stood. Coordinates only — the same public
+      // metadata the sky renders; a malformed link opens the heart.
+      GoRoute(
+        path: '/ciel/:x/:y',
+        pageBuilder: (context, state) => _fade(
+          context,
+          child: MapScreen(
+            eye: SkyLink.parse(
+              state.pathParameters['x'],
+              state.pathParameters['y'],
+            ),
+          ),
         ),
       ),
       GoRoute(
