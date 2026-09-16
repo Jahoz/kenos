@@ -366,15 +366,23 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
                   ),
                 ),
                 const SizedBox(height: 22),
-                // V3.29 — a ring tells its true state: a VIRGIN ring (the
-                // gardener's, 0 lines) never pretends strangers wrote in
-                // it (« 0 inconnus ont déjà écrit », the live report);
-                // one writer is singular; several, plural.
+                // V3.29 — a ring tells its true state: a VIRGIN ring
+                // (the gardener's, or a seeder who kept their silence)
+                // never pretends strangers wrote in it. V3.47 — the
+                // virgin ring SAYS WHAT IT IS: planted, waiting for a
+                // first hand — not a disguised creation button. The
+                // word 'planté' carries the whole truth (the Gardener
+                // sows empty rings so a first line always has somewhere
+                // to land; a silent seeder did the same).
                 Text(
                   c.lineCount == 0
                       ? (_isSong
-                            ? 'Personne n\'a encore joué.\nLa première phrase est à toi.'
-                            : 'Personne n\'a encore écrit.\nLa première ligne est à toi.')
+                          ? 'Cet anneau a été planté vide dans l\'éther.\n'
+                              'La première phrase est à toi — elle ouvrira\n'
+                              'la chanson.'
+                          : 'Cet anneau a été planté vide dans l\'éther.\n'
+                              'La première ligne est à toi — elle ouvrira\n'
+                              'le poème.')
                       : _isSong
                       ? (c.lineCount == 1
                             ? '1 inconnu a déjà joué,\nsans jamais entendre le tout.\nTa phrase continuera la sienne.'

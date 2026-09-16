@@ -1557,6 +1557,20 @@ Gates : +3 tests (`poem_measure_test` : la mesure exacte 3/5 avec
 deux pleines trois creuses ; la chanson en phrases ; la main
 avant-dernière sait) ; suite complète 360 verts, analyze 0.
 
+**V3.47 — l'anneau planté dit ce qu'il est (2026-09-15)** : la
+question de Hugo : « pourquoi des constellations cliquables avec
+"Personne n'a encore écrit"… un faux bouton de création ? » Ce ne
+sont pas des leurres — ce sont les anneaux du JARDINIER (V3.14b :
+le cron sème des anneaux OUVERTS pour qu'une première main ait
+toujours où atterrir ; un semeur silencieux plante pareil). Mais
+rien ne le disait : même le gardien du produit y voyait un leurre.
+La feuille d'un anneau vierge dit désormais sa vérité — « Cet
+anneau a été planté vide dans l'éther. La première ligne est à toi
+— elle ouvrira le poème » — et le guide une-fois l'apprend aux
+nouveaux (« Les tout vides sont des anneaux plantés »). Épinglé par
+test (le mot « planté », la mesure d'accord : tout creux). 361
+verts, analyze 0.
+
 ## 4. Règles inchangées (rappel)
 
 

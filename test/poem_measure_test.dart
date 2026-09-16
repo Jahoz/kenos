@@ -66,6 +66,22 @@ void main() {
     expect(find.text('●'), findsNWidgets(3));
     expect(find.text('○'), findsNWidgets(1));
   });
+
+  testWidgets('V3.47 — un anneau vierge dit ce qu\'il est : planté, pas un leurre',
+      (tester) async {
+    await openSheet(tester, lineCount: 0, target: 5);
+    expect(
+      find.textContaining('planté vide dans l\'éther'),
+      findsOneWidget,
+      reason: 'l\'anneau vide s\'explique : le Jardinier sème des anneaux '
+          'neufs pour qu\'une première main ait toujours où atterrir — '
+          'jamais un faux bouton de création',
+    );
+    expect(find.textContaining('La première ligne est à toi'), findsOneWidget);
+    // And the measure agrees: nothing full, everything owed.
+    expect(find.text('●'), findsNothing);
+    expect(find.text('○'), findsNWidgets(5));
+  });
 }
 
 class _SheetHost extends ConsumerWidget {
