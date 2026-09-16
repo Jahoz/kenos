@@ -130,7 +130,10 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
     try {
       previous = await ref
           .read(constellationRepositoryProvider)
-          .peekPrevious(widget.constellation.id, inviteToken: widget.inviteToken);
+          .peekPrevious(
+            widget.constellation.id,
+            inviteToken: widget.inviteToken,
+          );
     } catch (e) {
       if (e.toString().contains('KENOS_')) {
         if (mounted) {
@@ -231,9 +234,9 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
       // One line per stranger per corpse, remembered: the sky will
       // never again OFFER composition to hands that already gave.
       unawaited(
-        ref.read(artifactMemoryProvider).markContributed(
-              widget.constellation.id,
-            ),
+        ref
+            .read(artifactMemoryProvider)
+            .markContributed(widget.constellation.id),
       );
       unawaited(ref.read(localEchoStoreProvider).recordConstellationTouched());
       KenosHaptics.pulse(KenosPulse.seal);
@@ -263,9 +266,9 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
         // The writer deserves the ether's actual reason, never a
         // shrug (the live catch: ALREADY_CONTRIBUTED answered
         // 'refused' to hands the app itself had re-offered).
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(contributeRefusalMessage(e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(contributeRefusalMessage(e))));
       }
     }
   }
@@ -300,224 +303,272 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
   @override
   Widget build(BuildContext context) {
     final c = widget.constellation;
+    // V3.46 — the poem's MEASURE, told before the hand writes: the
+    // stations of the figure, full for the lines already given,
+    // hollow for those the strangers still owe — and the law that
+    // the LAST station closes the poem by itself. Nobody seals a
+    // corpse: it fills, it closes.
+    final t = c.target.clamp(2, 7);
+    final drawn = c.lineCount.clamp(0, t);
+    Widget stationDots() => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < t; i++) ...[
+          if (i > 0) const SizedBox(width: 7),
+          Text(
+            i < drawn ? '●' : '○',
+            style: TextStyle(
+              fontFamily: AppFonts.mono,
+              fontSize: 10,
+              color: i < drawn
+                  ? AppColors.teal
+                  : AppColors.fade(AppColors.pureLight, 0.45),
+            ),
+          ),
+        ],
+      ],
+    );
     return Scaffold(
       backgroundColor: Colors.transparent,
+      // Scrollable (V3.46): the song sheet grew past the window with
+      // the measure block — and the line field deserved the keyboard
+      // fold all along.
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 34),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'UNE LIGNE, À L\'AVEUGLE',
-                style: TextStyle(
-                  fontFamily: AppFonts.mono,
-                  fontSize: 10,
-                  letterSpacing: 4,
-                  color: AppColors.fade(AppColors.teal, 0.85),
-                ),
-              ),
-              const SizedBox(height: 22),
-              // V3.29 — a ring tells its true state: a VIRGIN ring (the
-              // gardener's, 0 lines) never pretends strangers wrote in
-              // it (« 0 inconnus ont déjà écrit », the live report);
-              // one writer is singular; several, plural.
-              Text(
-                c.lineCount == 0
-                    ? (_isSong
-                        ? 'Personne n\'a encore joué.\nLa première phrase est à toi.'
-                        : 'Personne n\'a encore écrit.\nLa première ligne est à toi.')
-                    : _isSong
-                        ? (c.lineCount == 1
-                              ? '1 inconnu a déjà joué,\nsans jamais entendre le tout.\nTa phrase continuera la sienne.'
-                              : '${c.lineCount} inconnus ont déjà joué,\nsans jamais entendre le tout.\nTa phrase continuera la leur.')
-                        : (c.lineCount == 1
-                              ? '1 inconnu a déjà écrit,\nsans jamais voir le tout.\nTa ligne sera la sienne —\nelle ne te reviendra pas.'
-                              : '${c.lineCount} inconnus ont déjà écrit,\nsans jamais voir le tout.\nTa ligne sera la leur —\nelle ne te reviendra pas.'),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: AppFonts.serifItalic,
-                  fontSize: 16,
-                  height: 1.8,
-                  color: AppColors.fade(AppColors.pureLight, 0.75),
-                ),
-              ),
-              const SizedBox(height: 24),
-              // V3.30 — the open ring's own countdown: the ether
-              // forgets an unfinished poem after a week.
-              if (!c.isClosed && c.createdAt != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Text(
-                    _openRemainingLabel(c.createdAt!),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: AppFonts.mono,
-                      fontSize: 8.5,
-                      letterSpacing: 2.5,
-                      color: AppColors.fade(AppColors.pureLight, 0.38),
-                    ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 34),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'UNE LIGNE, À L\'AVEUGLE',
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 10,
+                    letterSpacing: 4,
+                    color: AppColors.fade(AppColors.teal, 0.85),
                   ),
                 ),
-              if (_deadReason != null) ...[
-                // The door already spoke: the truth instead of a
-                // keyboard — nobody types a line the ether has
-                // already refused (the prod wound this closes: an
-                // open ring the purge had reaped, offered all the
-                // same, refused only at the send).
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
+                // The measure: where the poem stands, where it ends.
+                stationDots(),
+                const SizedBox(height: 6),
                 Text(
-                  _deadReason!,
+                  _isSong
+                      ? 'PHRASE ${drawn + 1} SUR $t — LA DERNIÈRE REFERME LA CHANSON'
+                      : 'LIGNE ${drawn + 1} SUR $t — LA DERNIÈRE REFERME LE POÈME',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 8.5,
+                    letterSpacing: 2,
+                    color: AppColors.fade(AppColors.pureLight, 0.55),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                // V3.29 — a ring tells its true state: a VIRGIN ring (the
+                // gardener's, 0 lines) never pretends strangers wrote in
+                // it (« 0 inconnus ont déjà écrit », the live report);
+                // one writer is singular; several, plural.
+                Text(
+                  c.lineCount == 0
+                      ? (_isSong
+                            ? 'Personne n\'a encore joué.\nLa première phrase est à toi.'
+                            : 'Personne n\'a encore écrit.\nLa première ligne est à toi.')
+                      : _isSong
+                      ? (c.lineCount == 1
+                            ? '1 inconnu a déjà joué,\nsans jamais entendre le tout.\nTa phrase continuera la sienne.'
+                            : '${c.lineCount} inconnus ont déjà joué,\nsans jamais entendre le tout.\nTa phrase continuera la leur.')
+                      : (c.lineCount == 1
+                            ? '1 inconnu a déjà écrit,\nsans jamais voir le tout.\nTa ligne sera la sienne —\nelle ne te reviendra pas.'
+                            : '${c.lineCount} inconnus ont déjà écrit,\nsans jamais voir le tout.\nTa ligne sera la leur —\nelle ne te reviendra pas.'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: AppFonts.serifItalic,
-                    fontSize: 17,
+                    fontSize: 16,
                     height: 1.8,
-                    color: AppColors.fade(AppColors.pureLight, 0.82),
+                    color: AppColors.fade(AppColors.pureLight, 0.75),
                   ),
                 ),
-                const SizedBox(height: 30),
-                OutlinedButton(
-                  onPressed: () =>
-                      Navigator.of(context, rootNavigator: true).pop(),
-                  child: const Text('RETOURNER AU VIDE'),
-                ),
-                const SizedBox(height: 16),
-              ] else ...[
-                if (_peeked)
-                  if (_previous != null) ...[
-                    Text(
-                      _isSong ? 'LA PHRASE QUI PRÉCÈDE' : 'LA LIGNE QUI PRÉCÈDE',
-                      style: TextStyle(
-                        fontFamily: AppFonts.mono,
-                        fontSize: 9,
-                        letterSpacing: 3,
-                        color: AppColors.fade(AppColors.teal, 0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    if (_isSong)
-                      TextButton(
-                        onPressed: () {
-                          final phrase = NotePhrase.tryParse(_previous!.text);
-                          if (phrase != null) unawaited(_playPhrase(phrase));
-                        },
-                        child: const Text('ÉCOUTER'),
-                      )
-                    else
-                      Text(
-                        '«${_previous!.text}»',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: AppFonts.serifItalic,
-                          fontSize: 17,
-                          height: 1.6,
-                          color: AppColors.fade(AppColors.pureLight, 0.88),
-                        ),
-                      ),
-                  ] else
-                    Text(
-                      _isSong
-                          ? 'TU OUVRES LA CHANSON — LA PREMIÈRE PHRASE EST À TOI.'
-                          : 'TU OUVRES LE POÈME — LA PREMIÈRE LIGNE EST À TOI.',
+                const SizedBox(height: 24),
+                // V3.30 — the open ring's own countdown: the ether
+                // forgets an unfinished poem after a week.
+                if (!c.isClosed && c.createdAt != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      _openRemainingLabel(c.createdAt!),
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: AppFonts.mono,
                         fontSize: 8.5,
-                        letterSpacing: 2,
-                        color: AppColors.fade(AppColors.teal, 0.6),
+                        letterSpacing: 2.5,
+                        color: AppColors.fade(AppColors.pureLight, 0.38),
                       ),
                     ),
-                const SizedBox(height: 22),
-                if (_isSong) ...[
-                  // The composer: tap the void — the HEIGHT is the note
-                  // (bottom = low, top = crystalline, the waves' own
-                  // mapping), the TIME is the finger's own rhythm
-                  // (every interval between touches is recorded and
-                  // travels sealed with the phrase). The score writes
-                  // itself left → right; the hue follows the phrase's
-                  // progression (the symphonies' palette).
-                  _ComposerPad(
-                    key: _padKey,
-                    onChanged: (phrase) => setState(() => _draft = phrase),
-                    onPlayNote: (note) => unawaited(_playNote(note)),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      TextButton(
-                        onPressed: _draft == null || _draft!.notes.isEmpty
-                            ? null
-                            : () => unawaited(_playPhrase(_draft!)),
-                        child: const Text('ÉCOUTER MA PHRASE'),
-                      ),
-                      TextButton(
-                        onPressed: _draft == null || _draft!.notes.isEmpty
-                            ? null
-                            : () {
-                                _padKey.currentState?.clear();
-                                setState(() => _draft = null);
-                              },
-                        child: const Text('EFFACER'),
-                      ),
-                    ],
-                  ),
-                ] else
-                  TextField(
-                    controller: _input,
-                    autofocus: true,
-                    maxLength: _maxLength,
-                    maxLines: 1,
-                    cursorColor: AppColors.teal,
+                if (_deadReason != null) ...[
+                  // The door already spoke: the truth instead of a
+                  // keyboard — nobody types a line the ether has
+                  // already refused (the prod wound this closes: an
+                  // open ring the purge had reaped, offered all the
+                  // same, refused only at the send).
+                  const SizedBox(height: 16),
+                  Text(
+                    _deadReason!,
                     textAlign: TextAlign.center,
-                    // Without this the send button never wakes: typing
-                    // alone rebuilds nothing (caught by the empty-send
-                    // tests — the void gives nothing, but a line must
-                    // revive the gesture).
-                    onChanged: (_) => setState(() {}),
                     style: TextStyle(
                       fontFamily: AppFonts.serifItalic,
                       fontSize: 17,
-                      color: const Color(0xFFF4F4F6),
+                      height: 1.8,
+                      color: AppColors.fade(AppColors.pureLight, 0.82),
                     ),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      hintText: 'une ligne, puis le vide',
-                      hintStyle: TextStyle(
+                  ),
+                  const SizedBox(height: 30),
+                  OutlinedButton(
+                    onPressed: () =>
+                        Navigator.of(context, rootNavigator: true).pop(),
+                    child: const Text('RETOURNER AU VIDE'),
+                  ),
+                  const SizedBox(height: 16),
+                ] else ...[
+                  if (_peeked)
+                    if (_previous != null) ...[
+                      Text(
+                        _isSong
+                            ? 'LA PHRASE QUI PRÉCÈDE'
+                            : 'LA LIGNE QUI PRÉCÈDE',
+                        style: TextStyle(
+                          fontFamily: AppFonts.mono,
+                          fontSize: 9,
+                          letterSpacing: 3,
+                          color: AppColors.fade(AppColors.teal, 0.6),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      if (_isSong)
+                        TextButton(
+                          onPressed: () {
+                            final phrase = NotePhrase.tryParse(_previous!.text);
+                            if (phrase != null) unawaited(_playPhrase(phrase));
+                          },
+                          child: const Text('ÉCOUTER'),
+                        )
+                      else
+                        Text(
+                          '«${_previous!.text}»',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: AppFonts.serifItalic,
+                            fontSize: 17,
+                            height: 1.6,
+                            color: AppColors.fade(AppColors.pureLight, 0.88),
+                          ),
+                        ),
+                    ] else
+                      Text(
+                        _isSong
+                            ? 'TU OUVRES LA CHANSON — LA PREMIÈRE PHRASE EST À TOI.'
+                            : 'TU OUVRES LE POÈME — LA PREMIÈRE LIGNE EST À TOI.',
+                        style: TextStyle(
+                          fontFamily: AppFonts.mono,
+                          fontSize: 8.5,
+                          letterSpacing: 2,
+                          color: AppColors.fade(AppColors.teal, 0.6),
+                        ),
+                      ),
+                  const SizedBox(height: 22),
+                  if (_isSong) ...[
+                    // The composer: tap the void — the HEIGHT is the note
+                    // (bottom = low, top = crystalline, the waves' own
+                    // mapping), the TIME is the finger's own rhythm
+                    // (every interval between touches is recorded and
+                    // travels sealed with the phrase). The score writes
+                    // itself left → right; the hue follows the phrase's
+                    // progression (the symphonies' palette).
+                    _ComposerPad(
+                      key: _padKey,
+                      onChanged: (phrase) => setState(() => _draft = phrase),
+                      onPlayNote: (note) => unawaited(_playNote(note)),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextButton(
+                          onPressed: _draft == null || _draft!.notes.isEmpty
+                              ? null
+                              : () => unawaited(_playPhrase(_draft!)),
+                          child: const Text('ÉCOUTER MA PHRASE'),
+                        ),
+                        TextButton(
+                          onPressed: _draft == null || _draft!.notes.isEmpty
+                              ? null
+                              : () {
+                                  _padKey.currentState?.clear();
+                                  setState(() => _draft = null);
+                                },
+                          child: const Text('EFFACER'),
+                        ),
+                      ],
+                    ),
+                  ] else
+                    TextField(
+                      controller: _input,
+                      autofocus: true,
+                      maxLength: _maxLength,
+                      maxLines: 1,
+                      cursorColor: AppColors.teal,
+                      textAlign: TextAlign.center,
+                      // Without this the send button never wakes: typing
+                      // alone rebuilds nothing (caught by the empty-send
+                      // tests — the void gives nothing, but a line must
+                      // revive the gesture).
+                      onChanged: (_) => setState(() {}),
+                      style: TextStyle(
                         fontFamily: AppFonts.serifItalic,
-                        fontSize: 16,
-                        color: Color(0x33F4F4F6),
+                        fontSize: 17,
+                        color: const Color(0xFFF4F4F6),
+                      ),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'une ligne, puis le vide',
+                        hintStyle: TextStyle(
+                          fontFamily: AppFonts.serifItalic,
+                          fontSize: 16,
+                          color: Color(0x33F4F4F6),
+                        ),
                       ),
                     ),
+                  const SizedBox(height: 20),
+                  OutlinedButton(
+                    // The void gives nothing to the void: an empty line —
+                    // written or sung — never leaves the device.
+                    onPressed:
+                        _sending ||
+                            (_isSong
+                                ? _draft == null || _draft!.notes.isEmpty
+                                : _input.text.trim().isEmpty)
+                        ? null
+                        : _send,
+                    child: Text(
+                      _sending
+                          ? 'DON…'
+                          : _isSong
+                          ? 'DONNER LA PHRASE'
+                          : 'DONNER LA LIGNE',
+                    ),
                   ),
-                const SizedBox(height: 20),
-                OutlinedButton(
-                  // The void gives nothing to the void: an empty line —
-                  // written or sung — never leaves the device.
-                  onPressed:
-                      _sending ||
-                          (_isSong
-                              ? _draft == null || _draft!.notes.isEmpty
-                              : _input.text.trim().isEmpty)
-                      ? null
-                      : _send,
-                  child: Text(
-                    _sending
-                        ? 'DON…'
-                        : _isSong
-                        ? 'DONNER LA PHRASE'
-                        : 'DONNER LA LIGNE',
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () =>
+                        Navigator.of(context, rootNavigator: true).pop(),
+                    child: const Text('GARDER SON SILENCE'),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () =>
-                      Navigator.of(context, rootNavigator: true).pop(),
-                  child: const Text('GARDER SON SILENCE'),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

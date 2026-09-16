@@ -1527,6 +1527,36 @@ proche gagne ; `closureTold` traverse le redémarrage) ; ligne d'Aube
 analyze 0. Zéro SQL : toute la machinerie est locale, le poème
 refermé reste public et indiscernable pour l'éther.
 
+## V3.46 — La mesure du poème ✅ (livrée 2026-09-15)
+
+La question de Hugo : « on ne sait pas comment la refermer… y a-t-il
+un nombre maximal de lignes ? il faudrait un indicateur. » La réponse
+existait mais était muette : chaque anneau naît avec une CIBLE de 4
+à 7 lignes (tirée au semis) et **se referme de lui-même** quand la
+dernière station se remplit — personne ne scelle un cadavre. La
+figure d'angle d'or montrait les stations (pleines = données,
+creuses = dues), mais la grammaire ne s'expliquait nulle part et
+nulle part n'écrivait « N sur M ».
+
+- **La feuille de contribution dit la mesure** : sous le titre, les
+  stations en rang — `● ● ○ ○ ○` — puis la loi en machine :
+  « LIGNE 3 SUR 5 — LA DERNIÈRE REFERME LE POÈME » (la chanson parle
+  en phrases). La main sait où le poème en est, où il finit, et
+  qu'elle tient la dernière quand c'est le cas.
+- **Le guide une-fois des cadavres** apprend la loi : « les stations
+  creuses disent ce qui reste : la dernière ligne le referme de
+  lui-même » — en gardant la promesse de l'artefact indigo lisible
+  par tous.
+- L'accusé post-ligne disait déjà la fermeture (« LA CONSTELLATION
+  S'EST REFERMÉE ») — il devient cohérent avec ce qui précède.
+- Au passage : la feuille devient scrollable (la feuille-chanson
+  débordait d'un pixel avec la mesure — et le champ méritait le
+  pli clavier depuis toujours).
+
+Gates : +3 tests (`poem_measure_test` : la mesure exacte 3/5 avec
+deux pleines trois creuses ; la chanson en phrases ; la main
+avant-dernière sait) ; suite complète 360 verts, analyze 0.
+
 ## 4. Règles inchangées (rappel)
 
 

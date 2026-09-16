@@ -2233,8 +2233,10 @@ class _CorpseGuide extends StatelessWidget {
             Text(
               'Touche-en un pour donner une ligne, à la suite\n'
               'de celle qui te précède — sans jamais\n'
-              'voir le tout. Refermé en indigo, le poème\n'
-              'devient un artefact : lisible par tous.',
+              'voir le tout. Les stations creuses disent ce qui\n'
+              'reste : la dernière ligne le referme de lui-même.\n'
+              'Refermé en indigo, il devient un artefact : lisible\n'
+              'par tous.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: AppFonts.serifItalic,
