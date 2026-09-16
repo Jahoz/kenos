@@ -11,8 +11,7 @@ import '../features/cosmic_map/presentation/impact_screen.dart';
 import '../features/cosmic_map/presentation/map_screen.dart';
 import '../features/create_echo/presentation/mirror_screen.dart';
 import '../features/echo/data/echo_providers.dart';
-import '../features/frequencies/presentation/frequencies_screen.dart';
-import '../features/observatory/presentation/observatory_screen.dart';
+import '../features/frequencies/presentation/frequencies_screen.dart';import '../features/observatory/presentation/observatory_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 
 /// KENOS routing: fades only, no abrupt screen changes.
@@ -21,6 +20,27 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) {
+      // V3.50 — the LIVE threshold, READ per navigation (never
+      // watched: rebuilding the router mid-session would reset the
+      // whole navigation to the initial location — the threshold
+      // flip happened exactly once, and the sky fell back to the
+      // heart). The immutable boot snapshot cannot learn that the
+      // Seuil was crossed; this state can.
+      final onboarded = ref.read(onboardedProvider);
+      final loc = state.matchedLocation;
+      final atThreshold = loc == '/onboarding';
+      // LE SALON carries its OWN threshold (the rules inside the
+      // claim): the global redirect never touches it.
+      final atSalon = loc.startsWith('/c/');
+      if (!onboarded && !atThreshold && !atSalon) {
+        // A fresh visitor on ANY door — a sky link, the Mirror, a
+        // raw '/space' — meets the rules first, and the door opens
+        // back after ENTRER ('vers': where they were going).
+        return loc == '/'
+            ? '/onboarding'
+            : '/onboarding?vers=${Uri.encodeComponent(state.uri.toString())}';
+      }
+      if (onboarded && atThreshold) return '/space';
       // The root gate decides: threshold (first run) or space.
       if (state.matchedLocation == '/') {
         return boot.hasOnboarded ? '/space' : '/onboarding';
@@ -35,8 +55,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/onboarding',
-        pageBuilder: (context, state) =>
-            _fade(context, child: const OnboardingScreen()),
+        pageBuilder: (context, state) => _fade(
+          context,
+          child: OnboardingScreen(
+            // V3.50 — where the door opens after the rules (a deep
+            // link's destination); the default is the space.
+            returnTo:
+                state.uri.queryParameters['vers'] ?? '/space',
+          ),
+        ),
       ),
       GoRoute(
         path: '/space',

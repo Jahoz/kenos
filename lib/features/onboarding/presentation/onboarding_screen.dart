@@ -103,6 +103,10 @@ class OnboardingScreen extends ConsumerWidget {
                       unawaited(
                         ref.read(localEchoStoreProvider).setOnboarded(),
                       );
+                      // V3.50 — the LIVE threshold flips with the
+                      // store write: the router trusts it, and the
+                      // door opens back where the visitor was going.
+                      ref.read(onboardedProvider.notifier).state = true;
                       onEntered?.call();
                       context.go(returnTo);
                     },

@@ -27,6 +27,16 @@ final bootstrapProvider = Provider<Bootstrap>(
   (ref) => throw UnimplementedError('bootstrapProvider must be overridden'),
 );
 
+/// V3.50 — the LIVE threshold state: born from [Bootstrap] (the
+/// boot-time read of the secure store), then flipped by the Seuil's
+/// ENTRER so the ROUTER can trust it mid-session (bootstrap itself
+/// is immutable by design — the boot snapshot). The redirect guards
+/// every deep link: a fresh visitor meets the rules first, then
+/// lands where they were going.
+final onboardedProvider = StateProvider<bool>(
+  (ref) => ref.watch(bootstrapProvider).hasOnboarded,
+);
+
 /// Secure local store (also overridden in `main` to share the instance
 /// already used during boot).
 final localEchoStoreProvider = Provider<LocalEchoStore>((ref) {

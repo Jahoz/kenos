@@ -1622,6 +1622,33 @@ restant : le seuil d'onboarding pour un lien ciel chez un visiteur
 neuf (aujourd'hui il voit la carte directement — même trou
 préexistant que /mirror).
 
+## V3.50 — Le seuil garde toutes les portes ✅ (livrée 2026-09-16)
+
+Le dernier Roadmap+ fermé : un visiteur NEUF arrivant par un lien
+ciel (ou /mirror, ou un /space nu) voyait la carte directement — le
+seuil des trois règles ne gardait que '/'. Désormais le redirect du
+routeur envoie TOUT visiteur non-entré vers le seuil, avec sa
+destination en paramètre (`?vers=`) : ENTRER ouvre la porte **là où
+il allait**. Le salon reste souverain (son accueil embarque ses
+propres règles — le redirect ne le touche jamais, épingle par
+l'URL).
+
+- **`onboardedProvider` vivant** : né de `bootstrapProvider` (l'instantané
+  du démarrage, immuable par loi), basculé par le ENTRER du seuil.
+  Dérivation par défaut → aucun harnais existant ne bouge.
+- **LA LEÇON (attrapée par le test)** : le routeur ne doit JAMAIS
+  `watch` cet état — sa reconstruction remettait toute la navigation
+  à zéro (l'œil retombait au cœur, le lien perdu). Le redirect le
+  `read` à chaque navigation : frais sans reconstruction.
+- Une fois entré, visiter /onboarding renvoie à l'espace (jamais
+  deux fois le même seuil dans une session) — et chaque lien profond
+  atterrit directement, sans boucle.
+
+Gates : +4 tests (`threshold_route_test` : lien ciel chez un neuf →
+règles → ENTRER atterrit au PAYS LOINTAIN ; le miroir garde son
+seuil ; l'URL du salon jamais détournée ; après ENTRER, aucun
+retour du seuil) ; suite complète 372 verts, analyze 0.
+
 ## 4. Règles inchangées (rappel)
 
 
