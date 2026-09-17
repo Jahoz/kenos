@@ -1910,6 +1910,51 @@ Gates : +2 assertions dans le test existant (`vestige_test` : le
 titre du panneau VESTIGE — CITATION, la coquille introuvable) ; suite
 complète 400 verts, analyze 0. Zéro SQL.
 
+## V3.56 — La lunette du gardien ✅ (livrée 2026-09-17, idée Hugo)
+
+« Améliorer l'observatoire. » Cinq évolutions, un seul axiome tenu :
+l'Observatoire reste CONTENTLESS par construction — le gardien lit
+des formes, jamais un texte, jamais un nom.
+
+- **La fenêtre du spectre** : le registre demande toujours à l'éther
+  son ciel le plus large (90 jours, le plafond du RPC) ; une fenêtre
+  7/30/90 J ne choisit que ce que l'œil voit. Rafraîchissement
+  manuel intact — le gardien demande, l'éther répond.
+- **Les quatre souffles** : un sélecteur habille les barres jumelles
+  des autres compteurs du registre quotidien — ÉCHOS (semés/lus),
+  SOUFFLES (renaissances/traces), CADAVRES (semés/fermés),
+  VOYAGEURS (naissances/lecteurs). Les données vivaient déjà dans le
+  jsonb récupéré ; seul l'œil était étroit. Ferme l'item Roadmap+
+  « graphes multi-métriques » de V3.16.
+- **La lune contre la lune** : les trente derniers jours contre les
+  trente précédents — sommes, flèches, deltas honnêtes (« — » quand
+  le passé fut silence). Arithmétique client pure ; la section se
+  tait tant que l'éther n'a pas donné deux lunes de ciel.
+- **L'âge de la dérive** : une section `census` rejoint
+  `admin_fetch_metrics` — les trois âges des échos dérivants (moins
+  d'un jour, la semaine, plus de sept jours : le ciel est-il fluide
+  ou encombré ?), leurs genres (un écho sans média est un texte),
+  leurs teintes (TEAL/INDIGO/LUMEN portant les couleurs propres de
+  la carte). Redéclaration complète du RPC, zéro table touchée, zéro
+  lecture nouvelle — les clés viennent des vocabulaires fixes, une
+  forme comme partout dans ce registre.
+- **L'archive du gardien** : ARCHIVER LE REGISTRE construit le CSV
+  sur l'appareil (les noms de colonnes du wire, des compteurs sans
+  contenu) et le confie à la feuille système ; le presse-papiers,
+  honnêtement, quand aucune feuille ne vit (la grammaire du partage
+  salon). Ferme l'item Roadmap+ « export CSV » de V3.16. L'éther
+  n'est pas redemandé et ne sait jamais que le registre est parti.
+
+Gates : +6 invariants pgTAP (262 au total : le census existe pour le
+gardien, les trois âges somment le ciel dérivant, chaque écho compté
+une fois par genre, un écho sans média est un texte, les
+vocabulaires fixes jamais dépassés — comparaisons via helpers
+definer, la table echoes étant RLS-fermée) ; suite Dart complète
+412 verts (dont la parité démo : le census démo somme à la dérive,
+comme au serveur), `flutter analyze` 0. Temps réel et notifications
+restent refusés (V3.16) : le guet quotidien (« la braise du guet »)
+et la mémoire des lunes restent Roadmap+.
+
 ## 4. Règles inchangées (rappel)
 
 
