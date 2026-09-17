@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -6,6 +7,7 @@ import 'package:kenos/features/observatory/data/admin_providers.dart';
 import 'package:kenos/features/observatory/data/admin_repository.dart';
 import 'package:kenos/features/observatory/data/local_admin_repository.dart';
 import 'package:kenos/features/observatory/domain/admin_metrics.dart';
+import 'package:kenos/features/observatory/presentation/ledger_csv.dart';
 import 'package:kenos/features/observatory/presentation/observatory_screen.dart';
 
 void main() {
@@ -27,6 +29,28 @@ void main() {
       expect(census.drifting, 0);
       expect(census.mediaKinds, isEmpty);
       expect(census.themes, isEmpty);
+    });
+  });
+
+  group('LedgerCsv (the guardian\'s archive)', () {
+    test('the register wears the wire\'s vocabulary, one row per day', () {
+      final csv = buildLedgerCsv(_metrics().series);
+      final lines = csv.trim().split('\n');
+      expect(lines, hasLength(31)); // the header + thirty days
+      expect(
+        lines.first,
+        'day,echoes_launched,echoes_consumed,echoes_rebound,traces_left,'
+        'reports_filed,corpses_seeded,corpses_closed,lines_contributed,'
+        'new_users,active_readers,salons_seeded,corpses_reported,'
+        'corpses_retracted',
+      );
+      // Only counters and dates — never a text, never a name.
+      expect(lines[1].startsWith('2026-09-'), isTrue);
+      expect(lines[1].contains(RegExp(r'[A-Za-z]')), isFalse);
+    });
+
+    test('an empty sky archives its header, honestly', () {
+      expect(buildLedgerCsv(const []).trim().split('\n'), hasLength(1));
     });
   });
 
@@ -205,6 +229,43 @@ void main() {
       await _cross(tester, 'gardien@kenos.local', 'le long secret');
       expect(find.text('L\'ÂGE DE LA DÉRIVE'), findsNothing);
       expect(find.text('LES FORMES À LA DÉRIVE'), findsNothing);
+    });
+
+    testWidgets('the guardian keeps an archive', (tester) async {
+      // The test VM has no storage to lean on: the path_provider
+      // channel answers with an error, the archive falls back to the
+      // clipboard — the honest degradation, exercised for real.
+      final messenger = tester.binding.defaultBinaryMessenger;
+      // The test VM answers neither storage nor clipboard channels.
+      // Both are mocked so the honest degradation runs to its end;
+      // the platform channel must always reply a JSON-encodable
+      // value (a null reply reads as corrupted to the JSON codec).
+      messenger.setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        (call) async =>
+            throw PlatformException(code: 'unavailable', message: 'test VM'),
+      );
+      messenger.setMockMethodCallHandler(
+        // The platform channel speaks JSON (SystemChannels.platform):
+        // the mock must wear the same codec or every call reads as
+        // corrupted.
+        const MethodChannel('flutter/platform', JSONMethodCodec()),
+        (call) async => switch (call.method) {
+          'Clipboard.setData' => '',
+          'Clipboard.hasStrings' => {'value': false},
+          _ => false,
+        },
+      );
+      await _pump(tester, repo: _FakeRepo());
+      await _cross(tester, 'gardien@kenos.local', 'le long secret');
+      await tester.ensureVisible(find.text('ARCHIVER LE REGISTRE'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('ARCHIVER LE REGISTRE'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('LE REGISTRE EST COPIÉ — IL VIT DANS TON PRESSE-PAPIERS.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a revoked rank closes the sky', (tester) async {

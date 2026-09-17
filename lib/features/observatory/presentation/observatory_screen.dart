@@ -1,6 +1,12 @@
+import 'dart:io' show File;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
@@ -9,6 +15,7 @@ import '../../echo/domain/echo_color_theme.dart';
 import '../data/admin_providers.dart';
 import '../data/admin_repository.dart';
 import '../domain/admin_metrics.dart';
+import 'ledger_csv.dart';
 import 'widgets/guardian_gate_sheet.dart';
 import 'widgets/sector_grid.dart';
 import 'widgets/spectrum_bars.dart';
@@ -39,6 +46,7 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
   String? _gateError;
   bool _gateBusy = false;
   bool _retractBusy = false;
+  bool _archiveBusy = false;
   String? _retractError;
 
   AdminRepository get _repo => ref.read(adminRepositoryProvider);
@@ -188,6 +196,54 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
     } finally {
       if (mounted) setState(() => _retractBusy = false);
     }
+  }
+
+  /// V3.56 — the archive: the ledger leaves as a CSV only the
+  /// guardian keeps. The system sheet when it lives; the clipboard,
+  /// honestly, otherwise (the grammar of the salon's share).
+  Future<void> _archive() async {
+    final metrics = _metrics;
+    if (metrics == null || _archiveBusy) return;
+    setState(() => _archiveBusy = true);
+    final csv = buildLedgerCsv(metrics.series);
+    final now = DateTime.now();
+    final name =
+        'kenos-registre-'
+        '${now.year}'
+        '${now.month.toString().padLeft(2, '0')}'
+        '${now.day.toString().padLeft(2, '0')}.csv';
+    var shared = false;
+    if (!kIsWeb) {
+      try {
+        final dir = await getTemporaryDirectory();
+        final file = await File('${dir.path}/$name').writeAsString(csv);
+        await SharePlus.instance.share(
+          ShareParams(files: [XFile(file.path)], title: name),
+        );
+        shared = true;
+      } catch (_) {
+        // No sheet here: the clipboard carries the register below.
+      }
+    }
+    if (!shared) {
+      try {
+        await Clipboard.setData(ClipboardData(text: csv));
+      } catch (_) {
+        // Even the clipboard refused: the button below still says
+        // the truth of what happened (or did not).
+      }
+    }
+    if (!mounted) return;
+    setState(() => _archiveBusy = false);
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text(
+          shared
+              ? 'LE REGISTRE EST ARCHIVÉ.'
+              : 'LE REGISTRE EST COPIÉ — IL VIT DANS TON PRESSE-PAPIERS.',
+        ),
+      ),
+    );
   }
 
   @override
@@ -414,6 +470,21 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
                   ),
                 ),
                 const SizedBox(height: 26),
+                SizedBox(
+                  height: 48,
+                  child: OutlinedButton(
+                    onPressed: _archiveBusy ? null : _archive,
+                    child: const Text(
+                      'ARCHIVER LE REGISTRE',
+                      style: TextStyle(
+                        fontFamily: AppFonts.mono,
+                        fontSize: 10,
+                        letterSpacing: 3,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 SizedBox(
                   height: 48,
                   child: OutlinedButton(
