@@ -34,6 +34,7 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
   // The ledger always asks the ether for its widest sky (three moons,
   // the RPC's ceiling); the window only chooses what the eye sees.
   int _windowDays = 30;
+  SpectrumLayer _layer = SpectrumLayer.echoes;
   String? _gateError;
   bool _gateBusy = false;
   bool _retractBusy = false;
@@ -349,10 +350,24 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
                     for (final window in const [7, 30, 90]) _windowButton(window),
                   ],
                 ),
+                const SizedBox(height: 8),
+                // The four breaths: which pair of counters the bars
+                // carry. Words only — the ledger stays a shape.
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [
+                    for (final layer in SpectrumLayer.values) _layerButton(layer),
+                  ],
+                ),
                 const SizedBox(height: 10),
                 _legend(),
                 const SizedBox(height: 6),
-                SpectrumBars(series: _windowed(m.series)),
+                SpectrumBars(
+                  series: _windowed(m.series),
+                  layer: _layer,
+                ),
                 const SizedBox(height: 38),
                 _sectionLabel('LA GRILLE DES SECTEURS'),
                 const SizedBox(height: 14),
@@ -550,6 +565,32 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
     );
   }
 
+  /// One of the four breaths. The chosen one speaks; the others wait,
+  /// faded — the same grammar as the windows.
+  Widget _layerButton(SpectrumLayer layer) {
+    final selected = layer == _layer;
+    return TextButton(
+      onPressed: selected ? null : () => setState(() => _layer = layer),
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.fade(
+          AppColors.pureLight,
+          selected ? 0.9 : 0.4,
+        ),
+        minimumSize: const Size(44, 44),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        layer.label,
+        style: TextStyle(
+          fontFamily: AppFonts.mono,
+          fontSize: 8.5,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
+
   /// The visible slice: the last `_windowDays` of what the ether gave.
   List<DailyPoint> _windowed(List<DailyPoint> series) =>
       series.length <= _windowDays
@@ -559,9 +600,9 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
   Widget _legend() => Row(
     mainAxisAlignment: MainAxisAlignment.center,
     children: [
-      _legendDot(AppColors.teal, 'semés'),
+      _legendDot(_layer.firstColor, _layer.firstLabel),
       const SizedBox(width: 18),
-      _legendDot(AppColors.indigo, 'lus'),
+      _legendDot(_layer.secondColor, _layer.secondLabel),
     ],
   );
 

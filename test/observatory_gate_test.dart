@@ -102,6 +102,31 @@ void main() {
       expect(find.text('LE SPECTRE — 90 JOURS'), findsOneWidget);
     });
 
+    testWidgets('the spectrum has four breaths', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(tester, repo: _FakeRepo());
+      await _cross(tester, 'gardien@kenos.local', 'le long secret');
+      // Default breath: the echoes' sowing and reading.
+      expect(find.text('semés'), findsOneWidget);
+      expect(find.text('lus'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('CADAVRES'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('CADAVRES'));
+      await tester.pumpAndSettle();
+      // The legend wears the new breath's words...
+      expect(find.text('fermés'), findsOneWidget);
+      // ...and the bars speak it: corpses seeded 2, closed 1 (the
+      // fake sky's daily truth).
+      expect(
+        find.bySemanticsLabel(
+          RegExp("jusqu'à 2 semés et 1 fermés par jour"),
+        ),
+        findsOneWidget,
+      );
+      handle.dispose();
+    });
+
     testWidgets('a revoked rank closes the sky', (tester) async {
       await _pump(tester, repo: _ForbiddenRepo());
       await _cross(tester, 'gardien@kenos.local', 'le long secret');
