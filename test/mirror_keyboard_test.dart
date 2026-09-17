@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/create_echo/presentation/mirror_screen.dart';
 
@@ -10,7 +11,10 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(const MaterialApp(home: MirrorScreen()));
+    // The Mirror reads the interface voice (V3.52): scope above.
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: MirrorScreen())),
+    );
     await tester.pump();
 
     final field = find.byType(TextField);

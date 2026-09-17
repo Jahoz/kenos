@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/constellations/data/constellation_repository.dart';
 import 'package:kenos/features/constellations/domain/constellation_figure.dart';
@@ -100,21 +101,24 @@ void main() {
 
   testWidgets('le panneau de lecture porte la figure complète au-dessus du poème',
       (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: Builder(
-        builder: (context) => Center(
-          child: OutlinedButton(
-            onPressed: () => showConstellationReading(
-              context,
-              figureId: corpse,
-              lines: const [
-                AssembledLine(number: 1, text: 'première ligne'),
-                AssembledLine(number: 2, text: 'deuxième ligne'),
-                AssembledLine(number: 3, text: 'troisième ligne'),
-                AssembledLine(number: 4, text: 'quatrième ligne'),
-              ],
+    // The reading panel reads the interface voice (V3.52): scope above.
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
+        home: Builder(
+          builder: (context) => Center(
+            child: OutlinedButton(
+              onPressed: () => showConstellationReading(
+                context,
+                figureId: corpse,
+                lines: const [
+                  AssembledLine(number: 1, text: 'première ligne'),
+                  AssembledLine(number: 2, text: 'deuxième ligne'),
+                  AssembledLine(number: 3, text: 'troisième ligne'),
+                  AssembledLine(number: 4, text: 'quatrième ligne'),
+                ],
+              ),
+              child: const Text('OUVRIR'),
             ),
-            child: const Text('OUVRIR'),
           ),
         ),
       ),

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/cosmic_map/presentation/widgets/reveal_sheet.dart';
 import 'package:kenos/features/echo/domain/echo.dart';
@@ -29,8 +30,12 @@ Echo _echo(EchoMediaKind kind) => Echo(
     );
 
 Future<void> _open(WidgetTester tester, Echo echo) async {
+  // The panel reads the interface voice (V3.52): it lives above a
+  // ProviderScope like every real mount.
   await tester.pumpWidget(
-    MaterialApp(home: Scaffold(body: RevealPanel(echo: echo))),
+    ProviderScope(
+      child: MaterialApp(home: Scaffold(body: RevealPanel(echo: echo))),
+    ),
   );
   await tester.pump(const Duration(milliseconds: 200));
 }

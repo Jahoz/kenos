@@ -15,6 +15,7 @@ import '../../../../core/constants/app_durations.dart';
 import '../../../../core/constants/app_fonts.dart';
 import '../../../../core/haptics/kenos_haptics.dart';
 import '../../../../core/utils/motion_preferences.dart';
+import '../../../../core/voice/kenos_voice.dart';
 import '../../../../core/widgets/anonymity_warning.dart';
 import '../../../../core/widgets/ether_dissolve.dart';
 import '../../../../core/widgets/hud.dart';
@@ -97,6 +98,9 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
   bool _reporting = false;
   bool _previewPlaying = false;
 
+  /// V3.52 — the first journey's voice (stable for the session).
+  KenosVoice get _voice => ref.read(voiceProvider);
+
   static const _maxTrace = 140;
 
   @override
@@ -138,7 +142,15 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
       );
       unawaited(_mediaPlayer.play());
     } catch (_) {
-      if (mounted) showHud(context, 'LE FRAGMENT SONORE S\'EST DISSOUT.');
+      if (mounted) {
+        showHud(
+          context,
+          _voice.pick(
+            'LE FRAGMENT SONORE S\'EST DISSOUT.',
+            'THE SOUND FRAGMENT HAS DISSOLVED.',
+          ),
+        );
+      }
     }
   }
 
@@ -164,7 +176,10 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         .excerptPreviewUrl(excerpt.id);
     if (!mounted) return;
     if (url == null) {
-      showHud(context, 'LA VOIX RESTE HORS DU VIDE.');
+      showHud(
+        context,
+        _voice.pick('LA VOIX RESTE HORS DU VIDE.', 'THE VOICE STAYS OUTSIDE THE VOID.'),
+      );
       return;
     }
     try {
@@ -172,7 +187,12 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
       unawaited(_mediaPlayer.play());
       setState(() => _previewPlaying = true);
     } catch (_) {
-      if (mounted) showHud(context, 'LA VOIX S\'EST DISSOUTE.');
+      if (mounted) {
+        showHud(
+          context,
+          _voice.pick('LA VOIX S\'EST DISSOUTE.', 'THE VOICE HAS DISSOLVED.'),
+        );
+      }
     }
   }
 
@@ -195,9 +215,13 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     if (url == null) return;
     try {
       final opened = await launchUrl(url, mode: LaunchMode.externalApplication);
-      if (!opened && mounted) showHud(context, 'LA PORTE EST FERMÉE.');
+      if (!opened && mounted) {
+        showHud(context, _voice.pick('LA PORTE EST FERMÉE.', 'THE DOOR IS SHUT.'));
+      }
     } catch (_) {
-      if (mounted) showHud(context, 'LA PORTE EST FERMÉE.');
+      if (mounted) {
+        showHud(context, _voice.pick('LA PORTE EST FERMÉE.', 'THE DOOR IS SHUT.'));
+      }
     }
   }
 
@@ -361,11 +385,16 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
   /// the choice visible at the moment it can still be unmade.
   Future<bool> _warnAnonymity() => warnAnonymityLoss(
         context,
-        body:
-            'Ce que tu t\'apprêtes à laisser semble porter des données '
-            'personnelles.\n\nElles dériveront avec ta trace, lisibles '
-            'par un inconnu — et l\'anonymat, lui, ne revient pas.',
-        takeBackLabel: 'REPRENDRE MA LIGNE',
+        voice: _voice,
+        body: _voice.pick(
+          'Ce que tu t\'apprêtes à laisser semble porter des données '
+          'personnelles.\n\nElles dériveront avec ta trace, lisibles '
+          'par un inconnu — et l\'anonymat, lui, ne revient pas.',
+          'What you are about to leave seems to carry personal data.\n\nThey '
+          'will drift with your trace, readable by one stranger — and '
+          'anonymity never comes back.',
+        ),
+        takeBackLabel: _voice.pick('REPRENDRE MA LIGNE', 'TAKE MY LINE BACK'),
       );
 
   /// CARE MOMENT — non-blocking: the cry belongs to the one who wrote
@@ -388,37 +417,42 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'AVANT QUE ÇA DÉRIVE',
-                  style: TextStyle(
-                    fontFamily: AppFonts.mono,
-                    fontSize: 10,
-                    letterSpacing: 3,
-                    color: AppColors.fade(AppColors.teal, 0.85),
-                  ),
+              Text(
+                _voice.pick('AVANT QUE ÇA DÉRIVE', 'BEFORE IT DRIFTS'),
+                style: TextStyle(
+                  fontFamily: AppFonts.mono,
+                  fontSize: 10,
+                  letterSpacing: 3,
+                  color: AppColors.fade(AppColors.teal, 0.85),
                 ),
-                const SizedBox(height: 16),
-                Text(
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _voice.pick(
                   'Ce que tu écris semble porter une vraie douleur.\n\n'
                   'Tu n\'es pas obligé·e de la porter seul·e — le 3114 '
                   '(national, 24h/24, gratuit) écoute, et le 15 en urgence.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: AppFonts.serifItalic,
-                    fontSize: 14,
-                    height: 1.75,
-                    color: AppColors.fade(AppColors.pureLight, 0.75),
-                  ),
+                  'What you are writing seems to carry real pain.\n\nYou do '
+                  'not have to carry it alone — 3114 (France, 24/7, free) '
+                  'listens; call 15 in an emergency.',
                 ),
-                const SizedBox(height: 20),
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: const Text('LAISSER LA TRACE'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: AppFonts.serifItalic,
+                  fontSize: 14,
+                  height: 1.75,
+                  color: AppColors.fade(AppColors.pureLight, 0.75),
                 ),
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('REPRENDRE MA LIGNE'),
-                ),
+              ),
+              const SizedBox(height: 20),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(_voice.pick('LAISSER LA TRACE', 'LEAVE THE TRACE')),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(_voice.pick('REPRENDRE MA LIGNE', 'TAKE MY LINE BACK')),
+              ),
               ],
             ),
           ),
@@ -472,7 +506,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'SIGNALER L\'ÉCHO',
+                  _voice.pick('SIGNALER L\'ÉCHO', 'REPORT THE ECHO'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: AppFonts.mono,
@@ -483,7 +517,10 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Choisis ce qui demande notre attention.',
+                  _voice.pick(
+                    'Choisis ce qui demande notre attention.',
+                    'Choose what needs our attention.',
+                  ),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: AppFonts.serifItalic,
@@ -495,11 +532,13 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
                 for (final reason in EchoReportReason.values)
                   TextButton(
                     onPressed: () => Navigator.of(dialogContext).pop(reason),
-                    child: Text(reason.label),
+                    child: Text(
+                      _voice.isEnglish ? reason.labelEn : reason.label,
+                    ),
                   ),
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('ANNULER'),
+                  child: Text(_voice.pick('ANNULER', 'CANCEL')),
                 ),
               ],
             ),
@@ -518,14 +557,20 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
       showHud(
         context,
         recorded
-            ? 'SIGNALEMENT TRANSMIS.'
-            : 'CET ÉCHO A DÉJÀ ÉTÉ SIGNALÉ.',
+            ? _voice.pick('SIGNALEMENT TRANSMIS.', 'REPORT FILED.')
+            : _voice.pick(
+                'CET ÉCHO A DÉJÀ ÉTÉ SIGNALÉ.',
+                'YOU ALREADY REPORTED THIS ECHO.',
+              ),
       );
     } catch (error) {
       if (!mounted) return;
       final message = error is KenosException
           ? error.hudMessage
-          : 'L\'ÉTHER EST INJOIGNABLE.';
+          : _voice.pick(
+              'L\'ÉTHER EST INJOIGNABLE.',
+              'THE ETHER IS UNREACHABLE.',
+            );
       showHud(context, message);
     } finally {
       if (mounted) setState(() => _reporting = false);
@@ -639,7 +684,10 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
       children: [
         const SizedBox(height: 20),
         Text(
-          'ÉCHO INTERCEPTÉ — LECTURE UNIQUE',
+          _voice.pick(
+            'ÉCHO INTERCEPTÉ — LECTURE UNIQUE',
+            'ECHO INTERCEPTED — ONE SINGLE READING',
+          ),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: AppFonts.mono,
@@ -668,7 +716,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
           Center(
             child: _clarity.value < 1.0
                 ? Text(
-                    'SIGNAL BROUILLÉ…',
+                    _voice.pick('SIGNAL BROUILLÉ…', 'SIGNAL SCRAMBLED…'),
                     style: TextStyle(
                       fontFamily: AppFonts.mono,
                       fontSize: 9,
@@ -706,10 +754,12 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
                       _PreviewListen(
                         playing: _previewPlaying,
                         onToggled: _togglePreview,
+                        voice: _voice,
                       ),
                     _ExcerptDoor(
                       excerpt: widget.echo.excerpt!,
                       onOpened: _openDoor,
+                      voice: _voice,
                     ),
                   ],
                 ),
@@ -723,7 +773,10 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: Text(
-              'PARTI DE ${widget.echo.origin.toUpperCase()}',
+              _voice.pick(
+                'PARTI DE ${widget.echo.origin.toUpperCase()}',
+                'SET OUT FROM ${widget.echo.origin.toUpperCase()}',
+              ),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: AppFonts.mono,
@@ -734,7 +787,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
             ),
           ),
         Text(
-          'DÉRIVÉ PENDANT ${_liveDrift()}',
+          _voice.pick('DÉRIVÉ PENDANT ${_liveDrift()}', 'DRIFTED FOR ${_liveDrift()}'),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: AppFonts.mono,
@@ -746,7 +799,10 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         if (widget.eyeDistanceAL != null && widget.eyeDistanceAL! > 0.01) ...[
           const SizedBox(height: 8),
           Text(
-            'LANCÉ À ${widget.eyeDistanceAL!.toStringAsFixed(2)} A.L. DE TON ŒIL',
+            _voice.pick(
+              'LANCÉ À ${widget.eyeDistanceAL!.toStringAsFixed(2)} A.L. DE TON ŒIL',
+              'LAUNCHED ${widget.eyeDistanceAL!.toStringAsFixed(2)} LY FROM YOUR EYE',
+            ),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: AppFonts.mono,
@@ -795,10 +851,13 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         ),
         // The Sling-Shot rides ABOVE the fold: relaunching is a first
         // class gesture, never buried under a scroll (V3.12c).
-        _SlingRail(onRebound: _rebound, onAshes: _ashes),
+        _SlingRail(onRebound: _rebound, onAshes: _ashes, voice: _voice),
         const SizedBox(height: 10),
         Text(
-          'GLISSE VERS LE HAUT POUR RELANCER — VERS LE BAS POUR LES CENDRES',
+          _voice.pick(
+            'GLISSE VERS LE HAUT POUR RELANCER — VERS LE BAS POUR LES CENDRES',
+            'SWIPE UP TO RELAUNCH — DOWN FOR THE ASHES',
+          ),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: AppFonts.mono,
@@ -811,7 +870,9 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         TextButton(
           onPressed: _reporting ? null : _reportEcho,
           child: Text(
-            _reporting ? 'TRANSMISSION…' : 'SIGNALER',
+            _reporting
+                ? _voice.pick('TRANSMISSION…', 'TRANSMITTING…')
+                : _voice.pick('SIGNALER', 'REPORT'),
             style: TextStyle(
               fontFamily: AppFonts.mono,
               fontSize: 8,
@@ -831,8 +892,14 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         const SizedBox(height: 30),
         ScrambleText(
           text: rebounded
-              ? 'relancée vers l\'éther pour un autre inconnu'
-              : 'l\'éther a refusé le rebond — repose un instant',
+              ? _voice.pick(
+                  'relancée vers l\'éther pour un autre inconnu',
+                  'released back into the ether for another stranger',
+                )
+              : _voice.pick(
+                  'l\'éther a refusé le rebond — repose un instant',
+                  'the ether refused the rebound — rest a moment',
+                ),
           resolve: true,
           duration: const Duration(milliseconds: 900),
           textAlign: TextAlign.center,
@@ -855,7 +922,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
       children: [
         const SizedBox(height: 20),
         Text(
-          'L\'ÉCHO S\'EST DISSOUS.',
+          _voice.pick('L\'ÉCHO S\'EST DISSOUS.', 'THE ECHO HAS DISSOLVED.'),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: AppFonts.mono,
@@ -866,7 +933,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         ),
         const SizedBox(height: 30),
         Text(
-          'As-tu été touché ?',
+          _voice.pick('As-tu été touché ?', 'Were you touched?'),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: AppFonts.serifItalic,
@@ -876,8 +943,12 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         ),
         const SizedBox(height: 14),
         Text(
-          'Laisse une trace — une ligne, sans réponse possible.\n'
-          'Celui qui a lancé cet écho ne saura jamais qui tu es.',
+          _voice.pick(
+            'Laisse une trace — une ligne, sans réponse possible.\n'
+            'Celui qui a lancé cet écho ne saura jamais qui tu es.',
+            'Leave a trace — one line, no reply possible.\n'
+            'Whoever released this echo will never know who you are.',
+          ),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: AppFonts.mono,
@@ -891,7 +962,11 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         // panel closes — what was opened outside the void stays outside.
         if (widget.echo.excerpt != null) ...[
           const SizedBox(height: 18),
-          _ExcerptDoor(excerpt: widget.echo.excerpt!, onOpened: _openDoor),
+          _ExcerptDoor(
+            excerpt: widget.echo.excerpt!,
+            onOpened: _openDoor,
+            voice: _voice,
+          ),
         ],
         const SizedBox(height: 26),
         TextField(
@@ -902,15 +977,18 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
           cursorColor: AppColors.teal,
           textAlign: TextAlign.center,
           style: secretStyle(fontSize: 16),
-          decoration: const InputDecoration(
-            counterStyle: TextStyle(
+          decoration: InputDecoration(
+            counterStyle: const TextStyle(
               fontFamily: AppFonts.mono,
               fontSize: 9,
               letterSpacing: 2,
               color: Color(0x55F4F4F6),
             ),
             border: InputBorder.none,
-            hintText: 'une ligne, puis le vide',
+            hintText: _voice.pick(
+              'une ligne, puis le vide',
+              'one line, then the void',
+            ),
             hintStyle: TextStyle(
               fontFamily: AppFonts.serifItalic,
               fontSize: 16,
@@ -921,12 +999,12 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         const SizedBox(height: 22),
         OutlinedButton(
           onPressed: _sendTrace,
-          child: const Text('ENVOYER LA TRACE'),
+          child: Text(_voice.pick('ENVOYER LA TRACE', 'SEND THE TRACE')),
         ),
         const SizedBox(height: 10),
         TextButton(
           onPressed: _leave,
-          child: const Text('REPARTIR SANS RIEN'),
+          child: Text(_voice.pick('REPARTIR SANS RIEN', 'LEAVE WITH NOTHING')),
         ),
         const SizedBox(height: 16),
       ],
@@ -938,7 +1016,10 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
       children: [
         const SizedBox(height: 30),
         ScrambleText(
-          text: 'trace larguée dans le vide',
+          text: _voice.pick(
+            'trace larguée dans le vide',
+            'a trace released into the void',
+          ),
           resolve: true,
           duration: const Duration(milliseconds: 900),
           textAlign: TextAlign.center,
@@ -1042,10 +1123,15 @@ class _StableHash {
 /// already does (up = the phoenix, down = the ashes). A gesture nobody
 /// knows about is an invisible feature; the rail speaks it.
 class _SlingRail extends StatelessWidget {
-  const _SlingRail({required this.onRebound, required this.onAshes});
+  const _SlingRail({
+    required this.onRebound,
+    required this.onAshes,
+    this.voice = KenosVoice.french,
+  });
 
   final VoidCallback onRebound;
   final VoidCallback onAshes;
+  final KenosVoice voice;
 
   @override
   Widget build(BuildContext context) {
@@ -1054,9 +1140,12 @@ class _SlingRail extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: onRebound,
           icon: const Icon(Icons.north_east, size: 14, color: AppColors.teal),
-          label: const Text(
-            'RELANCER — UN AUTRE LA LIRA',
-            style: TextStyle(
+          label: Text(
+            voice.pick(
+              'RELANCER — UN AUTRE LA LIRA',
+              'RELAUNCH — ANOTHER WILL READ IT',
+            ),
+            style: const TextStyle(
               fontFamily: AppFonts.mono,
               fontSize: 9,
               letterSpacing: 2,
@@ -1072,9 +1161,9 @@ class _SlingRail extends StatelessWidget {
         TextButton.icon(
           onPressed: onAshes,
           icon: const Icon(Icons.south, size: 12, color: AppColors.roseText),
-          label: const Text(
-            'CENDRES — FINIR MAINTENANT',
-            style: TextStyle(
+          label: Text(
+            voice.pick('CENDRES — FINIR MAINTENANT', 'ASHES — END IT NOW'),
+            style: const TextStyle(
               fontFamily: AppFonts.mono,
               fontSize: 8,
               letterSpacing: 2,
@@ -1095,10 +1184,15 @@ class _SlingRail extends StatelessWidget {
 /// The URL is always canonical (built from strictly parsed parts) —
 /// never the raw reference.
 class _ExcerptDoor extends StatelessWidget {
-  const _ExcerptDoor({required this.excerpt, required this.onOpened});
+  const _ExcerptDoor({
+    required this.excerpt,
+    required this.onOpened,
+    this.voice = KenosVoice.french,
+  });
 
   final EchoExcerpt excerpt;
   final VoidCallback onOpened;
+  final KenosVoice voice;
 
   @override
   Widget build(BuildContext context) {
@@ -1127,7 +1221,10 @@ class _ExcerptDoor extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'La porte s\'ouvre hors du vide — elle ne reviendra pas.',
+          voice.pick(
+            'La porte s\'ouvre hors du vide — elle ne reviendra pas.',
+            'The door opens outside the void — it will not return.',
+          ),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: AppFonts.serifItalic,
@@ -1143,9 +1240,9 @@ class _ExcerptDoor extends StatelessWidget {
             size: 13,
             color: AppColors.teal,
           ),
-          label: const Text(
-            'OUVRIR LA PORTE',
-            style: TextStyle(
+          label: Text(
+            voice.pick('OUVRIR LA PORTE', 'OPEN THE DOOR'),
+            style: const TextStyle(
               fontFamily: AppFonts.mono,
               fontSize: 9,
               letterSpacing: 2,
@@ -1171,10 +1268,15 @@ class _ExcerptDoor extends StatelessWidget {
 /// toggle (30 s Spotify preview) that lives only while the echo lives.
 /// It never auto-plays: the ear asks, like the eye holds.
 class _PreviewListen extends StatelessWidget {
-  const _PreviewListen({required this.playing, required this.onToggled});
+  const _PreviewListen({
+    required this.playing,
+    required this.onToggled,
+    this.voice = KenosVoice.french,
+  });
 
   final bool playing;
   final VoidCallback onToggled;
+  final KenosVoice voice;
 
   @override
   Widget build(BuildContext context) {
@@ -1188,7 +1290,10 @@ class _PreviewListen extends StatelessWidget {
             color: AppColors.teal,
           ),
           label: Text(
-            playing ? 'TAIRE LA VOIX' : 'ÉCOUTER UN FRAGMENT',
+            voice.pick(
+              playing ? 'TAIRE LA VOIX' : 'ÉCOUTER UN FRAGMENT',
+              playing ? 'SILENCE THE VOICE' : 'LISTEN TO A FRAGMENT',
+            ),
             style: const TextStyle(
               fontFamily: AppFonts.mono,
               fontSize: 8.5,
@@ -1202,7 +1307,10 @@ class _PreviewListen extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'LA VOIX EMPRUNTÉE BRÛLE AVEC L\'ÉCHO',
+          voice.pick(
+            'LA VOIX EMPRUNTÉE BRÛLE AVEC L\'ÉCHO',
+            'THE BORROWED VOICE BURNS WITH THE ECHO',
+          ),
           style: TextStyle(
             fontFamily: AppFonts.mono,
             fontSize: 7.5,

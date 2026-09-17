@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/constellations/data/constellation_repository.dart';
 import 'package:kenos/features/constellations/presentation/constellation_sheets.dart';
@@ -113,24 +114,27 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(MaterialApp(
-        home: Builder(
-          builder: (context) => Center(
-            child: OutlinedButton(
-              onPressed: () => showConstellationReading(
-                context,
-                figureId: 'long-poem',
-                lines: [
-                  for (var i = 1; i <= 7; i++)
-                    AssembledLine(
-                      number: i,
-                      text:
-                          'ligne $i — le poème des étrangers s\'étire longuement '
-                          'à travers le ciel de personne, encore et encore.',
-                    ),
-                ],
+      // The reading panel reads the interface voice (V3.52): scope above.
+      await tester.pumpWidget(ProviderScope(
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Center(
+              child: OutlinedButton(
+                onPressed: () => showConstellationReading(
+                  context,
+                  figureId: 'long-poem',
+                  lines: [
+                    for (var i = 1; i <= 7; i++)
+                      AssembledLine(
+                        number: i,
+                        text:
+                            'ligne $i — le poème des étrangers s\'étire longuement '
+                            'à travers le ciel de personne, encore et encore.',
+                      ),
+                  ],
+                ),
+                child: const Text('OUVRIR'),
               ),
-              child: const Text('OUVRIR'),
             ),
           ),
         ),

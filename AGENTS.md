@@ -30,5 +30,10 @@
   from the backlog). Never blur the two — never call a vestige "an
   artefact".
 - Demo mode (no Supabase credentials) must keep exact backend semantics.
-- UI copy stays in **French** (product language); code, comments, commits
-  in **English**.
+- **UI voice (V3.52 law)**: French is **canonical** — everywhere, for
+  everyone. The WEB build serves English to the first journey only
+  (Seuil, two gates, Mirror, revelation, artifact reading —
+  `KenosVoice.pick(fr, en)` at each call site) when the traveller's
+  platform speaks English; native and everything else stay French.
+  **User content is NEVER translated** — the voice dresses the doors,
+  never the confidences. Code, comments, commits in **English**.

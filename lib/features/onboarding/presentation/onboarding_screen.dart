@@ -9,6 +9,7 @@ import '../../../core/audio/audio_providers.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/constants/app_layout.dart';
+import '../../../core/voice/kenos_voice.dart';
 import '../../echo/data/echo_providers.dart';
 
 /// The threshold: three rules, one gate. Passed once, never seen again.
@@ -24,6 +25,9 @@ class OnboardingScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // V3.52 — the first journey speaks the traveller's English when
+    // the web build meets it; French stays canonical everywhere else.
+    final voice = ref.watch(voiceProvider);
     return Scaffold(
       backgroundColor: AppColors.voidBlack,
       body: SafeArea(
@@ -51,7 +55,10 @@ class OnboardingScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'se vider de soi-même',
+                    voice.pick(
+                      'se vider de soi-même',
+                      'emptying of oneself',
+                    ),
                     style: TextStyle(
                       fontFamily: AppFonts.serifItalic,
                       fontSize: 15,
@@ -59,30 +66,43 @@ class OnboardingScreen extends ConsumerWidget {
                     ),
                   ),
                   const Spacer(flex: 2),
-                  const _Rule(
+                  _Rule(
                     index: '01',
-                    text:
-                        'Aucun profil, aucun nom, aucune trace. '
-                        'Ce que tu lances ici n\'a pas de retour.',
+                    text: voice.pick(
+                      'Aucun profil, aucun nom, aucune trace. '
+                      'Ce que tu lances ici n\'a pas de retour.',
+                      'No profile, no name, no trail. What you release '
+                      'here never comes back.',
+                    ),
                   ),
-                  const _Rule(
+                  _Rule(
                     index: '02',
-                    text:
-                        'Chaque écho ne peut être lu qu\'une seule fois, '
-                        'par une seule personne — jamais toi.',
+                    text: voice.pick(
+                      'Chaque écho ne peut être lu qu\'une seule fois, '
+                      'par une seule personne — jamais toi.',
+                      'Each echo can be read only once, by one single '
+                      'stranger — never you.',
+                    ),
                   ),
-                  const _Rule(
+                  _Rule(
                     index: '03',
-                    text:
-                        'Rien à gagner. Pas de likes, pas de commentaires. '
-                        'On donne pour se libérer.',
+                    text: voice.pick(
+                      'Rien à gagner. Pas de likes, pas de commentaires. '
+                      'On donne pour se libérer.',
+                      'Nothing to win. No likes, no comments. '
+                      'We give to let go.',
+                    ),
                   ),
                   const Spacer(flex: 2),
                   // The reception field taught in one line: the bottle
                   // in the sea is searched for, at distance.
                   Text(
-                    'POUR LIRE UN ÉCHO : MAINTIEN SON ÉTOILE TROIS SECONDES, '
-                    'À PORTÉE DE TON ŒIL.',
+                    voice.pick(
+                      'POUR LIRE UN ÉCHO : MAINTIEN SON ÉTOILE TROIS SECONDES, '
+                      'À PORTÉE DE TON ŒIL.',
+                      'TO READ AN ECHO: HOLD ITS STAR FOR THREE SECONDS, '
+                      'WITHIN YOUR EYE\'S REACH.',
+                    ),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: AppFonts.mono,
@@ -110,7 +130,7 @@ class OnboardingScreen extends ConsumerWidget {
                       onEntered?.call();
                       context.go(returnTo);
                     },
-                    child: const Text('ENTRER'),
+                    child: Text(voice.pick('ENTRER', 'ENTER')),
                   ),
                   const SizedBox(height: 18),
                 ],

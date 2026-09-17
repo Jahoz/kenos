@@ -14,6 +14,7 @@ import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/constants/app_layout.dart';
 import '../../../core/haptics/kenos_haptics.dart';
+import '../../../core/voice/kenos_voice.dart';
 import '../../../core/widgets/anonymity_warning.dart';
 import '../../../core/widgets/hud.dart';
 import '../../../core/widgets/scramble_text.dart';
@@ -39,6 +40,10 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
   final FocusNode _focus = FocusNode();
 
   static const _maxLength = 280;
+
+  /// V3.52 — the first journey's voice, resolved once (a session never
+  /// changes its tongue mid-thought).
+  KenosVoice get _voice => ref.read(voiceProvider);
 
   EchoColorTheme _theme = EchoColorTheme.teal;
   bool _sealing = false;
@@ -109,7 +114,13 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
       );
       if (!mounted) return;
       if (!draft.isWithinLimit) {
-        showHud(context, 'CE FRAGMENT VISUEL EST TROP LOURD.');
+        showHud(
+          context,
+          _voice.pick(
+            'CE FRAGMENT VISUEL EST TROP LOURD.',
+            'THIS VISUAL FRAGMENT IS TOO HEAVY.',
+          ),
+        );
         return;
       }
       // One attachment per echo: a fragment replaces the door.
@@ -119,7 +130,15 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
       });
     } catch (e) {
       debugPrint('[kenos.mirror] image pick failed: $e');
-      if (mounted) showHud(context, 'LE FRAGMENT VISUEL REFUSE DE VENIR.');
+      if (mounted) {
+        showHud(
+          context,
+          _voice.pick(
+            'LE FRAGMENT VISUEL REFUSE DE VENIR.',
+            'THE VISUAL FRAGMENT REFUSES TO COME.',
+          ),
+        );
+      }
     }
   }
 
@@ -147,7 +166,13 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
       if (!mounted) return;
       if (!mounted) return;
       if (!draft.isWithinLimit) {
-        showHud(context, 'CE FRAGMENT SONORE EST TROP LOURD.');
+        showHud(
+          context,
+          _voice.pick(
+            'CE FRAGMENT SONORE EST TROP LOURD.',
+            'THIS SOUND FRAGMENT IS TOO HEAVY.',
+          ),
+        );
         return;
       }
       setState(() {
@@ -160,7 +185,10 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     final hasPermission = await _recorder.hasPermission();
     if (!mounted) return;
     if (!hasPermission) {
-      showHud(context, 'LE MICROPHONE RESTE FERMÉ.');
+      showHud(
+        context,
+        _voice.pick('LE MICROPHONE RESTE FERMÉ.', 'THE MICROPHONE STAYS SHUT.'),
+      );
       return;
     }
     await _recorder.start(
@@ -230,7 +258,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'UNE PORTE CULTURELLE',
+                  _voice.pick('UNE PORTE CULTURELLE', 'A CULTURAL DOOR'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: AppFonts.mono,
@@ -241,9 +269,14 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Colle un lien Spotify ou YouTube.\n'
-                  'Il voyagera scellé avec ton écho — seul le lecteur '
-                  'unique pourra l\'ouvrir.',
+                  _voice.pick(
+                    'Colle un lien Spotify ou YouTube.\n'
+                    'Il voyagera scellé avec ton écho — seul le lecteur '
+                    'unique pourra l\'ouvrir.',
+                    'Paste a Spotify or YouTube link.\n'
+                    'It will travel sealed with your echo — only the single '
+                    'reader will open it.',
+                  ),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: AppFonts.serifItalic,
@@ -276,11 +309,11 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: () => sealTheDoor(dialogContext),
-                  child: const Text('SCELLER LA PORTE'),
+                  child: Text(_voice.pick('SCELLER LA PORTE', 'SEAL THE DOOR')),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('ANNULER'),
+                  child: Text(_voice.pick('ANNULER', 'CANCEL')),
                 ),
               ],
             ),
@@ -296,7 +329,13 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
       // Only scold when something was actually pasted: cancelling an
       // empty dialog is renouncing, not failing.
       if (pasted.isNotEmpty) {
-        showHud(context, 'CE LIEN N\'EST NI SPOTIFY NI YOUTUBE.');
+        showHud(
+          context,
+          _voice.pick(
+            'CE LIEN N\'EST NI SPOTIFY NI YOUTUBE.',
+            'THIS LINK IS NEITHER SPOTIFY NOR YOUTUBE.',
+          ),
+        );
       }
       return;
     }
@@ -316,11 +355,19 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     if (!_piiAcknowledged && PiiGuard.carriesIdentity(_input.text)) {
       final proceed = await warnAnonymityLoss(
         context,
-        body:
-            'Ce que tu t\'apprêtes à sceller semble porter des données '
-            'personnelles.\n\nUn seul inconnu les lira — mais il suffit : '
-            'l\'anonymat, lui, ne revient pas.',
-        takeBackLabel: 'REPRENDRE MA PENSÉE',
+        voice: _voice,
+        body: _voice.pick(
+          'Ce que tu t\'apprêtes à sceller semble porter des données '
+          'personnelles.\n\nUn seul inconnu les lira — mais il suffit : '
+          'l\'anonymat, lui, ne revient pas.',
+          'What you are about to seal seems to carry personal data.\n\nOne '
+          'single stranger will read it — but that is enough: anonymity '
+          'never comes back.',
+        ),
+        takeBackLabel: _voice.pick(
+          'REPRENDRE MA PENSÉE',
+          'TAKE MY THOUGHT BACK',
+        ),
       );
       if (!mounted || !proceed) return;
       _piiAcknowledged = true;
@@ -359,10 +406,16 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
       String message;
       if (e is KenosException) {
         message = e.code == KenosErrorCode.rateLimit
-            ? 'REVIENS DANS 20 SECONDES.\nFRICTION COMME VERTU.'
+            ? _voice.pick(
+                'REVIENS DANS 20 SECONDES.\nFRICTION COMME VERTU.',
+                'COME BACK IN 20 SECONDS.\nFRICTION AS A VIRTUE.',
+              )
             : e.hudMessage;
       } else {
-        message = 'L\'ÉTHER A REFUSÉ L\'ÉCHO.';
+        message = _voice.pick(
+          'L\'ÉTHER A REFUSÉ L\'ÉCHO.',
+          'THE ETHER REFUSED THE ECHO.',
+        );
       }
       showHud(context, message);
     }
@@ -426,7 +479,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                                 Row(
                                   children: [
                                     Text(
-                                      'MIROIR',
+                                      _voice.pick('MIROIR', 'MIRROR'),
                                       style: TextStyle(
                                         fontFamily: AppFonts.mono,
                                         fontSize: 9,
@@ -442,13 +495,18 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                                       onPressed: _sealing
                                           ? null
                                           : () => Navigator.of(context).pop(),
-                                      child: const Text('RENONCER'),
+                                      child: Text(
+                                        _voice.pick('RENONCER', 'RENOUNCE'),
+                                      ),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  'La formulation du vide',
+                                  _voice.pick(
+                                    'La formulation du vide',
+                                    'The shaping of the void',
+                                  ),
                                   style: TextStyle(
                                     fontFamily: AppFonts.serifItalic,
                                     fontSize: 26,
@@ -475,6 +533,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                                   _intentionCaption(),
                                   const SizedBox(height: 8),
                                   _ThemePicker(
+                                    voice: _voice,
                                     selected: _theme,
                                     enabled: !_sealing,
                                     onChanged: (t) =>
@@ -482,7 +541,9 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    _theme.emotionHint,
+                                    _voice.isEnglish
+                                        ? _theme.emotionHintEn
+                                        : _theme.emotionHint,
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontFamily: AppFonts.serifItalic,
@@ -532,7 +593,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
 
   /// The intention's quiet caption.
   Widget _intentionCaption() => Text(
-    "L'INTENTION",
+    _voice.pick("L'INTENTION", 'THE INTENTION'),
     style: TextStyle(
       fontFamily: AppFonts.mono,
       fontSize: 8,
@@ -567,16 +628,20 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
             maxLength: _maxLength,
             cursorColor: AppColors.teal,
             style: secretStyle(fontSize: 18),
-            decoration: const InputDecoration(
-              counterStyle: TextStyle(
+            decoration: InputDecoration(
+              counterStyle: const TextStyle(
                 fontFamily: AppFonts.mono,
                 fontSize: 9,
                 letterSpacing: 2,
                 color: Color(0x66F4F4F6),
               ),
               border: InputBorder.none,
-              hintText:
-                  'Écris ce que tu ne dis nulle part.\nPersonne ne saura. Même pas toi, après.',
+              hintText: _voice.pick(
+                'Écris ce que tu ne dis nulle part.\n'
+                'Personne ne saura. Même pas toi, après.',
+                'Write what you say nowhere else.\n'
+                'No one will know. Not even you, after.',
+              ),
               hintStyle: TextStyle(
                 fontFamily: AppFonts.serifItalic,
                 fontSize: 18,
@@ -596,8 +661,12 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Une seule chose peut voyager avec elle, '
-          'scellée sous la même clé :',
+          _voice.pick(
+            'Une seule chose peut voyager avec elle, '
+            'scellée sous la même clé :',
+            'One single thing may travel with it, '
+            'sealed under the same key:',
+          ),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: AppFonts.serifItalic,
@@ -608,6 +677,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
         ),
         const SizedBox(height: 8),
         _AttachRow(
+          voice: _voice,
           recording: _recording,
           hasFragment: _media != null,
           hasDoor: _excerpt != null,
@@ -632,6 +702,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
       ],
       if (_excerpt != null) ...[
         _ExcerptDraftChip(
+          voice: _voice,
           excerpt: _excerpt!,
           onRemoved: () => setState(() => _excerpt = null),
         ),
@@ -645,6 +716,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
   Widget _originSection() {
     if (_sealing) return const SizedBox.shrink();
     return _OriginLine(
+      voice: _voice,
       label: _origin,
       resolving: _originResolving,
       unreachable: _originUnreachable,
@@ -676,7 +748,9 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     ),
     onPressed: _canSend ? _sealAndLaunch : null,
     child: Text(
-      _sealing ? 'SCELLEMENT…' : 'SCELLER & LANCER',
+      _sealing
+          ? _voice.pick('SCELLEMENT…', 'SEALING…')
+          : _voice.pick('SCELLER & LANCER', 'SEAL & RELEASE'),
       style: TextStyle(
         fontFamily: AppFonts.mono,
         fontSize: 10.5,
@@ -690,7 +764,10 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
   );
 
   Widget _sealWhisper() => Text(
-    'UNE SEULE LECTURE POSSIBLE — AUCUN RETOUR — AUCUNE TRACE',
+    _voice.pick(
+      'UNE SEULE LECTURE POSSIBLE — AUCUN RETOUR — AUCUNE TRACE',
+      'ONE SINGLE READING — NO RETURN — NO TRACE',
+    ),
     textAlign: TextAlign.center,
     style: TextStyle(
       fontFamily: AppFonts.mono,
@@ -725,13 +802,14 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
             _intentionCaption(),
             const SizedBox(height: 10),
             _ThemePicker(
+              voice: _voice,
               selected: _theme,
               enabled: !_sealing,
               onChanged: (t) => setState(() => _theme = t),
             ),
             const SizedBox(height: 8),
             Text(
-              _theme.emotionHint,
+              _voice.isEnglish ? _theme.emotionHintEn : _theme.emotionHint,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: AppFonts.serifItalic,
@@ -763,6 +841,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
 /// the name, never inside it.
 class _AttachRow extends StatelessWidget {
   const _AttachRow({
+    required this.voice,
     required this.recording,
     required this.hasFragment,
     required this.hasDoor,
@@ -771,6 +850,7 @@ class _AttachRow extends StatelessWidget {
     required this.onDoor,
   });
 
+  final KenosVoice voice;
   final bool recording;
   final bool hasFragment;
   final bool hasDoor;
@@ -835,15 +915,15 @@ class _AttachRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          chip('IMAGE', onImage, hasFragment),
+          chip(voice.pick('IMAGE', 'IMAGE'), onImage, hasFragment),
           const SizedBox(width: 8),
           chip(
-            recording ? 'ARRÊTER' : 'SON',
+            voice.pick(recording ? 'ARRÊTER' : 'SON', recording ? 'STOP' : 'SOUND'),
             onSound,
             recording || hasFragment,
           ),
           const SizedBox(width: 8),
-          chip('PORTE', onDoor, hasDoor),
+          chip(voice.pick('PORTE', 'DOOR'), onDoor, hasDoor),
         ],
       ),
     );
@@ -856,12 +936,14 @@ class _AttachRow extends StatelessWidget {
 /// and no label length can ever overflow it.
 class _OriginLine extends StatelessWidget {
   const _OriginLine({
+    required this.voice,
     required this.label,
     required this.resolving,
     required this.unreachable,
     required this.onToggle,
   });
 
+  final KenosVoice voice;
   final String? label;
   final bool resolving;
   final bool unreachable;
@@ -871,12 +953,18 @@ class _OriginLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final named = label != null;
     final text = resolving
-        ? 'NOMMER L\'ORIGINE…'
+        ? voice.pick('NOMMER L\'ORIGINE…', 'NAMING THE ORIGIN…')
         : named
-        ? 'PARTI DE ${label!.toUpperCase()} — TOUCHER POUR RETIRER'
+        ? voice.pick(
+            'PARTI DE ${label!.toUpperCase()} — TOUCHER POUR RETIRER',
+            'SET OUT FROM ${label!.toUpperCase()} — TOUCH TO REMOVE',
+          )
         : unreachable
-        ? 'ORIGINE INJOIGNABLE — TOUCHER POUR RÉESSAYER'
-        : 'NOMMER L\'ORIGINE';
+        ? voice.pick(
+            'ORIGINE INJOIGNABLE — TOUCHER POUR RÉESSAYER',
+            'ORIGIN UNREACHABLE — TOUCH TO TRY AGAIN',
+          )
+        : voice.pick('NOMMER L\'ORIGINE', 'NAME THE ORIGIN');
     return GestureDetector(
       onTap: resolving ? null : onToggle,
       behavior: HitTestBehavior.opaque,
@@ -905,10 +993,15 @@ class _ThemePicker extends StatelessWidget {
     required this.selected,
     required this.onChanged,
     this.enabled = true,
+    this.voice = KenosVoice.french,
   });
 
   final EchoColorTheme selected;
   final ValueChanged<EchoColorTheme> onChanged;
+  final KenosVoice voice;
+
+  String _labelOf(EchoColorTheme theme) =>
+      voice.isEnglish ? theme.emotionLabelEn : theme.emotionLabel;
   final bool enabled;
 
   /// V3.42 — the intentions as PILLS: the choice is the echo's
@@ -926,7 +1019,7 @@ class _ThemePicker extends StatelessWidget {
           for (final theme in EchoColorTheme.selectable) ...[
             Semantics(
               button: true,
-              label: theme.emotionLabel,
+              label: _labelOf(theme),
               child: TextButton(
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -955,7 +1048,7 @@ class _ThemePicker extends StatelessWidget {
                       }
                     : null,
                 child: Text(
-                  theme.emotionLabel,
+                  _labelOf(theme),
                   style: TextStyle(
                     fontFamily: AppFonts.mono,
                     fontSize: 10,
@@ -979,10 +1072,15 @@ class _ThemePicker extends StatelessWidget {
 /// leads, one-tap removal. The author sees the door they give — the
 /// reader will have to hold for it.
 class _ExcerptDraftChip extends StatelessWidget {
-  const _ExcerptDraftChip({required this.excerpt, required this.onRemoved});
+  const _ExcerptDraftChip({
+    required this.excerpt,
+    required this.onRemoved,
+    this.voice = KenosVoice.french,
+  });
 
   final EchoExcerpt excerpt;
   final VoidCallback onRemoved;
+  final KenosVoice voice;
 
   String get _origin => switch (excerpt.kind) {
     EchoExcerptKind.song => 'open.spotify.com',
@@ -1055,7 +1153,10 @@ class _ExcerptDraftChip extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'SCELLÉE AVEC L\'ÉCHO — LE LECTEUR SEUL L\'OUVRIRA',
+                  voice.pick(
+                    'SCELLÉE AVEC L\'ÉCHO — LE LECTEUR SEUL L\'OUVRIRA',
+                    'SEALED WITH THE ECHO — ONLY THE READER OPENS IT',
+                  ),
                   style: TextStyle(
                     fontFamily: AppFonts.mono,
                     fontSize: 7.5,
@@ -1067,7 +1168,7 @@ class _ExcerptDraftChip extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Retirer la porte',
+            tooltip: voice.pick('Retirer la porte', 'Remove the door'),
             onPressed: onRemoved,
             icon: const Icon(Icons.close, size: 18),
             color: AppColors.fade(AppColors.pureLight, 0.6),
