@@ -19,7 +19,9 @@
 //        export VESTIGE_AI_URL=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
 //        export VESTIGE_AI_KEY=AIza...
 //        export VESTIGE_AI_MODEL=gemini-2.5-flash
-//   3. make db-sow-vestiges SOW_ARGS='--count 20'
+//   3. PROD, à la demande (V3.30b) :
+//        make prod-vestiges-sow SOW_ARGS='--count 20'   # staging à relire
+//        make prod-vestiges-emit                        # sème en prod
 //
 // Alternatives (also free, OpenAI-compatible):
 //   Groq   — https://api.groq.com/openai/v1/chat/completions (model: llama-3.3-70b-versatile)
@@ -305,7 +307,13 @@ Map<String, dynamic>? guard(
 
 // ── SQL emission ───────────────────────────────────────────────────────
 
-String sqlEscape(String s) => s.replaceAll("'", "''");
+/// Dollar-quoted literal: safe for every apostrophe, semicolon and
+/// em-dash the French voice carries. Only a literal `$$` inside would
+/// close the quote early — spaced apart (vanishingly rare in prose).
+String dq(String s) {
+  final body = s.replaceAll('\$\$', '\$ \$');
+  return '\$\$$body\$\$';
+}
 
 String emitSql(List<Map<String, dynamic>> shards) {
   final rnd = DateTime.now().millisecondsSinceEpoch;
@@ -313,8 +321,13 @@ String emitSql(List<Map<String, dynamic>> shards) {
 -- KENOS — AI-sown vestiges (generated $rnd, verified pass included).
 -- Review the staging file before trusting this blindly: the verifier
 -- drops and fixes, but the human stays the final gate.
-begin;
-insert into public.kenos_vestiges (id, kind, text, source, pos_x, pos_y) values
+-- PROD path: make prod-vestiges-emit. ONE statement, dollar-quoted
+-- (the Management API splitter honours \$\$ and never splits inside
+-- it), NO wrapping transaction (filemulti statements run in separate
+-- sessions), locale pinned to the French canon, and the conflict
+-- target is the REAL primary key (id, locale) — the old
+-- "on conflict (id)" never matched any constraint and could not run.
+insert into public.kenos_vestiges (id, locale, kind, text, source, pos_x, pos_y) values
 ''');
   for (var i = 0; i < shards.length; i++) {
     final s = shards[i];
@@ -325,15 +338,14 @@ insert into public.kenos_vestiges (id, kind, text, source, pos_x, pos_y) values
     final y = (0.5 + r * _sin(angle)).clamp(0.05, 0.95);
     final tail = i == shards.length - 1 ? '' : ',';
     buf.write(
-        "('ai-$rnd-${i.toString().padLeft(2, '0')}', "
-        "'${sqlEscape(s['kind']!)}', "
-        "'${sqlEscape(s['text']!)}', "
-        "'${sqlEscape(s['source']!)}', "
+        "('ai-$rnd-${i.toString().padLeft(2, '0')}', 'fr', "
+        '${dq(s['kind']!)}, '
+        '${dq(s['text']!)}, '
+        '${dq(s['source']!)}, '
         '${x.toStringAsFixed(3)}, ${y.toStringAsFixed(3)})$tail\n');
   }
   buf.write('''
-on conflict (id) do nothing;
-commit;
+on conflict (id, locale) do nothing;
 ''');
   return buf.toString();
 }
@@ -367,15 +379,31 @@ Future<void> _run(List<String> args) async {
   var theme = themes[DateTime.now().millisecond % themes.length];
   var emit = false;
   var seedFile = 'supabase/snippets/curate_vestiges.sql';
+  String? corpusJson;
   for (var i = 0; i < args.length; i++) {
     switch (args[i]) {
       case '--count': count = int.parse(args[++i]);
       case '--theme': theme = args[++i];
       case '--seed-file': seedFile = args[++i];
+      case '--corpus-json': corpusJson = args[++i];
       case '--emit': emit = true;
     }
   }
-  final corpus = loadExisting(seedFile);
+  var corpus = loadExisting(seedFile);
+  // V3.30b — dedup against the LIVE corpus too: prod carries shards
+  // the repo's curate file has never seen (hand-sown harvests). The
+  // make target dumps them (read-only) via the Management API.
+  if (corpusJson != null) {
+    final raw = jsonDecode(File(corpusJson).readAsStringSync());
+    if (raw is List) {
+      for (final e in raw) {
+        corpus.add({
+          'text': e is Map ? (e['text'] ?? '').toString() : e.toString(),
+        });
+      }
+    }
+    stdout.writeln('corpus vivant (prod): +${raw is List ? raw.length : 0} éclats au dedup');
+  }
   stdout.writeln('── Semeur de Vestiges ──');
   stdout.writeln('modèle: $aiModel · thème: $theme · cible: $count');
   stdout.writeln('corpus existant (dédup): ${corpus.length} éclats');
@@ -413,7 +441,8 @@ Future<void> _run(List<String> args) async {
 # Vestiges — staging ($theme)
 
 Vérifiés par la passe 2, prêts à relire humainement. Approuve puis :
-`dart run tool/gen_vestiges.dart --emit` ou copie dans curate_vestiges.sql.
+`make prod-vestiges-emit` (semé en PROD, corpus vivant déduplié),
+ou `dart run tool/gen_vestiges.dart --emit` pour régénérer le SQL.
 
 ${finalShards.map((s) => "- [${s['kind']}] ${s['text']} — ${s['source']}").join('\n')}
 ''');
@@ -423,7 +452,7 @@ ${finalShards.map((s) => "- [${s['kind']}] ${s['text']} — ${s['source']}").joi
     final sql = emitSql(finalShards);
     File('supabase/snippets/vestiges_ai_batch.sql').writeAsStringSync(sql);
     stdout.writeln('SQL: supabase/snippets/vestiges_ai_batch.sql '
-        '(à exécuter via db query --linked --file)');
+        '(à semer via: make prod-vestiges-emit)');
   } else if (!emit) {
     stdout.writeln('(mode revue — ajoute --emit pour générer le SQL)');
   }

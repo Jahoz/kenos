@@ -1,6 +1,6 @@
 # KENOS — canonical commands (see CONTRIBUTING.md for the full picture)
 .DEFAULT_GOAL := help
-.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web deploy-site serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load db-garden db-curate db-sow-vestiges prod-reset prod-sow prod-desow prod-watch prod-artifact-backlog prod-artifact-release e2e gen-icons gen-audio coverage
+.PHONY: help dev dev-cloud dev-local analyze test test-cloud test-coverage build-web deploy-web deploy-site serve-web db-start db-reset db-test db-push db-seed-load db-verify-load db-load-report db-wipe-load db-garden db-curate db-sow-vestiges prod-reset prod-sow prod-desow prod-watch prod-artifact-backlog prod-artifact-release prod-vestiges-corpus prod-vestiges-sow prod-vestiges-emit e2e gen-icons gen-audio coverage
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -148,6 +148,20 @@ prod-artifact-backlog: ## Load/refresh the artifact backlog corpus (cloud, idemp
 
 prod-artifact-release: ## Release the next backlog poem into the sky (cloud)
 	bash scripts/prod_admin.sh sql "select public.kenos_artifact_release()"
+
+prod-vestiges-corpus: ## Dump prod's live vestige texts for dedup (read-only)
+	@bash scripts/prod_admin.sh sql "select coalesce(json_agg(text), '[]'::json) as texts from public.kenos_vestiges" \
+		| python3 -c 'import json,sys; d=json.load(sys.stdin); json.dump(json.loads(d[0]["texts"]), open("/tmp/kenos_vestige_corpus.json","w"), ensure_ascii=False)' \
+		&& echo 'corpus prod → /tmp/kenos_vestige_corpus.json'
+
+prod-vestiges-sow: ## AI-sow shards deduped against PROD's corpus (staging + 2-pass verify)
+	@$(MAKE) --no-print-directory prod-vestiges-corpus
+	dart run tool/gen_vestiges.dart $(SOW_ARGS) --corpus-json /tmp/kenos_vestige_corpus.json
+	@echo '— relis vestiges_staging.md, ajuste si besoin, puis : make prod-vestiges-emit'
+
+prod-vestiges-emit: ## Apply the REVIEWED AI batch to PROD (the human gate passed)
+	bash scripts/prod_admin.sh filemulti supabase/snippets/vestiges_ai_batch.sql
+	@bash scripts/prod_admin.sh sql "select count(*) as vestiges_live from public.kenos_vestiges where live"
 
 e2e: ## Full bottle-in-the-sea loop over the real local PostgREST
 	bash scripts/e2e_local.sh
