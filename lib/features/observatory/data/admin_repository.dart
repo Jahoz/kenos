@@ -19,6 +19,18 @@ abstract class AdminRepository {
 
   /// Throws [GuardianForbiddenException] if the session lost its rank.
   Future<AdminMetrics> fetchMetrics({int days = 30});
+
+  /// V3.51 — the artifact guard: the reported public artifacts,
+  /// metadata only (never a text). The guardian reads the poems
+  /// themselves in the public sky, at the seed coordinate each row
+  /// carries.
+  Future<List<ConstellationReportSummary>> fetchConstellationReports();
+
+  /// V3.51 — sends an artifact back to the void: lines and reports
+  /// leave with it (cascade), exactly as the 30-day reaper would take
+  /// a moon-old poem. The guardian's only moderation gesture — never
+  /// automatic, never a threshold.
+  Future<void> retractConstellation(String constellationId);
 }
 
 /// The threshold refused these words (bad credentials or network).

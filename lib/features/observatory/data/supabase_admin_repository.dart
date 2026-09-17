@@ -74,4 +74,38 @@ class SupabaseAdminRepository implements AdminRepository {
       rethrow;
     }
   }
+
+  @override
+  Future<List<ConstellationReportSummary>> fetchConstellationReports() async {
+    if (!isSignedIn) throw GuardianAuthException('no_session');
+    try {
+      final raw = await _ether.rpc('admin_list_constellation_reports');
+      return ((raw as List?) ?? const [])
+          .whereType<Map>()
+          .map((row) =>
+              ConstellationReportSummary.fromJson(Map<String, dynamic>.from(row)))
+          .toList(growable: false);
+    } on PostgrestException catch (e) {
+      if (e.message.contains('KENOS_FORBIDDEN') || e.code == '42501') {
+        throw GuardianForbiddenException();
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> retractConstellation(String constellationId) async {
+    if (!isSignedIn) throw GuardianAuthException('no_session');
+    try {
+      await _ether.rpc(
+        'admin_retract_constellation',
+        params: {'p_constellation_id': constellationId},
+      );
+    } on PostgrestException catch (e) {
+      if (e.message.contains('KENOS_FORBIDDEN') || e.code == '42501') {
+        throw GuardianForbiddenException();
+      }
+      rethrow;
+    }
+  }
 }

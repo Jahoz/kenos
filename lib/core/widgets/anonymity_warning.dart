@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
 import '../constants/app_fonts.dart';
+import '../voice/kenos_voice.dart';
 
 /// The anonymity threshold — one shared grammar everywhere a thought
 /// that seems to carry personal data is about to drift (the reader's
@@ -13,6 +14,7 @@ Future<bool> warnAnonymityLoss(
   BuildContext context, {
   required String body,
   required String takeBackLabel,
+  KenosVoice voice = KenosVoice.french,
 }) async {
   final proceed = await showDialog<bool>(
     context: context,
@@ -31,7 +33,10 @@ Future<bool> warnAnonymityLoss(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'TON ANONYMAT EST LE CONTRAT',
+                voice.pick(
+                  'TON ANONYMAT EST LE CONTRAT',
+                  'YOUR ANONYMITY IS THE CONTRACT',
+                ),
                 style: TextStyle(
                   fontFamily: AppFonts.mono,
                   fontSize: 10,
@@ -53,7 +58,9 @@ Future<bool> warnAnonymityLoss(
               const SizedBox(height: 20),
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('LAISSER QUAND MÊME'),
+                child: Text(
+                  voice.pick('LAISSER QUAND MÊME', 'LET IT DRIFT ANYWAY'),
+                ),
               ),
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(false),

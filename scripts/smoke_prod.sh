@@ -86,9 +86,13 @@ rpc_probe_payload() {
     consume_constellation)    echo '{"p_constellation_id":""}' ;;
     emit_frequency)           echo '{"p_x":0,"p_y":0,"p_note_index":0,"p_hue_index":0}' ;;
     fetch_nearby_frequencies) echo '{"p_x":0,"p_y":0,"p_radius":0.01}' ;;
+    report_constellation)     echo '{"p_constellation_id":"","p_reason_code":""}' ;;
+    reseed_salon_key)         echo '{"p_constellation_id":""}' ;;
     # No-arg payload: the anon probe must resolve the signature then be
     # denied (granted to authenticated, gated to the guardian inside).
     admin_fetch_metrics) echo '{}' ;;
+    admin_list_constellation_reports) echo '{}' ;;
+    admin_retract_constellation) echo '{"p_constellation_id":""}' ;;
     *) return 1 ;;
   esac
 }
@@ -100,6 +104,7 @@ deep_probe_payload() {
     fetch_map_sector)         echo '{"p_min_x":0,"p_min_y":0,"p_max_x":0,"p_max_y":0,"p_max_per_sector":1,"p_max_total":1}' ;;
     fetch_nearby_frequencies) echo '{"p_x":0,"p_y":0,"p_radius":0.01}' ;;
     fetch_receptions)         echo '{}' ;;
+    fetch_past_moons)         echo '{}' ;;
     *) return 1 ;;
   esac
 }
@@ -158,7 +163,9 @@ for fn in fetch_map_sector launch_echo rebound_echo leave_trace report_echo \
           fetch_receptions burn_reception seed_constellation contribute_line \
           fetch_constellations peek_previous_line read_constellation \
           fetch_vestiges emit_frequency fetch_nearby_frequencies \
-          admin_fetch_metrics; do
+          report_constellation reseed_salon_key \
+          admin_fetch_metrics admin_list_constellation_reports \
+          admin_retract_constellation; do
   client_rpcs | grep -qx "$fn" \
     || ko "$fn has a probe payload but is no longer referenced in lib/ — stale probe, remove it"
 done
@@ -173,7 +180,7 @@ else
   ko "anonymous sign-up failed — every deep probe below is skipped"
 fi
 if [ -n "$JWT" ]; then
-  for fn in fetch_constellations fetch_map_sector fetch_nearby_frequencies fetch_receptions; do
+  for fn in fetch_constellations fetch_map_sector fetch_nearby_frequencies fetch_receptions fetch_past_moons; do
     payload="$(deep_probe_payload "$fn")"
     code=$(curl -sS -o "$TMP/deep" -w '%{http_code}' -X POST "$SUPABASE_URL/rest/v1/rpc/$fn" \
       -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $JWT" \

@@ -5,6 +5,8 @@
 /// `admin_fetch_metrics` (see the observatory migration).
 library;
 
+import '../../echo/data/echo_repository.dart';
+
 class AdminMetrics {
   const AdminMetrics({
     required this.series,
@@ -42,9 +44,11 @@ class AdminMetrics {
   final List<SectorCell> sectors;
   final DerivedMetrics derived;
 
-  /// True when nothing has ever resonated (first-run sky).
+  /// True when nothing has ever resonated (first-run sky). A reported
+  /// artifact breaks the silence: something awaits the guardian's eye.
   bool get isSilent =>
       live.echoesDrifting == 0 &&
+      live.constellationReportsOpen == 0 &&
       series.every((d) => d.launched == 0 && d.consumed == 0 && d.rebound == 0);
 }
 
@@ -61,6 +65,9 @@ class DailyPoint {
     required this.lines,
     required this.newUsers,
     required this.activeReaders,
+    this.salonsSeeded = 0,
+    this.corpsesReported = 0,
+    this.corpsesRetracted = 0,
   });
 
   factory DailyPoint.fromJson(Map<String, dynamic> json) => DailyPoint(
@@ -75,6 +82,9 @@ class DailyPoint {
     lines: _int(json['lines_contributed']),
     newUsers: _int(json['new_users']),
     activeReaders: _int(json['active_readers']),
+    salonsSeeded: _int(json['salons_seeded']),
+    corpsesReported: _int(json['corpses_reported']),
+    corpsesRetracted: _int(json['corpses_retracted']),
   );
 
   final String day; // YYYY-MM-DD (UTC, the server's clock)
@@ -88,6 +98,9 @@ class DailyPoint {
   final int lines;
   final int newUsers;
   final int activeReaders;
+  final int salonsSeeded;
+  final int corpsesReported;
+  final int corpsesRetracted;
 }
 
 class LiveCounts {
@@ -98,6 +111,8 @@ class LiveCounts {
     required this.constellationsClosed,
     required this.vestigesLive,
     required this.reportsOpen,
+    this.salonsOpen = 0,
+    this.constellationReportsOpen = 0,
   });
 
   factory LiveCounts.fromJson(Map<String, dynamic> json) => LiveCounts(
@@ -107,6 +122,8 @@ class LiveCounts {
     constellationsClosed: _int(json['constellations_closed']),
     vestigesLive: _int(json['vestiges_live']),
     reportsOpen: _int(json['reports_open']),
+    salonsOpen: _int(json['salons_open']),
+    constellationReportsOpen: _int(json['constellation_reports_open']),
   );
 
   final int echoesDrifting;
@@ -115,6 +132,8 @@ class LiveCounts {
   final int constellationsClosed;
   final int vestigesLive;
   final int reportsOpen;
+  final int salonsOpen;
+  final int constellationReportsOpen;
 }
 
 class SectorCell {
@@ -141,6 +160,64 @@ class DerivedMetrics {
   final int? medianDriftSeconds;
   final double? traceRate;
   final double? reboundRate;
+}
+
+/// One REPORTED public artifact, as the guardian sees it (V3.51):
+/// shapes only — how many hands flagged it, why (a code, never a
+/// text), what it is, where it rests (the sky-link coordinate), and
+/// the moon it has left. The poem itself is read in the public sky,
+/// never in this ledger.
+class ConstellationReportSummary {
+  const ConstellationReportSummary({
+    required this.constellationId,
+    required this.reportCount,
+    required this.latestReason,
+    required this.kind,
+    required this.isCurated,
+    required this.seedX,
+    required this.seedY,
+    required this.moonDaysLeft,
+    this.latestReportedAt,
+  });
+
+  factory ConstellationReportSummary.fromJson(Map<String, dynamic> json) =>
+      ConstellationReportSummary(
+        constellationId: json['constellation_id'] as String? ?? '',
+        reportCount: _int(json['report_count']),
+        latestReason: json['latest_reason'] as String? ?? 'OTHER',
+        kind: json['kind'] as String? ?? 'POEM',
+        isCurated: json['is_curated'] == true,
+        seedX: (json['seed_x'] as num?)?.toDouble() ?? 0.5,
+        seedY: (json['seed_y'] as num?)?.toDouble() ?? 0.5,
+        moonDaysLeft: _int(json['moon_days_left']),
+        latestReportedAt: json['latest_reported_at'] == null
+            ? null
+            : DateTime.tryParse(json['latest_reported_at'] as String),
+      );
+
+  final String constellationId;
+  final int reportCount;
+  final String latestReason;
+
+  /// 'POEM' or 'MELODY' — what the ring is, not what it says.
+  final String kind;
+
+  /// True = the Curator's own (a rights or taste problem); false =
+  /// strangers' hands (a moderation problem).
+  final bool isCurated;
+
+  final double seedX;
+  final double seedY;
+  final int moonDaysLeft;
+  final DateTime? latestReportedAt;
+
+  /// The shared report taxonomy wears words (the echo grammar).
+  String get reasonLabel {
+    for (final reason in EchoReportReason.values) {
+      if (reason.wire == latestReason) return reason.label;
+    }
+    return latestReason;
+  }
 }
 
 int _int(dynamic v) => v is num ? v.toInt() : 0;

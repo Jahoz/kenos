@@ -125,6 +125,14 @@ class _RefusingRepo implements ConstellationRepository {
   int contributions = 0;
 
   @override
+  Future<bool> report(String constellationId, String reasonCode) async =>
+      true;
+
+  @override
+  Future<String> reseedKey(String constellationId) async =>
+      throw UnimplementedError();
+
+  @override
   Future<ContributeResult> contribute({
     required String constellationId,
     required String text,

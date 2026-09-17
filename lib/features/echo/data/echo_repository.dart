@@ -89,15 +89,18 @@ abstract class EchoRepository {
 
 /// Fixed report reasons: moderation data stays minimal and classifiable.
 enum EchoReportReason {
-  inappropriate('INAPPROPRIATE', 'CONTENU INAPPROPRIÉ'),
-  spam('SPAM', 'SPAM'),
-  danger('DANGER', 'DANGER IMMÉDIAT'),
-  other('OTHER', 'AUTRE MOTIF');
+  inappropriate('INAPPROPRIATE', 'CONTENU INAPPROPRIÉ', 'INAPPROPRIATE CONTENT'),
+  spam('SPAM', 'SPAM', 'SPAM'),
+  danger('DANGER', 'DANGER IMMÉDIAT', 'IMMEDIATE DANGER'),
+  other('OTHER', 'AUTRE MOTIF', 'ANOTHER REASON');
 
-  const EchoReportReason(this.wire, this.label);
+  const EchoReportReason(this.wire, this.label, this.labelEn);
 
   final String wire;
   final String label;
+
+  /// V3.52 — the first journey's English (report dialogs).
+  final String labelEn;
 }
 
 /// Functional error codes raised by server-side RPCs — exhaustive on

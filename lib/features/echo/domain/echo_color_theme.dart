@@ -7,14 +7,42 @@ import '../../../core/constants/app_colors.dart';
 /// ROSE is reserved for destruction (burn after reading):
 /// never selectable at creation time.
 enum EchoColorTheme {
-  teal('TEAL', 'APAISER', 'Ce qui cherche un peu d\'air.'),
-  indigo('INDIGO', 'CONFIER', 'Ce qui pèse et demande à être déposé.'),
-  lumen('LUMEN', 'ÉCLAIRER', 'Ce qui veut simplement exister un instant.');
+  teal(
+    'TEAL',
+    'APAISER',
+    'Ce qui cherche un peu d\'air.',
+    'SOOTHE',
+    'What is looking for a little air.',
+  ),
+  indigo(
+    'INDIGO',
+    'CONFIER',
+    'Ce qui pèse et demande à être déposé.',
+    'CONFIDE',
+    'What weighs and asks to be set down.',
+  ),
+  lumen(
+    'LUMEN',
+    'ÉCLAIRER',
+    'Ce qui veut simplement exister un instant.',
+    'ILLUMINATE',
+    'What simply wants to exist for a moment.',
+  );
 
-  const EchoColorTheme(this.wire, this.emotionLabel, this.emotionHint);
+  const EchoColorTheme(
+    this.wire,
+    this.emotionLabel,
+    this.emotionHint,
+    this.emotionLabelEn,
+    this.emotionHintEn,
+  );
   final String wire;
   final String emotionLabel;
   final String emotionHint;
+
+  /// V3.52 — the first journey's English (the Mirror's intentions).
+  final String emotionLabelEn;
+  final String emotionHintEn;
 
   static EchoColorTheme fromWire(
     String? wire, {

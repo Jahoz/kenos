@@ -348,6 +348,14 @@ class _SalonFakeRepo implements ConstellationRepository {
   Future<ConstellationMeta> fetchInvited(String token) => _resolve(token);
 
   @override
+  Future<bool> report(String constellationId, String reasonCode) async =>
+      true;
+
+  @override
+  Future<String> reseedKey(String constellationId) async =>
+      throw UnimplementedError();
+
+  @override
   Future<ContributeResult> contribute({
     required String constellationId,
     required String text,

@@ -170,21 +170,24 @@ void main() {
         (tester) async {
       final memory = ArtifactMemory(io: _MemIO());
       await memory.load();
-      await tester.pumpWidget(MaterialApp(
-        home: Builder(
-          builder: (context) => Center(
-            child: OutlinedButton(
-              onPressed: () => showConstellationReading(
-                context,
-                figureId: 'c-keep',
-                lines: const [
-                  AssembledLine(number: 1, text: 'première ligne'),
-                  AssembledLine(number: 2, text: 'deuxième ligne'),
-                ],
-                memory: memory,
-                keepPosition: const Offset(0.6, 0.7),
+      // The reading panel reads the interface voice (V3.52): scope above.
+      await tester.pumpWidget(ProviderScope(
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Center(
+              child: OutlinedButton(
+                onPressed: () => showConstellationReading(
+                  context,
+                  figureId: 'c-keep',
+                  lines: const [
+                    AssembledLine(number: 1, text: 'première ligne'),
+                    AssembledLine(number: 2, text: 'deuxième ligne'),
+                  ],
+                  memory: memory,
+                  keepPosition: const Offset(0.6, 0.7),
+                ),
+                child: const Text('OUVRIR'),
               ),
-              child: const Text('OUVRIR'),
             ),
           ),
         ),
@@ -236,6 +239,14 @@ class _RefusingConstellationRepo implements ConstellationRepository {
   _RefusingConstellationRepo(this.code);
 
   final String code;
+
+  @override
+  Future<bool> report(String constellationId, String reasonCode) async =>
+      true;
+
+  @override
+  Future<String> reseedKey(String constellationId) async =>
+      throw UnimplementedError();
 
   @override
   Future<ContributeResult> contribute({

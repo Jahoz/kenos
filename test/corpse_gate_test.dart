@@ -147,6 +147,14 @@ class FakeConstellationRepository implements ConstellationRepository {
   ConstellationKind? lastKind;
 
   @override
+  Future<bool> report(String constellationId, String reasonCode) async =>
+      true;
+
+  @override
+  Future<String> reseedKey(String constellationId) async =>
+      throw UnimplementedError();
+
+  @override
   Future<SeededConstellation> seed(
     double x,
     double y, {

@@ -8,7 +8,38 @@ import 'admin_repository.dart';
 /// credentials opens the threshold — there is nothing real to guard,
 /// and the shapes shown are a deterministic, plausible sky.
 class LocalAdminRepository implements AdminRepository {
+  LocalAdminRepository() {
+    // V3.51 — a deterministic pair of flagged artifacts, shaped like
+    // the ether's answer (metadata only, never a text). Retraction
+    // really removes: the demo keeps the gesture honest.
+    _reports.addAll([
+      ConstellationReportSummary(
+        constellationId: 'demo-report-1',
+        reportCount: 3,
+        latestReason: 'INAPPROPRIATE',
+        kind: 'POEM',
+        isCurated: false,
+        seedX: 0.42,
+        seedY: 0.37,
+        moonDaysLeft: 24,
+        latestReportedAt: DateTime.now().subtract(const Duration(hours: 3)),
+      ),
+      ConstellationReportSummary(
+        constellationId: 'demo-report-2',
+        reportCount: 1,
+        latestReason: 'OTHER',
+        kind: 'MELODY',
+        isCurated: true,
+        seedX: 0.68,
+        seedY: 0.61,
+        moonDaysLeft: 11,
+        latestReportedAt: DateTime.now().subtract(const Duration(days: 2)),
+      ),
+    ]);
+  }
+
   bool _signedIn = false;
+  final List<ConstellationReportSummary> _reports = [];
 
   @override
   bool get isSignedIn => _signedIn;
@@ -25,6 +56,20 @@ class LocalAdminRepository implements AdminRepository {
   @override
   Future<void> signOut() async {
     _signedIn = false;
+  }
+
+  @override
+  Future<List<ConstellationReportSummary>> fetchConstellationReports() async {
+    if (!_signedIn) throw GuardianAuthException('no_session');
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    return List.of(_reports);
+  }
+
+  @override
+  Future<void> retractConstellation(String constellationId) async {
+    if (!_signedIn) throw GuardianAuthException('no_session');
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    _reports.removeWhere((r) => r.constellationId == constellationId);
   }
 
   @override
@@ -86,6 +131,8 @@ class LocalAdminRepository implements AdminRepository {
         constellationsClosed: 26,
         vestigesLive: 29,
         reportsOpen: 3,
+        salonsOpen: 2,
+        constellationReportsOpen: _reports.length,
       ),
       sectors: List.generate(
         22,
