@@ -13,6 +13,7 @@ class AdminMetrics {
     required this.live,
     required this.sectors,
     required this.derived,
+    this.census = const AdminCensus(),
   });
 
   factory AdminMetrics.fromJson(Map<String, dynamic> json) => AdminMetrics(
@@ -37,12 +38,18 @@ class AdminMetrics {
     derived: DerivedMetrics.fromJson(
       Map<String, dynamic>.from(json['derived'] as Map? ?? const {}),
     ),
+    census: AdminCensus.fromJson(
+      Map<String, dynamic>.from(json['census'] as Map? ?? const {}),
+    ),
   );
 
   final List<DailyPoint> series;
   final LiveCounts live;
   final List<SectorCell> sectors;
   final DerivedMetrics derived;
+
+  /// V3.56 — what the drifting sky carries: ages, kinds, themes.
+  final AdminCensus census;
 
   /// True when nothing has ever resonated (first-run sky). A reported
   /// artifact breaks the silence: something awaits the guardian's eye.
@@ -142,6 +149,59 @@ class SectorCell {
   final int x;
   final int y;
   final int count;
+}
+
+/// The census (V3.56): what the drifting sky carries, as shapes.
+///
+/// The echoes' three ages (is the ether fluid or congested?), their
+/// kinds (a media-less echo is a text, never an absence), their color
+/// themes. The keys come from the fixed vocabularies — counts are all
+/// there is, exactly like the rest of the ledger.
+class AdminCensus {
+  const AdminCensus({
+    this.fresh = 0,
+    this.week = 0,
+    this.ancient = 0,
+    Map<String, int>? mediaKinds,
+    Map<String, int>? themes,
+  }) : mediaKinds = mediaKinds ?? const {},
+       themes = themes ?? const {};
+
+  factory AdminCensus.fromJson(Map<String, dynamic> json) {
+    final ages = Map<String, dynamic>.from(json['echo_ages'] as Map? ?? const {});
+    return AdminCensus(
+      fresh: _int(ages['fresh']),
+      week: _int(ages['week']),
+      ancient: _int(ages['ancient']),
+      mediaKinds: _countMap(json['media_kinds']),
+      themes: _countMap(json['themes']),
+    );
+  }
+
+  /// Younger than a day.
+  final int fresh;
+
+  /// Between one and seven days.
+  final int week;
+
+  /// Older than seven days — drifting toward the thirty-day purge.
+  final int ancient;
+
+  /// Counts by kind: TEXT (media-less), IMAGE, AUDIO, SONG, EXCERPT.
+  final Map<String, int> mediaKinds;
+
+  /// Counts by the sky's three themes: TEAL, INDIGO, LUMEN.
+  final Map<String, int> themes;
+
+  /// The whole drifting sky, as the three ages sum it.
+  int get drifting => fresh + week + ancient;
+}
+
+Map<String, int> _countMap(dynamic raw) {
+  final map = raw as Map? ?? const {};
+  return {
+    for (final key in map.keys) key.toString(): _int(map[key]),
+  };
 }
 
 class DerivedMetrics {

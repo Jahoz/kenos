@@ -3,7 +3,7 @@
 -- limits, author isolation. Every statement tries to break a promise;
 -- the schema must hold.
 begin;
-select plan(157);
+select plan(163);
 
 -- Test-only helpers (security definer, postgres-owned) so restricted
 -- roles can reference row ids without touching locked tables.
@@ -1558,6 +1558,18 @@ language sql security definer set search_path = public as $$
   select count(*)::int from auth.users
 $$;
 grant execute on function tests.user_count() to authenticated;
+-- Census companions (V3.56): the echoes table is RLS-locked, so the
+-- guardian-role assertions compare against definer-read counts.
+create or replace function tests.echo_count() returns bigint
+language sql security definer set search_path = public as $$
+  select count(*) from public.echoes
+$$;
+create or replace function tests.echo_text_count() returns bigint
+language sql security definer set search_path = public as $$
+  select count(*) from public.echoes where media_kind is null
+$$;
+grant execute on function tests.echo_count() to authenticated;
+grant execute on function tests.echo_text_count() to authenticated;
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000c8","role":"authenticated","app_metadata":{"role":"admin"}}', true);
 select is(jsonb_exists(public.admin_fetch_metrics(), 'series'), true, 'the guardian reads the spectrum');
@@ -1573,6 +1585,45 @@ select is(
   jsonb_array_length(public.admin_fetch_metrics() -> 'series'),
   30,
   'the spectrum spans thirty days by default'
+);
+
+-- ── The census (V3.56): the drift's ages, kinds and themes ─────────
+select is(
+  jsonb_exists(public.admin_fetch_metrics(), 'census'),
+  true,
+  'the guardian reads the census'
+);
+select is(
+  (public.admin_fetch_metrics() -> 'census' -> 'echo_ages' ->> 'fresh')::bigint
+    + (public.admin_fetch_metrics() -> 'census' -> 'echo_ages' ->> 'week')::bigint
+    + (public.admin_fetch_metrics() -> 'census' -> 'echo_ages' ->> 'ancient')::bigint,
+  tests.echo_count(),
+  'the three ages sum to the whole drifting sky'
+);
+select is(
+  (select sum((v)::bigint)::bigint
+     from jsonb_each(public.admin_fetch_metrics() -> 'census' -> 'media_kinds') as k(k, v)),
+  tests.echo_count(),
+  'every drifting echo is counted once by its kind'
+);
+select is(
+  (public.admin_fetch_metrics() -> 'census' -> 'media_kinds' ->> 'TEXT')::bigint,
+  tests.echo_text_count(),
+  'a media-less echo is a text, never an absence'
+);
+select is(
+  (select count(*)
+     from jsonb_object_keys(public.admin_fetch_metrics() -> 'census' -> 'media_kinds') as k(k)
+    where k.k not in ('TEXT', 'IMAGE', 'AUDIO', 'SONG', 'EXCERPT')),
+  0::bigint,
+  'the kind census wears only the fixed vocabulary'
+);
+select is(
+  (select count(*)
+     from jsonb_object_keys(public.admin_fetch_metrics() -> 'census' -> 'themes') as k(k)
+    where k.k not in ('TEAL', 'INDIGO', 'LUMEN')),
+  0::bigint,
+  'the theme census never invents a color'
 );
 reset role;
 

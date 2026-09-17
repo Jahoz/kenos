@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../cosmic_map/application/sky_link.dart';
+import '../../echo/domain/echo_color_theme.dart';
 import '../data/admin_providers.dart';
 import '../data/admin_repository.dart';
 import '../domain/admin_metrics.dart';
@@ -384,6 +385,7 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
                     color: AppColors.fade(AppColors.pureLight, 0.55),
                   ),
                 ),
+                ..._censusSection(m.census),
                 const SizedBox(height: 38),
                 _sectionLabel('LES SIGNALEMENTS'),
                 const SizedBox(height: 14),
@@ -603,6 +605,124 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
       ),
     );
   }
+
+  /// V3.56 — the census: the drift's three ages (a fluid sky or a
+  /// congested one?) and what it carries. Silent when nothing
+  /// drifts — an empty sky has no ages to name.
+  List<Widget> _censusSection(AdminCensus c) {
+    if (c.drifting == 0) return const [];
+    final kinds =
+        c.mediaKinds.entries.where((e) => e.value > 0).toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+    return [
+      const SizedBox(height: 38),
+      _sectionLabel('L\'ÂGE DE LA DÉRIVE'),
+      const SizedBox(height: 14),
+      _ageBar(c),
+      const SizedBox(height: 14),
+      _censusLine(AppColors.teal, 'MOINS D\'UN JOUR', c.fresh),
+      _censusLine(AppColors.indigo, 'ENTRE UN ET SEPT JOURS', c.week),
+      _censusLine(AppColors.purple, 'PLUS DE SEPT JOURS', c.ancient),
+      if (kinds.isNotEmpty) ...[
+        const SizedBox(height: 24),
+        _sectionLabel('LES FORMES À LA DÉRIVE'),
+        const SizedBox(height: 14),
+        for (final kind in kinds)
+          _censusLine(AppColors.cyan, _kindLabels[kind.key] ?? kind.key, kind.value),
+        const SizedBox(height: 10),
+        _themeRow(c),
+      ],
+    ];
+  }
+
+  /// One bar, three ages: teal for what just left a hand, indigo for
+  /// the week's drift, purple for what leans toward the purge.
+  Widget _ageBar(AdminCensus c) {
+    final total = c.drifting;
+    return Semantics(
+      container: true,
+      label:
+          'Âge de la dérive : $total échos — ${c.fresh} de moins d\'un jour, '
+          '${c.week} de la semaine, ${c.ancient} de plus de sept jours.',
+      child: SizedBox(
+        height: 10,
+        child: Row(
+          children: [
+            if (c.fresh > 0)
+              Expanded(
+                flex: c.fresh,
+                child: ColoredBox(color: AppColors.fade(AppColors.teal, 0.8)),
+              ),
+            if (c.week > 0)
+              Expanded(
+                flex: c.week,
+                child: ColoredBox(color: AppColors.fade(AppColors.indigo, 0.8)),
+              ),
+            if (c.ancient > 0)
+              Expanded(
+                flex: c.ancient,
+                child: ColoredBox(color: AppColors.fade(AppColors.purple, 0.8)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// One census row: a dot, a word, a count — the grammar of the
+  /// derived lines.
+  Widget _censusLine(Color dot, String label, int value) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(
+      children: [
+        Container(width: 8, height: 8, color: AppColors.fade(dot, 0.85)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: AppFonts.mono,
+              fontSize: 9,
+              letterSpacing: 1,
+              color: AppColors.fade(AppColors.pureLight, 0.5),
+            ),
+          ),
+        ),
+        Text(
+          value.toString(),
+          style: TextStyle(
+            fontFamily: AppFonts.mono,
+            fontSize: 12,
+            color: AppColors.pureLight,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  /// The sky's three themes, wearing their own core colors — the
+  /// map's grammar, never an invented one.
+  Widget _themeRow(AdminCensus c) => Padding(
+    padding: const EdgeInsets.only(top: 2),
+    child: Wrap(
+      spacing: 18,
+      runSpacing: 8,
+      alignment: WrapAlignment.center,
+      children: [
+        for (final theme in EchoColorTheme.values)
+          if ((c.themes[theme.wire] ?? 0) > 0)
+            _legendDot(theme.core, '${theme.wire} · ${c.themes[theme.wire]}'),
+      ],
+    ),
+  );
+
+  static const _kindLabels = {
+    'TEXT': 'TEXTES',
+    'IMAGE': 'IMAGES',
+    'AUDIO': 'AUDIO',
+    'SONG': 'CHANSONS',
+    'EXCERPT': 'EXTRAITS',
+  };
 
   Widget _sectionLabel(String text) => Text(
     text,

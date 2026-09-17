@@ -122,10 +122,19 @@ class LocalAdminRepository implements AdminRepository {
       return seed;
     }
 
+    // V3.56 — the census: the same drifting sky, split with
+    // deterministic honesty. The three ages sum to the drift, and so
+    // do the kinds and the themes — exactly the server's shapes.
+    final drifting = series.last.launched * 7;
+    final fresh = (drifting * 0.55).round();
+    final week = (drifting * 0.3).round();
+    final tealShare = (drifting * 0.55).round();
+    final indigoShare = (drifting * 0.3).round();
+
     return AdminMetrics(
       series: series,
       live: LiveCounts(
-        echoesDrifting: series.last.launched * 7,
+        echoesDrifting: drifting,
         usersTotal: 412,
         constellationsOpen: 14,
         constellationsClosed: 26,
@@ -142,6 +151,23 @@ class LocalAdminRepository implements AdminRepository {
         medianDriftSeconds: 3842,
         traceRate: 0.27,
         reboundRate: 0.14,
+      ),
+      census: AdminCensus(
+        fresh: fresh,
+        week: week,
+        ancient: drifting - fresh - week,
+        mediaKinds: {
+          'TEXT': drifting - 9,
+          'IMAGE': 4,
+          'AUDIO': 1,
+          'SONG': 3,
+          'EXCERPT': 1,
+        },
+        themes: {
+          'TEAL': tealShare,
+          'INDIGO': indigoShare,
+          'LUMEN': drifting - tealShare - indigoShare,
+        },
       ),
     );
   }

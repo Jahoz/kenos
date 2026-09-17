@@ -90,7 +90,7 @@ db-start: ## Start the local Supabase stack (ports 56321-56324)
 db-reset: ## Recreate the local database from the migrations
 	supabase db reset
 
-db-test: ## pgTAP suite: 256 SQL invariants (RPC + RLS)
+db-test: ## pgTAP suite: 262 SQL invariants (RPC + RLS)
 	supabase test db
 
 db-push: ## Push unapplied migrations to the linked cloud project

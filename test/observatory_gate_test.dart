@@ -9,6 +9,27 @@ import 'package:kenos/features/observatory/domain/admin_metrics.dart';
 import 'package:kenos/features/observatory/presentation/observatory_screen.dart';
 
 void main() {
+  group('AdminCensus (domain)', () {
+    test('the census parses the ether\'s shapes', () {
+      final census = AdminCensus.fromJson({
+        'echo_ages': {'fresh': 3, 'week': 2, 'ancient': 1},
+        'media_kinds': {'TEXT': 4, 'SONG': 2},
+        'themes': {'TEAL': 3, 'INDIGO': 2, 'LUMEN': 1},
+      });
+      expect(census.fresh, 3);
+      expect(census.drifting, 6);
+      expect(census.mediaKinds['TEXT'], 4);
+      expect(census.themes['LUMEN'], 1);
+    });
+
+    test('an absent census is an empty sky, never an error', () {
+      final census = AdminCensus.fromJson({});
+      expect(census.drifting, 0);
+      expect(census.mediaKinds, isEmpty);
+      expect(census.themes, isEmpty);
+    });
+  });
+
   group('LocalAdminRepository (demo parity)', () {
     test('empty words never cross the threshold', () async {
       final repo = LocalAdminRepository();
@@ -29,6 +50,22 @@ void main() {
       expect(metrics.live.usersTotal, greaterThan(0));
       await repo.signOut();
       expect(repo.isSignedIn, isFalse);
+    });
+
+    test('the demo census sums to the drift, like the server', () async {
+      final repo = LocalAdminRepository();
+      await repo.signIn('gardien@kenos.local', 'demo');
+      final metrics = await repo.fetchMetrics();
+      final census = metrics.census;
+      expect(census.drifting, metrics.live.echoesDrifting);
+      expect(
+        census.mediaKinds.values.fold<int>(0, (a, b) => a + b),
+        metrics.live.echoesDrifting,
+      );
+      expect(
+        census.themes.values.fold<int>(0, (a, b) => a + b),
+        metrics.live.echoesDrifting,
+      );
     });
 
     test('the demo sky is deterministic — same shapes every run', () async {
@@ -148,6 +185,28 @@ void main() {
       expect(find.text('LA LUNE CONTRE LA LUNE'), findsNothing);
     });
 
+    testWidgets('the drift shows its ages and kinds', (tester) async {
+      await _pump(tester, repo: _FakeRepo(metrics: _metrics(census: true)));
+      await _cross(tester, 'gardien@kenos.local', 'le long secret');
+      await tester.ensureVisible(find.text('L\'ÂGE DE LA DÉRIVE'));
+      await tester.pumpAndSettle();
+      expect(find.text('L\'ÂGE DE LA DÉRIVE'), findsOneWidget);
+      expect(find.text('MOINS D\'UN JOUR'), findsOneWidget);
+      expect(find.text('PLUS DE SEPT JOURS'), findsOneWidget);
+      expect(find.text('LES FORMES À LA DÉRIVE'), findsOneWidget);
+      expect(find.text('TEXTES'), findsOneWidget);
+      expect(find.text('CHANSONS'), findsOneWidget);
+      // The themes wear the sky's own names, with their counts.
+      expect(find.text('LUMEN · 4'), findsOneWidget);
+    });
+
+    testWidgets('an empty drift keeps the census silent', (tester) async {
+      await _pump(tester, repo: _FakeRepo());
+      await _cross(tester, 'gardien@kenos.local', 'le long secret');
+      expect(find.text('L\'ÂGE DE LA DÉRIVE'), findsNothing);
+      expect(find.text('LES FORMES À LA DÉRIVE'), findsNothing);
+    });
+
     testWidgets('a revoked rank closes the sky', (tester) async {
       await _pump(tester, repo: _ForbiddenRepo());
       await _cross(tester, 'gardien@kenos.local', 'le long secret');
@@ -264,7 +323,7 @@ Future<void> _cross(WidgetTester tester, String email, String password) async {
   await tester.pumpAndSettle();
 }
 
-AdminMetrics _metrics({bool silent = false}) => AdminMetrics(
+AdminMetrics _metrics({bool silent = false, bool census = false}) => AdminMetrics(
   series: silent
       ? List.generate(
           30,
@@ -315,6 +374,15 @@ AdminMetrics _metrics({bool silent = false}) => AdminMetrics(
     traceRate: 0.27,
     reboundRate: 0.14,
   ),
+  census: census
+      ? const AdminCensus(
+          fresh: 11,
+          week: 7,
+          ancient: 3,
+          mediaKinds: {'TEXT': 15, 'SONG': 3, 'EXCERPT': 3},
+          themes: {'TEAL': 11, 'INDIGO': 6, 'LUMEN': 4},
+        )
+      : const AdminCensus(),
 );
 
 /// Two moons of sky, deterministic: the older moon sows 100 echoes a
