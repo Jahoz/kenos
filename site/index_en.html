@@ -62,6 +62,16 @@
 
     /* ── Layout ── */
     main { position: relative; z-index: 1; max-width: 980px; margin: 0 auto; padding: 0 28px; }
+
+    /* ── The past moons (calendar) ── */
+    .moons { list-style: none; margin: 26px 0 0; padding: 0; max-width: 620px; }
+    .moon {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px;
+      padding: 13px 0; border-bottom: 1px solid rgba(244,244,246,.09);
+    }
+    .moon-date { font-size: 10px; letter-spacing: 2px; color: var(--teal); opacity: .8; min-width: 96px; }
+    .moon-poet { font-family: var(--serif); font-size: 19px; color: var(--light); }
+    .moon-title { font-family: var(--serif); font-style: italic; font-size: 15px; color: rgba(244,244,246,.55); }
     section { padding: 96px 0; }
     .kicker {
       font-size: 10px; letter-spacing: .35em; text-transform: uppercase;
@@ -455,9 +465,28 @@
       </div>
     </section>
 
+    <!-- ═══════════ THE PAST MOONS ═══════════ -->
+    <section class="hairline-t reveal" id="lunes">
+      <span class="kicker">07 / The past moons</span>
+      <h2 style="font-size:clamp(30px,4.5vw,44px); text-transform:none;">One poem each Monday,<br>one moon of life</h2>
+      <p style="margin-top:22px; max-width:560px; font-size:12px; color:rgba(244,244,246,.55);">
+        Every Monday a public-domain poem joins the ether — credited,
+        readable by all for a month, then the ether forgets, even its most
+        beautiful poems. The poets remain on this page: here is who has
+        inhabited the sky.
+      </p>
+      <ul class="moons" id="moon-list">
+        <li class="moon"><span class="moon-date">2026-09-14</span><span class="moon-poet">Paul Verlaine</span><span class="moon-title">Le ciel est, par-dessus le toit…</span></li>
+        <li class="moon"><span class="moon-date">2026-09-07</span><span class="moon-poet">Victor Hugo</span><span class="moon-title">Demain, dès l'aube</span></li>
+      </ul>
+      <p class="rule-foot" id="moon-foot" hidden>
+        Never the poems: <b>the ether forgets</b> — the page keeps only the names.
+      </p>
+    </section>
+
     <!-- ═══════════ SOUTENIR LE SANCTUAIRE ═══════════ -->
     <section class="hairline-t reveal" id="soutenir">
-      <span class="kicker">07 / Tending the void</span>
+      <span class="kicker">08 / Tending the void</span>
       <h2 style="font-size:clamp(30px,4.5vw,44px); text-transform:none;">The sanctuary<br>sells nothing</h2>
       <p style="margin-top:22px; max-width:560px; font-size:12px; color:rgba(244,244,246,.55);">
         No ads, no data, no subscription — nothing to capture, nothing to
@@ -720,5 +749,6 @@
     demo.addEventListener('pointerleave', cancelHold);
     demo.addEventListener('pointercancel', cancelHold);
   </script>
+  <script src="ether.js"></script>
 </body>
 </html>

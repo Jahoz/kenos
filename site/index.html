@@ -62,6 +62,16 @@
 
     /* ── Layout ── */
     main { position: relative; z-index: 1; max-width: 980px; margin: 0 auto; padding: 0 28px; }
+
+    /* ── The past moons (calendar) ── */
+    .moons { list-style: none; margin: 26px 0 0; padding: 0; max-width: 620px; }
+    .moon {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px;
+      padding: 13px 0; border-bottom: 1px solid rgba(244,244,246,.09);
+    }
+    .moon-date { font-size: 10px; letter-spacing: 2px; color: var(--teal); opacity: .8; min-width: 96px; }
+    .moon-poet { font-family: var(--serif); font-size: 19px; color: var(--light); }
+    .moon-title { font-family: var(--serif); font-style: italic; font-size: 15px; color: rgba(244,244,246,.55); }
     section { padding: 96px 0; }
     .kicker {
       font-size: 10px; letter-spacing: .35em; text-transform: uppercase;
@@ -456,9 +466,28 @@
       </div>
     </section>
 
+    <!-- ═══════════ LES LUNES PASSÉES ═══════════ -->
+    <section class="hairline-t reveal" id="lunes">
+      <span class="kicker">07 / Les lunes passées</span>
+      <h2 style="font-size:clamp(30px,4.5vw,44px); text-transform:none;">Un poème par lundi,<br>une lune de vie</h2>
+      <p style="margin-top:22px; max-width:560px; font-size:12px; color:rgba(244,244,246,.55);">
+        Chaque lundi, un poème du domaine public rejoint l'éther — crédité,
+        lisible par tous pendant un mois, puis l'éther oublie, même ses plus
+        beaux poèmes. Les poètes, eux, restent sur cette page : voici ceux
+        qui ont habité le ciel.
+      </p>
+      <ul class="moons" id="moon-list">
+        <li class="moon"><span class="moon-date">2026-09-14</span><span class="moon-poet">Paul Verlaine</span><span class="moon-title">Le ciel est, par-dessus le toit…</span></li>
+        <li class="moon"><span class="moon-date">2026-09-07</span><span class="moon-poet">Victor Hugo</span><span class="moon-title">Demain, dès l'aube</span></li>
+      </ul>
+      <p class="rule-foot" id="moon-foot" hidden>
+        Jamais les poèmes : <b>l'éther oublie</b>, la page ne retient que les noms.
+      </p>
+    </section>
+
     <!-- ═══════════ SOUTENIR LE SANCTUAIRE ═══════════ -->
     <section class="hairline-t reveal" id="soutenir">
-      <span class="kicker">07 / Entretenir le vide</span>
+      <span class="kicker">08 / Entretenir le vide</span>
       <h2 style="font-size:clamp(30px,4.5vw,44px); text-transform:none;">Le sanctuaire<br>ne vend rien</h2>
       <p style="margin-top:22px; max-width:560px; font-size:12px; color:rgba(244,244,246,.55);">
         Ni publicité, ni données, ni abonnement — rien à capturer, rien à
@@ -721,5 +750,6 @@
     demo.addEventListener('pointerleave', cancelHold);
     demo.addEventListener('pointercancel', cancelHold);
   </script>
+  <script src="ether.js"></script>
 </body>
 </html>
