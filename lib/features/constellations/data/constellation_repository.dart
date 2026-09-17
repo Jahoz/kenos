@@ -155,6 +155,55 @@ String seedRefusalMessage(Object error) {
   return 'L\'ÉTHER A REFUSÉ LA CONSTELLATION.';
 }
 
+/// The same honesty for a refused artifact report — the closed poem is
+/// the only user content the ether shows in clear to everyone; the
+/// reader who judges it worthy of the guardian's eye deserves the
+/// reason of every refusal (V3.51).
+String reportRefusalMessage(Object error) {
+  final raw = error.toString();
+  if (raw.contains('KENOS_INVALID_STATE')) {
+    return 'RIEN N\'EST LISIBLE DANS CET ANNEAU.';
+  }
+  if (raw.contains('KENOS_NOT_FOUND')) {
+    return 'CET ARTEFACT A RETOURNÉ AU VIDE.';
+  }
+  if (raw.contains('KENOS_RATE_LIMIT')) {
+    return 'LE CIEL SOUFFLE — REVIENS DEMAIN.';
+  }
+  if (raw.contains('KENOS_INVALID_REPORT_REASON')) {
+    return 'L\'ÉTHER NE CONNAÎT PAS CE MOTIF.';
+  }
+  if (raw.contains('KENOS_UNAUTHENTICATED')) {
+    return 'L\'ÉTHER NE TE RECONNAÎT PLUS.';
+  }
+  if (error is! PostgrestException) {
+    return 'L\'ÉTHER EST INJOIGNABLE — LE CIEL GARDERA.';
+  }
+  return 'L\'ÉTHER A REFUSÉ LE SIGNALEMENT.';
+}
+
+/// The same honesty for a refused key cut (V3.53) — the seeder who
+/// replaces a silent guest deserves the door's reason, not silence.
+String reseedRefusalMessage(Object error) {
+  final raw = error.toString();
+  if (raw.contains('KENOS_LINES_EXIST')) {
+    return 'LA PORTE A DÉJÀ ÉTÉ TOUCHÉE.';
+  }
+  if (raw.contains('KENOS_CLOSED')) {
+    return 'LE POÈME S\'EST REFERMÉ.';
+  }
+  if (raw.contains('KENOS_NOT_FOUND')) {
+    return 'AUCUNE PORTE À RESEMER.';
+  }
+  if (raw.contains('KENOS_UNAUTHENTICATED')) {
+    return 'L\'ÉTHER NE TE RECONNAÎT PLUS.';
+  }
+  if (error is! PostgrestException) {
+    return 'L\'ÉTHER EST INJOIGNABLE.';
+  }
+  return 'L\'ÉTHER A REFUSÉ LA CLÉ.';
+}
+
 /// The Exquisite Corpse contract (V3.13 — classic rule): seed,
 /// contribute by continuing the preceding line, read the FINISHED
 /// poem — an artifact, open to everyone (contributors included),
@@ -206,6 +255,13 @@ abstract class ConstellationRepository {
   /// the key opens nothing (wrong or expired — alike, by design).
   Future<ConstellationMeta> fetchInvited(String token);
 
+  /// V3.53 — the second key: the SEEDED cuts a fresh key for an
+  /// OPEN, UNTOUCHED salon ring (zero lines — nobody is replaced).
+  /// The previous key dies in the same transaction; the new one
+  /// crosses the wire exactly once, like the drop. The ring's 7-day
+  /// life is untouched.
+  Future<String> reseedKey(String constellationId);
+
   /// The map's constellations (metadata only).
   Future<List<ConstellationMeta>> fetchVisible();
 
@@ -214,6 +270,13 @@ abstract class ConstellationRepository {
   /// Returns null when the corpse is not finished (or is gone with
   /// the ether's 30-day horizon).
   Future<List<AssembledLine>?> read(String id);
+
+  /// Flags a public artifact for the guardian's eye (V3.51) — the
+  /// closed poem is the only user content the ether shows in clear,
+  /// so it carries the only report path outside echoes. Contentless
+  /// (a reason code, never a text), one report per hand. Returns
+  /// false when this hand already flagged this artifact.
+  Future<bool> report(String constellationId, String reasonCode);
 }
 
 class SupabaseConstellationRepository implements ConstellationRepository {
@@ -355,6 +418,15 @@ class SupabaseConstellationRepository implements ConstellationRepository {
   }
 
   @override
+  Future<String> reseedKey(String constellationId) async {
+    final token = await _client.rpc(
+      'reseed_salon_key',
+      params: {'p_constellation_id': constellationId},
+    );
+    return token as String;
+  }
+
+  @override
   Future<bool?> hasContributed(String id) async {
     try {
       return await _client.rpc(
@@ -380,6 +452,18 @@ class SupabaseConstellationRepository implements ConstellationRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  @override
+  Future<bool> report(String constellationId, String reasonCode) async {
+    final result = await _client.rpc(
+      'report_constellation',
+      params: {
+        'p_constellation_id': constellationId,
+        'p_reason_code': reasonCode,
+      },
+    );
+    return result == true;
   }
 
   /// V3.11a — the winner's bundle, opened on-device: each line travels
@@ -410,6 +494,10 @@ class SupabaseConstellationRepository implements ConstellationRepository {
 /// Demo repository: same contract, in memory.
 class LocalConstellationRepository implements ConstellationRepository {
   final List<_DemoConstellation> _constellations = [];
+
+  /// The hands that already flagged, per artifact — parity with the
+  /// one-report-per-hand PK (V3.51).
+  final Map<String, Set<String>> _reported = {};
 
   @override
   Future<SeededConstellation> seed(
@@ -491,6 +579,22 @@ class LocalConstellationRepository implements ConstellationRepository {
   }
 
   @override
+  Future<String> reseedKey(String constellationId) async {
+    final c = _constellations.firstWhere(
+      (c) => c.meta.id == constellationId,
+      orElse: () => throw StateError('KENOS_NOT_FOUND'),
+    );
+    // Parity with the SQL guards: a public ring is no salon, a closed
+    // ring keeps its key, a touched door is locked forever.
+    if (c.inviteToken == null) throw StateError('KENOS_NOT_FOUND');
+    if (c.closed) throw StateError('KENOS_CLOSED');
+    if (c.lines.isNotEmpty) throw StateError('KENOS_LINES_EXIST');
+    final fresh = 'salon-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
+    c.inviteToken = fresh;
+    return fresh;
+  }
+
+  @override
   Future<bool?> hasContributed(String id) async => null;
 
   @override
@@ -504,6 +608,21 @@ class LocalConstellationRepository implements ConstellationRepository {
         AssembledLine(number: i + 1, text: c.lines[i]),
     ];
   }
+
+  @override
+  Future<bool> report(String constellationId, String reasonCode) async {
+    final c = _constellations.firstWhere((c) => c.meta.id == constellationId);
+    // Parity with the SQL guard: only a CLOSED artifact is readable,
+    // only a readable thing can be judged.
+    if (!c.closed) {
+      throw StateError('KENOS_INVALID_STATE');
+    }
+    final hands = _reported.putIfAbsent(constellationId, () => {});
+    // One demo device, one hand: a second tap is "already flagged".
+    if (hands.contains('demo')) return false;
+    hands.add('demo');
+    return true;
+  }
 }
 
 class _DemoConstellation {
@@ -511,8 +630,9 @@ class _DemoConstellation {
 
   final ConstellationMeta meta;
 
-  /// Null = a public ring; set = a salon behind this key.
-  final String? inviteToken;
+  /// Null = a public ring; set = a salon behind this key. The demo
+  /// key is CUTTABLE (V3.53): only the living key opens, like SQL.
+  String? inviteToken;
 
   final List<String> lines = [];
   bool closed = false;
