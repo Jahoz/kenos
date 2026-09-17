@@ -1817,14 +1817,11 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
   ///    RENDER-level shift (StarShift) — pure recomposition, the star
   ///    widgets never rebuild for drift (a 30 fps full-layer rebuild
   ///    once wedged the tab at 0.3 fps);
-  ///  - the breath (and prop refresh) keeps the old 4 Hz metabolism,
-  ///    where rebuilding the layer is proven cheap.
+  ///  - V3.59: the breath no longer rebuilds the layer at all — each
+  ///    alive star fades its own cached raster (MindfulHoldStar), so
+  ///    nothing here stirs but the drift and the glimmer clock.
   late final Ticker _orbit = createTicker(_onOrbitTick);
-  DateTime _lastBreath = DateTime.now();
   bool _reduced = false;
-
-  /// The sky's breath clock — each star swells on its own phase.
-  DateTime _breathAt = DateTime.now();
 
   /// When a star is caught, its orbit time freezes HERE: the layer
   /// keeps computing its position from this instant until release.
@@ -1867,14 +1864,12 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
     // is part of the sanctuary), EVERY tick on a deep watch (V3.37) —
     // past deepWatchZoom the far lights race, and 30 fps reads as
     // judder exactly where the traveller went to watch them move.
+    // (V3.59: the BREATH no longer lives here — each alive star fades
+    // its own cached raster; the map-wide 250 ms setState was the
+    // max-zoom judder.)
     if (_orbitTickCount.isEven ||
         ParallaxMath.glimmerFullRate(widget.camera.zoom)) {
       _glimmerClock.value = now;
-    }
-    if (now.difference(_lastBreath) >= const Duration(milliseconds: 250)) {
-      _lastBreath = now;
-      _breathAt = now;
-      setState(() {});
     }
   }
 
@@ -2114,7 +2109,6 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
                       displayScale: dScale,
                       eyeDistanceAL:
                           (Offset(echo.coordX, echo.coordY) - eye).distance,
-                      breathAt: (_reduced || reception <= 0) ? null : _breathAt,
                       // The reception field: near = alive, far = a glimmer
                       // to approach. Sealed anchors ignore it (widget-side).
                       reception: reception,

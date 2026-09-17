@@ -35,7 +35,6 @@ class MindfulHoldStar extends ConsumerStatefulWidget {
     required this.echo,
     required this.z,
     this.displayScale = 1.0,
-    this.breathAt,
     this.reception = 1.0,
     this.eyeDistanceAL,
     this.focusNode,
@@ -48,10 +47,6 @@ class MindfulHoldStar extends ConsumerStatefulWidget {
   /// phone's narrow window shrinks the light so planets keep their
   /// stature. The catch zone keeps a 44 px floor regardless.
   final double displayScale;
-
-  /// The sky's breath clock (V3.7 polish): each star swells and dims
-  /// on its own 6-second phase. Null = frozen (reduce-motion).
-  final DateTime? breathAt;
 
   /// Reception field (0..1): 1 = the eye drifts close enough to read
   /// this star; 0 = a far glimmer — the hold does not arm, travelling
@@ -79,12 +74,24 @@ class MindfulHoldStar extends ConsumerStatefulWidget {
 }
 
 class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: widget.echo.isMine
         ? const Duration(seconds: 14)
         : AppDurations.mindfulHold,
+  );
+
+  /// V3.59 — the star breathes ALONE, and the breath costs a raster
+  /// NOTHING: a 6-second lap, phase signed by the echo's identity.
+  /// The old map-wide breath rebuilt the whole screen four times a
+  /// second and re-rasterized every alive glow's blur (the max-zoom
+  /// judder, the live report) — the blur is now FIXED (rasterized
+  /// once inside its RepaintBoundary) and only its compositing
+  /// opacity fades: the GPU reuses the cached picture forever.
+  late final AnimationController _breath = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 6),
   );
 
   bool _busy = false;
@@ -115,6 +122,14 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
       _controller.addListener(_onHoldTick);
       _controller.addStatusListener(_onStatus);
     }
+    // The breath's phase is signed by identity (the old map clock's
+    // per-star offset, kept): reduced motion rests at the peak.
+    if (reduced) {
+      _breath.value = 0.25;
+    } else {
+      _breath.value = (_echo.id.hashCode % 97) / 97;
+      _breath.repeat();
+    }
   }
 
   // The Riverpod container, captured at mount: `ref` is dead when
@@ -133,6 +148,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     }
     _beatTimer?.cancel();
     _controller.dispose();
+    _breath.dispose();
     _focusNode.removeListener(_onFocusChanged);
     if (_ownsNode) _focusNode.dispose();
     super.dispose();
@@ -374,17 +390,11 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     final hasUnreadSignal =
         _echo.isMine && _hasUnreadReception();
 
-    // The breath: a slow individual swell (id-hash phase, 6 s period)
-    // — the light LIVES, it is not a sticker.
-    var coreScale = 1.0;
-    var glowBoost = 0.0;
-    final breathAt = widget.breathAt;
-    if (breathAt != null && !context.wantsReducedMotion) {
-      final phase =
-          (breathAt.millisecondsSinceEpoch / 6000 + _echo.id.hashCode % 97) % 1.0;
-      coreScale = 0.88 + 0.24 * math.sin(phase * 2 * math.pi);
-      glowBoost = 0.5 + 0.5 * math.sin(phase * 2 * math.pi);
-    }
+    // The breath (V3.59): a slow individual fade, RENDER-LEVEL — a
+    // FadeTransition composites the glow's CACHED raster at a new
+    // opacity; the blur itself is never re-rasterized. The light
+    // LIVES, and at max zoom it no longer stutters for it.
+    final glowFade = _GlowFade().animate(_breath);
 
     Widget visual = SizedBox(
       width: diameter,
@@ -432,13 +442,13 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
                       color: _echo.theme.halo,
                     ),
               child: Center(
-                child: Transform.scale(
-                  scale: coreScale,
-                  // One's own sealed echoes read as HOLLOW rings: the
-                  // content was given away — even its author cannot
-                  // read it again. Full glow belongs to the readable
-                  // ether alone (and the hollow scars to what was
-                  // read). Shape is the distinction; no color needed.
+                // One's own sealed echoes read as HOLLOW rings: the
+                // content was given away — even its author cannot
+                // read it again. Full glow belongs to the readable
+                // ether alone (and the hollow scars to what was
+                // read). Shape is the distinction; no color needed.
+                child: FadeTransition(
+                  opacity: glowFade,
                   child: _echo.isMine
                       ? Container(
                           width: coreRadius * 2,
@@ -465,30 +475,28 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
                               stops: const [0, 0.45, 1],
                             ),
                             // The glow IS the depth haze: distant stars get a
-                            // softer, wider halo (the retired bucket blur
-                            // re-rasterized the viewport every frame once the
-                            // orbits came alive — this raster is cached per
-                            // star). Soft = far, tight = near.
-                            boxShadow:
-                                glowBoost > 0.05 || z < 0.55
-                                    ? [
-                                        BoxShadow(
-                                          color: AppColors.fade(
-                                            color,
-                                            0.30 * glowBoost +
-                                                0.18 *
-                                                    (0.55 - z)
-                                                        .clamp(0.0, 0.55),
-                                          ),
-                                          blurRadius: 14 +
-                                              10 * glowBoost +
-                                              22 *
-                                                  (0.55 - z)
-                                                      .clamp(0.0, 0.55),
-                                          spreadRadius: 1 + 3 * glowBoost,
-                                        ),
-                                      ]
-                                    : null,
+                            // softer, wider halo. V3.59: the shadow is FIXED
+                            // per depth (rasterized once, faded by the breath
+                            // ABOVE the raster — a blur re-rasterized four
+                            // times a second was the max-zoom judder).
+                            boxShadow: z < 0.55
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.fade(
+                                        color,
+                                        0.22 +
+                                            0.18 *
+                                                (0.55 - z)
+                                                    .clamp(0.0, 0.55),
+                                      ),
+                                      blurRadius: 14 +
+                                          22 *
+                                              (0.55 - z)
+                                                  .clamp(0.0, 0.55),
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
+                                : null,
                           ),
                         ),
                 ),
@@ -503,16 +511,6 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     // applied per bucket by the star layer — one saveLayer for the
     // whole depth range, not one per star).
     var opacity = ParallaxMath.opacityFor(z);
-    if (hasUnreadSignal) {
-      // A signal waits: the sealed star breathes — a steady glow,
-      // not a pulse, when animations are reduced.
-      if (context.wantsReducedMotion) {
-        opacity = opacity + (1 - opacity) * 0.4;
-      } else {
-        final pulse = 0.5 + 0.5 * math.sin(_controller.value * 6.283 * 2);
-        opacity = opacity + (1 - opacity) * 0.55 * pulse;
-      }
-    }
     // The reception field: far glimmers recede. V3.29 — the
     // bottle-in-the-sea law now shapes the sealed hearts too: one's
     // own rings fade GENTLY with distance (still anchors, never as
@@ -520,7 +518,22 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     // readable ether inverted the product's whole hierarchy.
     final field = widget.reception.clamp(0.0, 1.0);
     opacity *= _echo.isMine ? 0.45 + 0.55 * field : 0.30 + 0.70 * field;
-    visual = Opacity(opacity: opacity, child: visual);
+
+    if (hasUnreadSignal && !context.wantsReducedMotion) {
+      // A signal waits: the star pulses — V3.59, render-level too. A
+      // FadeTransition composites the cached picture toward full
+      // light and back; the subtree never rebuilds to be heard.
+      visual = FadeTransition(
+        opacity: _SignalPulse(opacity).animate(_controller),
+        child: visual,
+      );
+    } else {
+      if (hasUnreadSignal) {
+        // Reduced motion: the steady glow, no pulse.
+        opacity = opacity + (1 - opacity) * 0.4;
+      }
+      visual = Opacity(opacity: opacity, child: visual);
+    }
 
     // The catch zone is the CORE, not the glow (V3.23): full-diameter
     // opaque listeners stacked ~150 px wide blanketed the neighbours —
@@ -594,5 +607,29 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
         ref.watch(receptionControllerProvider).valueOrNull ??
             const <Reception>[];
     return receptions.any((r) => r.echoId == _echo.id && !r.seen);
+  }
+}
+
+/// The glow's breath (V3.59): 0.62 → 1.00 → 0.62 across the 6-second
+/// lap, phase signed by the star's identity. Composite-only life —
+/// the blur's raster is cached and never repainted for a breath.
+class _GlowFade extends Animatable<double> {
+  @override
+  double transform(double t) =>
+      0.62 + 0.38 * (0.5 + 0.5 * math.sin(t * 2 * math.pi));
+}
+
+/// The waiting signal's pulse (V3.59): two laps per shield turn,
+/// carrying the star from its resting opacity toward full light —
+/// again a fade over a cached picture, never a rebuild.
+class _SignalPulse extends Animatable<double> {
+  _SignalPulse(this.base);
+
+  final double base;
+
+  @override
+  double transform(double t) {
+    final pulse = 0.5 + 0.5 * math.sin(t * 6.283 * 2);
+    return base + (1 - base) * 0.55 * pulse;
   }
 }

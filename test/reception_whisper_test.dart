@@ -41,8 +41,11 @@ void main() {
     final gesture = await tester.startGesture(tester.getCenter(find.byType(MindfulHoldStar)));
     await gesture.up();
     // Let the snackbar's ENTRY animation complete — its 4 s dismissal
-    // timer only starts once the entry has settled.
-    await tester.pumpAndSettle(const Duration(seconds: 1));
+    // timer only starts once the entry has settled. Bounded pumps: the
+    // star's breath repeats FOREVER by design (V3.59 — a fade over a
+    // cached raster), so pumpAndSettle can never sit down here.
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
   }
 
   testWidgets('au loin : un whisper, puis le silence', (tester) async {
@@ -55,7 +58,7 @@ void main() {
 
     // The snackbar expires (4 s after its entry settled) and leaves.
     await tester.pump(const Duration(seconds: 5));
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    await tester.pump(const Duration(seconds: 1));
     expect(find.text('TROP LOIN. RAPPROCHE-TOI.'), findsNothing);
     await press(tester);
     await tester.pump();
