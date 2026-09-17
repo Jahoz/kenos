@@ -121,6 +121,39 @@ avant la montre de 09:00. La part humaine est le partage :
 
 ---
 
+## 3bis. Playbook — le Semeur d'éclats (vestiges, mensuel)
+
+La bibliothèque du vide ne croît JAMAIS seule : aucun cron ne sème
+les vestiges — la porte est humaine par contrat (l'IA propose, deux
+passes vérifient, un humain relit le goût). Le rituel, une fois par
+mois (~20 minutes) :
+
+1. **Semer** : `make db-sow-vestiges SOW_ARGS='--count 12 --theme
+   "astronomie (distances, étoiles, poussières)"'` — l'outil écrit
+   `vestiges_staging.md` (clé gratuite Google AI Studio / Groq /
+   Mistral, voir l'en-tête de `tool/gen_vestiges.dart`). Sans clé :
+   écrire les éclats à la main dans le staging — la porte humaine
+   reste la même.
+2. **Relire** : le staging à la racine du repo. On y vérifie le
+   VRAI (un fait faux est une dette culturelle) et le goût (la voix
+   kenos : sobre, jamais une leçon). Écarter sans pitié.
+3. **Émettre** : `dart run tool/gen_vestiges.dart --emit` écrit le
+   SQL → `bash scripts/prod_admin.sh filemulti
+   supabase/snippets/curate_vestiges.sql` vers la prod (FR canon).
+   Les traductions EN suivent par `tool/translate_vestiges.dart`
+   (staging humain aussi).
+4. **Mesurer** : l'Observatoire (`vestiges_live`) ; la rotation
+   quotidienne côté client (~2/3 à la dérive) fait le reste — le
+   ciel semble se renouveler, la bibliothèque a vraiment grandi.
+
+État (2026-09-17) : **32 FR + 32 EN en prod** (corpus initial V3.16)
+et **une moisson en staging** (`vestiges_staging.md`, astronomie +
+étymologies grecques) qui attend la relecture. Rythme cible : une
+moisson par mois — la culture ne pourrit pas (`live` à vie), chaque
+éclat ajoute pour toujours.
+
+---
+
 ## 4. Livrable A — le post Show HN (anglais, prêt à coller)
 
 Lancer mardi ou jeudi, 13:00–16:00 UTC (matin US). Répondre aux

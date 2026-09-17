@@ -1887,6 +1887,29 @@ la tempête vole dans l'ordre ; la nébuleuse reste 6 s, le flutter de
 400 verts, analyze 0. Zéro SQL, zéro migration — la loi vit dans le
 moteur et son repli.
 
+## V3.56 — Le nom de l'éclat ✅ (livrée 2026-09-17, signalement Hugo)
+
+« Le titre semble pas ok quand on ouvre un vestige. » Une coquille
+d'UNE LETTRE, vive depuis la première livraison de l'éclat : le
+panneau titrait **« VESTITVE — CITATION »** (`vestige.dart`, un T à
+la place du G). Le test existant ne pouvait pas l'attraper — il
+épinglait `kindLabel` (exact), jamais le titre assemblé du panneau.
+Corrigé, et le titre est désormais épinglé tel qu'il se lit :
+`'VESTIGE — CITATION'` + `VESTITVE` introuvable.
+
+La même question a rouvert le dossier « régulièrement » : **aucun
+cron ne sème les vestiges — la porte est humaine par contrat** (l'IA
+propose, deux passes vérifient, le staging se relit). Le rituel
+était documenté nulle part : il vit désormais dans le LAUNCH_KIT
+(« le Semeur d'éclats », une moisson par mois, ~20 minutes). État :
+32 FR + 32 EN en prod (corpus initial), une moisson d'astronomie et
+d'étymologies grecques EN STAGING à la racine du repo, prête pour la
+relecture.
+
+Gates : +2 assertions dans le test existant (`vestige_test` : le
+titre du panneau VESTIGE — CITATION, la coquille introuvable) ; suite
+complète 400 verts, analyze 0. Zéro SQL.
+
 ## 4. Règles inchangées (rappel)
 
 

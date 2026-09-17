@@ -75,6 +75,10 @@ void main() {
       expect(find.text('— anonyme'), findsOneWidget);
       expect(find.textContaining('NE BRÛLE PAS'), findsOneWidget,
           reason: 'un vestige est re-lisible, jamais brûlé');
+      // V3.56 — the panel's title says VESTIGE (a one-letter typo
+      // called every shard "VESTITVE" since the first delivery).
+      expect(find.text('VESTIGE — CITATION'), findsOneWidget);
+      expect(find.textContaining('VESTITVE'), findsNothing);
     });
   });
 }

@@ -283,7 +283,7 @@ class _VestigePanelState extends State<_VestigePanel> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'VESTITVE — ${vestige.kindLabel}',
+                  'VESTIGE — ${vestige.kindLabel}',
                   style: TextStyle(
                     fontFamily: AppFonts.mono,
                     fontSize: 9,
