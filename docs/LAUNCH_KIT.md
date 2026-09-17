@@ -129,11 +129,20 @@ passes vérifient, un humain relit le goût). Depuis V3.57 la porte est
 un ÉCRAN : **tout vit dans l'Observatoire** (bouton LES ÉCLATS), plus
 un seul fichier local à préparer une fois.
 
-**Une fois pour toutes** — la clé du semeur (gratuite, Google AI
-Studio / Groq / Mistral, voir l'en-tête de `tool/gen_vestiges.dart`) :
+**Une fois pour toutes** — le semeur est déjà branché : sans
+`VESTIGE_AI_KEY`, il s'appuie sur la clé du bouclier
+(`MISTRAL_API_KEY`, déjà en secrets) et les survolteurs la dirigent
+vers Mistral. Pour changer de moteur (Google AI Studio / Groq /
+Mistral dédiée, voir l'en-tête de `tool/gen_vestiges.dart`) :
 
-    supabase secrets set VESTIGE_AI_KEY=AIza...
-    supabase functions deploy vestige-sow
+    supabase secrets set VESTIGE_AI_KEY=<clé dédiée>
+    supabase secrets set VESTIGE_AI_URL=<endpoint OpenAI-compat>
+    supabase secrets set VESTIGE_AI_MODEL=<modèle>
+
+État actuel (2026-09-17) : Mistral `open-mistral-nemo` (palier
+libre — `mistral-small-latest` y est refusé en 429 ; la seconde
+passe de vérification peut sauter sur la limite d'une requête/minute,
+la relecture humaine d'À RELIRE couvre ce cas par design).
 
 **Le rituel, une fois par mois (~5 minutes)** :
 

@@ -12,6 +12,9 @@
 //   # optional overrides:
 //   supabase secrets set VESTIGE_AI_URL=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
 //   supabase secrets set VESTIGE_AI_MODEL=gemini-2.5-flash
+// Fallback: with no VESTIGE_AI_KEY, the sower leans on the shield's
+// key (MISTRAL_API_KEY) when steered at Mistral's OpenAI-compatible
+// endpoint — one living key in the project, two servants.
 
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
@@ -93,7 +96,9 @@ async function chat(
     Deno.env.get("VESTIGE_AI_URL") ??
       "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
   );
-  const key = Deno.env.get("VESTIGE_AI_KEY");
+  // The dedicated sower key, else the shield's (same project, same
+  // discipline: the key never leaves the server secrets either way).
+  const key = Deno.env.get("VESTIGE_AI_KEY") ?? Deno.env.get("MISTRAL_API_KEY");
   if (!key) throw new Error("unconfigured");
   const model = Deno.env.get("VESTIGE_AI_MODEL") ?? "gemini-2.5-flash";
 
