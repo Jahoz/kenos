@@ -157,6 +157,7 @@ class _LibraryPanelState extends State<_LibraryPanel> {
                 : _ShardPlaque(
                     key: ValueKey(_selected!.id),
                     vestige: _selected!,
+                    artifacts: widget.artifacts,
                     onClose: () => setState(() => _selected = null),
                   ),
           ),
@@ -171,10 +172,12 @@ class _ShardPlaque extends StatelessWidget {
   const _ShardPlaque({
     super.key,
     required this.vestige,
+    required this.artifacts,
     required this.onClose,
   });
 
   final Vestige vestige;
+  final ArtifactMemory artifacts;
   final VoidCallback onClose;
 
   @override
@@ -193,7 +196,11 @@ class _ShardPlaque extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            vestige.kindLabel,
+            // V3.58 — the state travels with the kind: the three lives
+            // of a shard told in one quiet line.
+            '${vestige.kindLabel}'
+            '${artifacts.isKept(vestige.id) ? ' · GARDÉ DANS TON CIEL' : ''}'
+            '${artifacts.isRead(vestige.id) && !artifacts.isKept(vestige.id) ? ' · LU' : ''}',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: AppFonts.mono,
@@ -281,16 +288,23 @@ class _LibraryPainter extends CustomPainter {
     for (final v in vestiges) {
       final p = w(v.offsetX, v.offsetY);
       final isRead = artifacts.isRead(v.id);
+      // V3.58 — the three states read at a glance: GARDÉ burns ember
+      // (the reliquaire's colour), unread glows teal, read rests dim.
+      final isKept = artifacts.isKept(v.id);
       final isSelected = selected?.id == v.id;
-      final alpha = isSelected ? 0.95 : (isRead ? 0.22 : 0.62);
+      final alpha = isSelected
+          ? 0.95
+          : (isKept ? 0.85 : (isRead ? 0.22 : 0.62));
       final rot = (v.id.hashCode & 0x7fffffff) % 60 / 60 * math.pi;
       canvas.save();
       canvas.translate(p.dx, p.dy);
       canvas.rotate(rot);
       final shard = Paint()
-        ..color = isRead
-            ? AppColors.fade(AppColors.pureLight, alpha)
-            : AppColors.fade(AppColors.teal, alpha);
+        ..color = isKept
+            ? AppColors.fade(AppColors.ember, alpha)
+            : (isRead
+                ? AppColors.fade(AppColors.pureLight, alpha)
+                : AppColors.fade(AppColors.teal, alpha));
       final r = isSelected ? 5.2 : 3.6;
       canvas.drawRect(Rect.fromCenter(center: Offset.zero, width: r * 2, height: r * 2), shard);
       canvas.restore();

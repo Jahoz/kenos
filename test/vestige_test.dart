@@ -81,4 +81,78 @@ void main() {
       expect(find.textContaining('VESTITVE'), findsNothing);
     });
   });
+
+  group('la lune de faveur (V3.58)', () {
+    Vestige shard(String id, {DateTime? born}) => Vestige(
+          id: id,
+          kind: 'fact',
+          text: 'un fait vérifiable, assez long pour exister',
+          source: 'astronomie',
+          offsetX: 0.5,
+          offsetY: 0.5,
+          createdAt: born,
+        );
+
+    test('un éclat de moins d\'une lune dérive TOUS les jours', () {
+      final start = DateTime(2026, 9, 17);
+      for (var d = 0; d < 40; d++) {
+        final day = start.add(Duration(days: d));
+        // Fresh AS OF THAT DAY: 29 days old, one before the moon.
+        final fresh = shard('fresh', born: day.subtract(const Duration(days: 29)));
+        final all = [
+          for (var i = 0; i < 40; i++) shard('old$i'),
+        ]..insert(3, fresh);
+        expect(dailyRotation(all, day), contains(fresh),
+            reason: 'jour +$d : publier doit se voir, partout, tout de suite');
+      }
+    });
+
+    test('la vieille bibliothèque tourne toujours — ~deux tiers, déterministe',
+        () {
+      final now = DateTime(2026, 9, 17);
+      // createdAt null = le canon embarqué, intemporel : la rotation
+      // l'a toujours traité ainsi, rien ne change.
+      final all = [for (var i = 0; i < 30; i++) shard('canon$i')];
+      final a = dailyRotation(all, now);
+      final b = dailyRotation(all, now);
+      expect(a, b, reason: 'même ciel partout');
+      expect(a.length, closeTo(20, 3), reason: '~2/3 de la vieille bibliothèque');
+    });
+
+    test('après une lune, l\'éclat rejoint la rotation commune', () {
+      final now = DateTime(2026, 9, 17);
+      final aged = shard('aged', born: now.subtract(const Duration(days: 31)));
+      final all = [
+        for (var i = 0; i < 40; i++) shard('old$i'),
+      ]..insert(7, aged);
+      var hiddenSomeDay = false;
+      for (var d = 0; d < 40 && !hiddenSomeDay; d++) {
+        hiddenSomeDay = !dailyRotation(all, now.add(Duration(days: d)))
+            .contains(aged);
+      }
+      expect(hiddenSomeDay, isTrue,
+          reason: 'la faveur prend fin : l\'éclat vieilli retrouve la rotation');
+    });
+
+    test('le fil de l\'ether porte la naissance (created_at)', () {
+      final v = Vestige.fromJson({
+        'id': 'x',
+        'kind': 'fact',
+        'text': 'La lumière du Soleil met 8 minutes.',
+        'source': 'astronomie',
+        'x': 0.5,
+        'y': 0.5,
+        'created_at': '2026-09-17T07:00:00+00:00',
+      });
+      expect(v.createdAt, isNotNull);
+      expect(Vestige.fromJson({
+        'id': 'x',
+        'kind': 'fact',
+        'text': 't',
+        'source': 's',
+        'x': 0.5,
+        'y': 0.5,
+      }).createdAt, isNull, reason: 'le canon embarqué reste intemporel');
+    });
+  });
 }

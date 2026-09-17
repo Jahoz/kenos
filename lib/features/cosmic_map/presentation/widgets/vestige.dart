@@ -23,6 +23,7 @@ class Vestige {
     required this.source,
     required this.offsetX,
     required this.offsetY,
+    this.createdAt,
   });
 
   final String id;
@@ -32,6 +33,11 @@ class Vestige {
   final double offsetX;
   final double offsetY;
 
+  /// V3.58 — when the ether grew this shard. Null = the bundled
+  /// library (the offline canon, timeless by definition): the daily
+  /// rotation treats timeless shards as it always has.
+  final DateTime? createdAt;
+
   factory Vestige.fromJson(Map<String, dynamic> json) => Vestige(
         id: json['id'] as String,
         kind: json['kind'] as String,
@@ -39,6 +45,9 @@ class Vestige {
         source: json['source'] as String,
         offsetX: (json['x'] as num).toDouble(),
         offsetY: (json['y'] as num).toDouble(),
+        createdAt: json['created_at'] == null
+            ? null
+            : DateTime.tryParse(json['created_at'] as String),
       );
 
   /// How many curated shards exist in the current bundle.
@@ -62,16 +71,26 @@ class Vestige {
 Future<List<Vestige>> loadVestiges() async {
   final all = await _loadAllVestiges();
   Vestige.knownCount = all.length;
+  return dailyRotation(all, DateTime.now());
+}
 
-  // Daily rotation: ~2/3 of the shards are adrift on any given day,
-  // deterministically — every device sees the same drifting set,
-  // and tomorrow's sky holds shards today's doesn't.
-  final day = DateTime.now().difference(DateTime(2026, 1, 1)).inDays;
+/// The daily rotation, one pure truth (V3.58): ~2/3 of the OLD
+/// library is adrift on any given day, deterministically — every
+/// device sees the same drifting set, and tomorrow's sky holds shards
+/// today's doesn't. But a shard YOUNGER THAN A MOON (30 days) is
+/// always adrift: publishing must appear the same day, everywhere —
+/// the rotation curates the old library, never against its publisher
+/// (the live report: a published harvest stayed invisible for days).
+List<Vestige> dailyRotation(List<Vestige> all, DateTime now) {
+  final day = now.difference(DateTime(2026, 1, 1)).inDays;
   final visible = <Vestige>[];
   for (var i = 0; i < all.length; i++) {
+    final shard = all[i];
+    final born = shard.createdAt;
+    final fresh = born != null && now.difference(born).inDays < 30;
     final slot = (i + day * 5) % all.length;
-    if (slot < all.length * 2 / 3) {
-      visible.add(all[i]);
+    if (fresh || slot < all.length * 2 / 3) {
+      visible.add(shard);
     }
   }
   return visible;
@@ -283,7 +302,10 @@ class _VestigePanelState extends State<_VestigePanel> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'VESTIGE — ${vestige.kindLabel}',
+                  // V3.58 — the reliquaire's mark rides the header:
+                  // a kept shard says so, right where it is read.
+                  'VESTIGE — ${vestige.kindLabel}'
+                  '${memory?.isKept(vestige.id) == true ? ' · GARDÉ' : ''}',
                   style: TextStyle(
                     fontFamily: AppFonts.mono,
                     fontSize: 9,

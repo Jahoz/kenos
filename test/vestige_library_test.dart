@@ -71,7 +71,9 @@ void main() {
     await tester.tapAt(origin + Offset(0.3 * side, 0.3 * side));
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('CITATION'), findsOneWidget);
+    // The header carries the shard's state — reading it here marks it
+    // LU on the spot (V3.58's three lives told in one line).
+    expect(find.text('CITATION · LU'), findsOneWidget);
     expect(find.textContaining('ne trahit jamais'), findsOneWidget);
     expect(find.text('— Confucius'), findsOneWidget);
 
