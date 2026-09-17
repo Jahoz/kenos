@@ -368,6 +368,7 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
                   series: _windowed(m.series),
                   layer: _layer,
                 ),
+                ..._moonSection(m),
                 const SizedBox(height: 38),
                 _sectionLabel('LA GRILLE DES SECTEURS'),
                 const SizedBox(height: 14),
@@ -527,6 +528,80 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
         ),
       ),
     ];
+  }
+
+  /// V3.56 — the moon against its past self: the last thirty days
+  /// of the ledger against the thirty before them. Sums and deltas,
+  /// never a name — and the section keeps silent until the ether has
+  /// given two moons of sky.
+  List<Widget> _moonSection(AdminMetrics m) {
+    final series = m.series;
+    if (series.length < 60) return const [];
+    final cut = series.length - 30;
+    final moon = series.sublist(cut);
+    final past = series.sublist(cut - 30, cut);
+    return [
+      const SizedBox(height: 38),
+      _sectionLabel('LA LUNE CONTRE LA LUNE'),
+      const SizedBox(height: 14),
+      _moonLine('ÉCHOS SEMÉS', moon, past, (d) => d.launched),
+      _moonLine('ÉCHOS LUS', moon, past, (d) => d.consumed),
+      _moonLine('LIGNES OFFERTES', moon, past, (d) => d.lines),
+      _moonLine('NAISSANCES', moon, past, (d) => d.newUsers),
+      const SizedBox(height: 4),
+      Text(
+        'Trente jours contre les trente précédents.',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontFamily: AppFonts.serifItalic,
+          fontSize: 12,
+          height: 1.7,
+          color: AppColors.fade(AppColors.pureLight, 0.55),
+        ),
+      ),
+    ];
+  }
+
+  /// One comparison row: the past moon's sum, the current one, and
+  /// the honest delta between them ('—' when the past was silence).
+  Widget _moonLine(
+    String label,
+    List<DailyPoint> moon,
+    List<DailyPoint> past,
+    int Function(DailyPoint) pick,
+  ) {
+    final moonSum = moon.fold<int>(0, (a, d) => a + pick(d));
+    final pastSum = past.fold<int>(0, (a, d) => a + pick(d));
+    final delta =
+        pastSum == 0
+            ? '—'
+            : '${moonSum >= pastSum ? '+' : ''}'
+                '${(((moonSum - pastSum) / pastSum) * 100).round()} %';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: AppFonts.mono,
+              fontSize: 9,
+              letterSpacing: 1,
+              color: AppColors.fade(AppColors.pureLight, 0.45),
+            ),
+          ),
+          Text(
+            '$pastSum → $moonSum · $delta',
+            style: TextStyle(
+              fontFamily: AppFonts.mono,
+              fontSize: 12,
+              color: AppColors.pureLight,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _sectionLabel(String text) => Text(

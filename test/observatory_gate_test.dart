@@ -127,6 +127,27 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets('the moon faces its past self when two moons exist', (
+      tester,
+    ) async {
+      await _pump(tester, repo: _FakeRepo(metrics: _metricsTwoMoons()));
+      await _cross(tester, 'gardien@kenos.local', 'le long secret');
+      await tester.ensureVisible(find.text('LA LUNE CONTRE LA LUNE'));
+      await tester.pumpAndSettle();
+      expect(find.text('LA LUNE CONTRE LA LUNE'), findsOneWidget);
+      // The fake sky: 100 echoes sown a day last moon, 200 this one —
+      // the sums and the delta are arithmetic, not poetry.
+      expect(find.text('3000 → 6000 · +100 %'), findsOneWidget);
+      expect(find.text('1500 → 3000 · +100 %'), findsOneWidget); // lus
+      expect(find.text('270 → 270 · +0 %'), findsOneWidget); // lignes
+    });
+
+    testWidgets('one moon of sky keeps the comparison silent', (tester) async {
+      await _pump(tester, repo: _FakeRepo());
+      await _cross(tester, 'gardien@kenos.local', 'le long secret');
+      expect(find.text('LA LUNE CONTRE LA LUNE'), findsNothing);
+    });
+
     testWidgets('a revoked rank closes the sky', (tester) async {
       await _pump(tester, repo: _ForbiddenRepo());
       await _cross(tester, 'gardien@kenos.local', 'le long secret');
@@ -296,13 +317,53 @@ AdminMetrics _metrics({bool silent = false}) => AdminMetrics(
   ),
 );
 
+/// Two moons of sky, deterministic: the older moon sows 100 echoes a
+/// day, the younger 200 — every comparison reads as +100 % (or +0 %
+/// for the flat counters).
+AdminMetrics _metricsTwoMoons() {
+  final series = <DailyPoint>[
+    for (var i = 0; i < 60; i++)
+      DailyPoint(
+        day: '2026-0${i < 28 ? 7 : 8}-${(i % 28 + 1).toString().padLeft(2, '0')}',
+        launched: i < 30 ? 100 : 200,
+        consumed: i < 30 ? 50 : 100,
+        rebound: 1,
+        traces: 2,
+        reports: 0,
+        corpsesSeeded: 2,
+        corpsesClosed: 1,
+        lines: 9,
+        newUsers: 5,
+        activeReaders: 6,
+      ),
+  ];
+  return AdminMetrics(
+    series: series,
+    live: const LiveCounts(
+      echoesDrifting: 87,
+      usersTotal: 412,
+      constellationsOpen: 14,
+      constellationsClosed: 26,
+      vestigesLive: 29,
+      reportsOpen: 3,
+    ),
+    sectors: const [SectorCell(x: 3, y: 4, count: 18)],
+    derived: const DerivedMetrics(
+      medianDriftSeconds: 3842,
+      traceRate: 0.27,
+      reboundRate: 0.14,
+    ),
+  );
+}
+
 class _FakeRepo implements AdminRepository {
   int fetches = 0;
   int? askedDays;
   final List<ConstellationReportSummary> reports;
+  final AdminMetrics? metrics;
   final retracted = <String>[];
 
-  _FakeRepo({this.reports = const []});
+  _FakeRepo({this.reports = const [], this.metrics});
 
   @override
   bool get isSignedIn => _in;
@@ -318,7 +379,7 @@ class _FakeRepo implements AdminRepository {
   Future<AdminMetrics> fetchMetrics({int days = 30}) async {
     fetches++;
     askedDays = days;
-    return _metrics();
+    return metrics ?? _metrics();
   }
 
   @override
