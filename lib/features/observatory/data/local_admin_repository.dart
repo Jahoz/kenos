@@ -9,6 +9,48 @@ import 'admin_repository.dart';
 /// and the shapes shown are a deterministic, plausible sky.
 class LocalAdminRepository implements AdminRepository {
   LocalAdminRepository() {
+    // V3.57 — the Sower's demo shelves.
+    _proposals.addAll([
+      const VestigeProposal(
+        id: 'demo-proposal-1',
+        kind: 'fact',
+        text: 'La lumière du Soleil met huit minutes pour nous atteindre '
+            '— distance appelée unité astronomique.',
+        source: 'astronomie',
+        theme: 'astronomie',
+        proposedAt: '2026-09-17 08:12',
+      ),
+      const VestigeProposal(
+        id: 'demo-proposal-2',
+        kind: 'etymology',
+        text: 'COSMOS — du grec κόσμος, « ordre, parure ». L\'univers '
+            'n\'est pas chaos : un tissu où chaque poussière chante '
+            'l\'harmonie.',
+        source: 'grec ancien',
+        theme: 'astronomie',
+        proposedAt: '2026-09-17 08:12',
+      ),
+    ]);
+    _library.addAll([
+      const VestigeLibraryEntry(
+        id: 'demo-vestige-1',
+        kind: 'haiku',
+        text: 'Poussière d\'étoile / un grain sur l\'aile d\'une nuit / '
+            'et le temps s\'efface.',
+        source: 'kenos',
+        live: true,
+        createdOn: '2026-09-01',
+      ),
+      const VestigeLibraryEntry(
+        id: 'demo-vestige-2',
+        kind: 'fact',
+        text: 'Nuage de Magellan : galaxie naine visible à l\'œil nu, '
+            'mais sa lumière met 163 000 ans à nous parvenir.',
+        source: 'astronomie',
+        live: false,
+        createdOn: '2026-09-03',
+      ),
+    ]);
     // V3.51 — a deterministic pair of flagged artifacts, shaped like
     // the ether's answer (metadata only, never a text). Retraction
     // really removes: the demo keeps the gesture honest.
@@ -41,6 +83,13 @@ class LocalAdminRepository implements AdminRepository {
   bool _signedIn = false;
   final List<ConstellationReportSummary> _reports = [];
 
+  /// V3.57 — the Sower module's demo: two shards awaiting taste, a
+  /// small library with one retired shard, and a canned harvest the
+  /// SEMER button grows (the loop, demonstrated without an engine).
+  final List<VestigeProposal> _proposals = [];
+  final List<VestigeLibraryEntry> _library = [];
+  int _demoSowCount = 0;
+
   @override
   bool get isSignedIn => _signedIn;
 
@@ -70,6 +119,82 @@ class LocalAdminRepository implements AdminRepository {
     if (!_signedIn) throw GuardianAuthException('no_session');
     await Future<void>.delayed(const Duration(milliseconds: 300));
     _reports.removeWhere((r) => r.constellationId == constellationId);
+  }
+
+  @override
+  Future<List<VestigeProposal>> fetchVestigeProposals() async {
+    if (!_signedIn) throw GuardianAuthException('no_session');
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    return List.of(_proposals);
+  }
+
+  @override
+  Future<bool> decideVestigeProposal(String proposalId, bool approve) async {
+    if (!_signedIn) throw GuardianAuthException('no_session');
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    final proposal = _proposals.where((p) => p.id == proposalId).firstOrNull;
+    if (proposal == null) return false;
+    _proposals.remove(proposal);
+    if (approve) {
+      _library.insert(
+        0,
+        VestigeLibraryEntry(
+          id: proposal.id,
+          kind: proposal.kind,
+          text: proposal.text,
+          source: proposal.source,
+          live: true,
+          createdOn: proposal.proposedAt.split(' ').first,
+        ),
+      );
+    }
+    return true;
+  }
+
+  @override
+  Future<List<VestigeLibraryEntry>> fetchVestigeLibrary() async {
+    if (!_signedIn) throw GuardianAuthException('no_session');
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    return List.of(_library);
+  }
+
+  @override
+  Future<void> setVestigeLive(String id, bool live) async {
+    if (!_signedIn) throw GuardianAuthException('no_session');
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    final index = _library.indexWhere((v) => v.id == id);
+    if (index < 0) throw GuardianForbiddenException();
+    final entry = _library[index];
+    _library[index] = VestigeLibraryEntry(
+      id: entry.id,
+      kind: entry.kind,
+      text: entry.text,
+      source: entry.source,
+      live: live,
+      createdOn: entry.createdOn,
+    );
+  }
+
+  @override
+  Future<SowResult> sowVestiges({int count = 6, required String theme}) async {
+    if (!_signedIn) throw GuardianAuthException('no_session');
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    // The demo sows a canned shard per pass — the loop is real (the
+    // proposal awaits taste), the engine is not.
+    _demoSowCount += 1;
+    _proposals.insert(
+      0,
+      VestigeProposal(
+        id: 'demo-sow-$_demoSowCount',
+        kind: 'haiku',
+        text: 'Une lumière passe / elle ne demande personne / le vide '
+            'la regarde.',
+        source: 'kenos',
+        theme: theme,
+        proposedAt: 'démo',
+      ),
+    );
+    return SowResult(sown: 1, generated: count, reason: 'demo');
   }
 
   @override

@@ -11,7 +11,9 @@ import '../features/cosmic_map/presentation/impact_screen.dart';
 import '../features/cosmic_map/presentation/map_screen.dart';
 import '../features/create_echo/presentation/mirror_screen.dart';
 import '../features/echo/data/echo_providers.dart';
-import '../features/frequencies/presentation/frequencies_screen.dart';import '../features/observatory/presentation/observatory_screen.dart';
+import '../features/frequencies/presentation/frequencies_screen.dart';
+import '../features/observatory/presentation/observatory_screen.dart';
+import '../features/observatory/presentation/vestige_module_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 
 /// KENOS routing: fades only, no abrupt screen changes.
@@ -116,6 +118,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/observatoire',
         pageBuilder: (context, state) =>
             _fade(context, child: const ObservatoryScreen()),
+      ),
+      // V3.57 — the Shard Sower: the vestige module behind the
+      // Observatory's own threshold (same guardian session).
+      GoRoute(
+        path: '/observatoire/eclats',
+        pageBuilder: (context, state) =>
+            _fade(context, child: const VestigeModuleScreen()),
       ),
       GoRoute(
         path: '/frequencies',

@@ -492,6 +492,12 @@ class _FakeRepo implements AdminRepository {
   final AdminMetrics? metrics;
   final retracted = <String>[];
 
+  // V3.57 — the Sower module's memory (proposals + library + sowing).
+  final proposals = <VestigeProposal>[];
+  final library = <VestigeLibraryEntry>[];
+  final sown = <({int count, String theme})>[];
+  final decided = <({String id, bool approve})>[];
+
   _FakeRepo({this.reports = const [], this.metrics});
 
   @override
@@ -518,6 +524,65 @@ class _FakeRepo implements AdminRepository {
   @override
   Future<void> retractConstellation(String constellationId) async =>
       retracted.add(constellationId);
+
+  @override
+  Future<List<VestigeProposal>> fetchVestigeProposals() async =>
+      List.of(proposals);
+
+  @override
+  Future<bool> decideVestigeProposal(String proposalId, bool approve) async {
+    decided.add((id: proposalId, approve: approve));
+    proposals.removeWhere((p) => p.id == proposalId);
+    if (approve) {
+      library.insert(
+        0,
+        VestigeLibraryEntry(
+          id: proposalId,
+          kind: 'fact',
+          text: 'publié par la fausse main',
+          source: 'test',
+          live: true,
+        ),
+      );
+    }
+    return true;
+  }
+
+  @override
+  Future<List<VestigeLibraryEntry>> fetchVestigeLibrary() async =>
+      List.of(library);
+
+  @override
+  Future<void> setVestigeLive(String id, bool live) async {
+    final index = library.indexWhere((v) => v.id == id);
+    if (index >= 0) {
+      final e = library[index];
+      library[index] = VestigeLibraryEntry(
+        id: e.id,
+        kind: e.kind,
+        text: e.text,
+        source: e.source,
+        live: live,
+        createdOn: e.createdOn,
+      );
+    }
+  }
+
+  @override
+  Future<SowResult> sowVestiges({int count = 6, required String theme}) async {
+    sown.add((count: count, theme: theme));
+    proposals.insert(
+      0,
+      VestigeProposal(
+        id: 'fake-sow-${sown.length}',
+        kind: 'haiku',
+        text: 'une lumière passe / elle ne demande personne',
+        source: 'test',
+        theme: theme,
+      ),
+    );
+    return SowResult(sown: 1, generated: count);
+  }
 }
 
 class _RefusingRepo implements AdminRepository {
@@ -540,6 +605,23 @@ class _RefusingRepo implements AdminRepository {
 
   @override
   Future<void> retractConstellation(String constellationId) async {}
+
+  @override
+  Future<List<VestigeProposal>> fetchVestigeProposals() async => const [];
+
+  @override
+  Future<bool> decideVestigeProposal(String proposalId, bool approve) async =>
+      false;
+
+  @override
+  Future<List<VestigeLibraryEntry>> fetchVestigeLibrary() async => const [];
+
+  @override
+  Future<void> setVestigeLive(String id, bool live) async {}
+
+  @override
+  Future<SowResult> sowVestiges({int count = 6, required String theme}) async =>
+      const SowResult(sown: 0, reason: 'forbidden');
 }
 
 class _ForbiddenRepo implements AdminRepository {
@@ -563,6 +645,23 @@ class _ForbiddenRepo implements AdminRepository {
 
   @override
   Future<void> retractConstellation(String constellationId) async {}
+
+  @override
+  Future<List<VestigeProposal>> fetchVestigeProposals() async => const [];
+
+  @override
+  Future<bool> decideVestigeProposal(String proposalId, bool approve) async =>
+      false;
+
+  @override
+  Future<List<VestigeLibraryEntry>> fetchVestigeLibrary() async => const [];
+
+  @override
+  Future<void> setVestigeLive(String id, bool live) async {}
+
+  @override
+  Future<SowResult> sowVestiges({int count = 6, required String theme}) async =>
+      const SowResult(sown: 0, reason: 'forbidden');
 }
 
 class _SilentRepo implements AdminRepository {
@@ -586,4 +685,21 @@ class _SilentRepo implements AdminRepository {
 
   @override
   Future<void> retractConstellation(String constellationId) async {}
+
+  @override
+  Future<List<VestigeProposal>> fetchVestigeProposals() async => const [];
+
+  @override
+  Future<bool> decideVestigeProposal(String proposalId, bool approve) async =>
+      false;
+
+  @override
+  Future<List<VestigeLibraryEntry>> fetchVestigeLibrary() async => const [];
+
+  @override
+  Future<void> setVestigeLive(String id, bool live) async {}
+
+  @override
+  Future<SowResult> sowVestiges({int count = 6, required String theme}) async =>
+      const SowResult(sown: 0, reason: 'empty');
 }

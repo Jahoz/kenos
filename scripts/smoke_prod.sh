@@ -88,6 +88,11 @@ rpc_probe_payload() {
     fetch_nearby_frequencies) echo '{"p_x":0,"p_y":0,"p_radius":0.01}' ;;
     report_constellation)     echo '{"p_constellation_id":"","p_reason_code":""}' ;;
     reseed_salon_key)         echo '{"p_constellation_id":""}' ;;
+    admin_list_vestige_proposals) echo '{}' ;;
+    admin_decide_vestige_proposal) echo '{"p_proposal_id":"","p_approve":true}' ;;
+    admin_fetch_vestiges)     echo '{"p_locale":"fr"}' ;;
+    admin_set_vestige_live)   echo '{"p_id":"","p_locale":"fr","p_live":true}' ;;
+    admin_sow_vestige_proposals) echo '{"p_proposals":[],"p_theme":""}' ;;
     # No-arg payload: the anon probe must resolve the signature then be
     # denied (granted to authenticated, gated to the guardian inside).
     admin_fetch_metrics) echo '{}' ;;
@@ -164,11 +169,17 @@ for fn in fetch_map_sector launch_echo rebound_echo leave_trace report_echo \
           fetch_constellations peek_previous_line read_constellation \
           fetch_vestiges emit_frequency fetch_nearby_frequencies \
           report_constellation reseed_salon_key \
+          admin_list_vestige_proposals admin_decide_vestige_proposal \
+          admin_fetch_vestiges admin_set_vestige_live \
           admin_fetch_metrics admin_list_constellation_reports \
           admin_retract_constellation; do
   client_rpcs | grep -qx "$fn" \
     || ko "$fn has a probe payload but is no longer referenced in lib/ — stale probe, remove it"
 done
+# admin_sow_vestige_proposals is called by the vestige-sow EDGE
+# FUNCTION (TypeScript), never from lib/ — its payload above stays on
+# purpose: the existence probe is the V3.11a lesson, wherever the
+# caller lives.
 
 # ── 3. Read-only RPCs execute end-to-end (anonymous user) ────────────────
 JWT=$(curl -sS -X POST "$SUPABASE_URL/auth/v1/signup" \
@@ -196,13 +207,25 @@ if [ -n "$JWT" ]; then
   # ── 4. door-preview answers coherently, never 5xx ──────────────────────
   code=$(curl -sS -o "$TMP/door" -w '%{http_code}' -X POST "$SUPABASE_URL/functions/v1/door-preview" \
     -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $JWT" \
-    -H 'Content-Type: application/json' -d '{"trackId":"not-a-valid-id"}') || code="curl-error"
+    -H "Content-Type: application/json" -d '{"trackId":"not-a-valid-id"}') || code="curl-error"
   body="$(cat "$TMP/door")"
   if { [ "$code" = "200" ] || [ "$code" = "400" ]; } \
      && printf '%s' "$body" | python3 -c 'import json,sys; json.loads(sys.stdin.read())' 2>/dev/null; then
     ok "door-preview invalid id → $code (coherent: $(printf '%s' "$body" | head -c 80))"
   else
     ko "door-preview broken: $code $(printf '%s' "$body" | head -c 120)"
+  fi
+
+  # ── 4b. vestige-sow refuses the anonymous honestly, never 5xx ──────────
+  code=$(curl -sS -o "$TMP/sow" -w '%{http_code}' -X POST "$SUPABASE_URL/functions/v1/vestige-sow" \
+    -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $JWT" \
+    -H "Content-Type: application/json" -d '{"count":4,"theme":"smoke"}') || code="curl-error"
+  body="$(cat "$TMP/sow")"
+  if [ "$code" = "200" ] \
+     && printf '%s' "$body" | python3 -c 'import json,sys; json.loads(sys.stdin.read())' 2>/dev/null; then
+    ok "vestige-sow anonymous → $code (coherent: $(printf '%s' "$body" | head -c 80))"
+  else
+    ko "vestige-sow broken: $code $(printf '%s' "$body" | head -c 120)"
   fi
 fi
 

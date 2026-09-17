@@ -266,7 +266,21 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
         // Manual recalibration only — no live counters, in the sky's
         // spirit: the guardian asks, the ether answers.
         actions: [
-          if (_phase == _Phase.data || _phase == _Phase.silent)
+          if (_phase == _Phase.data || _phase == _Phase.silent) ...[
+            // V3.57 — the Shard Sower's door: the vestige module,
+            // same session, same threshold.
+            TextButton(
+              onPressed: () => context.push('/observatoire/eclats'),
+              child: Text(
+                'LES ÉCLATS',
+                style: TextStyle(
+                  fontFamily: AppFonts.mono,
+                  fontSize: 9,
+                  letterSpacing: 2,
+                  color: AppColors.fade(AppColors.ember, 0.8),
+                ),
+              ),
+            ),
             TextButton(
               onPressed: _load,
               child: Text(
@@ -278,6 +292,7 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
                 ),
               ),
             ),
+          ],
         ],
       ),
       body: switch (_phase) {

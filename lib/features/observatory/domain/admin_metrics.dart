@@ -75,6 +75,7 @@ class DailyPoint {
     this.salonsSeeded = 0,
     this.corpsesReported = 0,
     this.corpsesRetracted = 0,
+    this.vestigesPublished = 0,
   });
 
   factory DailyPoint.fromJson(Map<String, dynamic> json) => DailyPoint(
@@ -92,6 +93,7 @@ class DailyPoint {
     salonsSeeded: _int(json['salons_seeded']),
     corpsesReported: _int(json['corpses_reported']),
     corpsesRetracted: _int(json['corpses_retracted']),
+    vestigesPublished: _int(json['vestiges_published']),
   );
 
   final String day; // YYYY-MM-DD (UTC, the server's clock)
@@ -108,6 +110,9 @@ class DailyPoint {
   final int salonsSeeded;
   final int corpsesReported;
   final int corpsesRetracted;
+
+  /// V3.57 — shards the guardian published into the library.
+  final int vestigesPublished;
 }
 
 class LiveCounts {
@@ -120,6 +125,7 @@ class LiveCounts {
     required this.reportsOpen,
     this.salonsOpen = 0,
     this.constellationReportsOpen = 0,
+    this.vestigeProposalsPending = 0,
   });
 
   factory LiveCounts.fromJson(Map<String, dynamic> json) => LiveCounts(
@@ -131,6 +137,7 @@ class LiveCounts {
     reportsOpen: _int(json['reports_open']),
     salonsOpen: _int(json['salons_open']),
     constellationReportsOpen: _int(json['constellation_reports_open']),
+    vestigeProposalsPending: _int(json['vestige_proposals_pending']),
   );
 
   final int echoesDrifting;
@@ -141,6 +148,9 @@ class LiveCounts {
   final int reportsOpen;
   final int salonsOpen;
   final int constellationReportsOpen;
+
+  /// V3.57 — shards awaiting the guardian's taste (the Sower module).
+  final int vestigeProposalsPending;
 }
 
 class SectorCell {
@@ -278,6 +288,108 @@ class ConstellationReportSummary {
     }
     return latestReason;
   }
+}
+
+/// One AI-sown shard awaiting the guardian's taste (V3.57). Culture
+/// in clear — vestiges are public by nature; nothing is published to
+/// the sky until the guardian says so.
+class VestigeProposal {
+  const VestigeProposal({
+    required this.id,
+    required this.kind,
+    required this.text,
+    required this.source,
+    this.theme = '',
+    this.proposedAt = '',
+  });
+
+  factory VestigeProposal.fromJson(Map<String, dynamic> json) =>
+      VestigeProposal(
+        id: json['id'] as String? ?? '',
+        kind: json['kind'] as String? ?? 'fact',
+        text: json['text'] as String? ?? '',
+        source: json['source'] as String? ?? '',
+        theme: json['theme'] as String? ?? '',
+        proposedAt: json['proposed_at'] as String? ?? '',
+      );
+
+  final String id;
+  final String kind;
+  final String text;
+  final String source;
+  final String theme;
+  final String proposedAt;
+
+  String get kindLabel => switch (kind) {
+    'quote' => 'CITATION',
+    'etymology' => 'ÉTYMOLOGIE',
+    'haiku' => 'HAÏKU',
+    'history' => 'HISTOIRE',
+    'fact' => 'FAIT',
+    _ => 'ÉCLAT',
+  };
+}
+
+/// One library shard, as the gardener reads it (V3.57).
+class VestigeLibraryEntry {
+  const VestigeLibraryEntry({
+    required this.id,
+    required this.kind,
+    required this.text,
+    required this.source,
+    required this.live,
+    this.createdOn = '',
+  });
+
+  factory VestigeLibraryEntry.fromJson(Map<String, dynamic> json) =>
+      VestigeLibraryEntry(
+        id: json['id'] as String? ?? '',
+        kind: json['kind'] as String? ?? 'fact',
+        text: json['text'] as String? ?? '',
+        source: json['source'] as String? ?? '',
+        live: json['live'] != false,
+        createdOn: json['created_on'] as String? ?? '',
+      );
+
+  final String id;
+  final String kind;
+  final String text;
+  final String source;
+  final bool live;
+  final String createdOn;
+
+  String get kindLabel => switch (kind) {
+    'quote' => 'CITATION',
+    'etymology' => 'ÉTYMOLOGIE',
+    'haiku' => 'HAÏKU',
+    'history' => 'HISTOIRE',
+    'fact' => 'FAIT',
+    _ => 'ÉCLAT',
+  };
+}
+
+/// What a sowing pass came back with (V3.57): how many shards the AI
+/// grew, how many survived the fact-check, how many now await review
+/// — and, when the sky refused, the honest reason.
+class SowResult {
+  const SowResult({
+    required this.sown,
+    this.generated = 0,
+    this.reason,
+  });
+
+  factory SowResult.fromJson(Map<String, dynamic> json) => SowResult(
+    sown: _int(json['sown']),
+    generated: _int(json['generated']),
+    reason: json['reason'] as String?,
+  );
+
+  final int sown;
+  final int generated;
+
+  /// null = success. 'unconfigured' | 'forbidden' | 'ai' | 'empty' |
+  /// 'rpc' | 'demo' — each with its honest word in the UI.
+  final String? reason;
 }
 
 int _int(dynamic v) => v is num ? v.toInt() : 0;

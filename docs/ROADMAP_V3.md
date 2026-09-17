@@ -1955,6 +1955,58 @@ comme au serveur), `flutter analyze` 0. Temps réel et notifications
 restent refusés (V3.16) : le guet quotidien (« la braise du guet »)
 et la mémoire des lunes restent Roadmap+.
 
+## V3.57 — Le Semeur d'éclats ✅ (livrée 2026-09-17, arbitrage Hugo : « le processus doit passer par l'Observatoire »)
+
+Le pipeline des vestiges était un pèlerinage de fichiers locaux :
+outil Dart + clé IA locale, staging markdown à la racine, SQL écrit à
+la main, console opérateur. La porte était humaine — la route était
+pénible. **La porte reste humaine ; la route devient un écran** : LE
+SEMEUR D'ÉCLATS, module dédié de l'Observatoire (route
+`/observatoire/eclats`, même seuil, même session gardien, bouton
+LES ÉCLATS dans la barre du registre).
+
+- **`kenos_vestige_proposals`** : les éclats vérifiés attendant le
+  goût du gardien. Les vestiges étant de la culture publique en clair
+  (servie telle quelle à tous), le module les affiche sans tordre la
+  loi contentless — elle garde les mots des utilisateurs, jamais ceux
+  des poètes. **Rien n'est public avant le geste du gardien.**
+- **Cinq RPC gardien** : lister les propositions, publier/écarter
+  (publier INSÈRE dans la bibliothèque FR canon + compte
+  `vestiges_published`, contentless ; écarter SUPPRIME), lire la
+  bibliothèque, retirer/rétablir (`live`). La garde exige plpgsql —
+  deux fonctions nées en `language sql` étaient **sans aucune garde**
+  (le pgTAP l'a attrapé avant tout déploiement : n'importe quel
+  authentifié aurait lu propositions et bibliothèque) : converties,
+  épinglées.
+- **Edge Function `vestige-sow`** : la clé IA part dans les secrets
+  serveur (contrat door-preview : absente → `{sown:0,
+  reason:"unconfigured"}` et le module le DIT). Deux passes portées
+  de l'outil (la voix kenos, puis le fact-checker impitoyable) ;
+  **toute l'autorisation et la validation vivent dans le RPC testé**
+  (genres, mesures 10-400, dédoublonnage normalisé contre
+  bibliothèque ET propositions) — la fonction n'est que la route.
+- **L'écran** : À RELIRE (cartes éclat + PUBLIER DANS LE CIEL /
+  ÉCARTER + TOUT PUBLIER), SEMER (4/8/12 + thème libre), LA
+  BIBLIOTHÈQUE (RETIRER/REMETTRE — réversible, donc pas de ROSE).
+  Parité démo exacte : propositions vivantes, gestes réels, semaille
+  en conserve (raison `demo`) quand il n'y a pas de moteur.
+- La moisson en staging (9 éclats) migre en propositions
+  (`snippets/vestige_proposals_seed.sql`, idempotent) — la relecture
+  se fera DANS le module, doublon de la Voie lactée compris. Le
+  fichier staging de la racine meurt avec elle.
+
+Gates : +21 invariants pgTAP (`vestige_sower.sql` : les cinq portes
+contre l'anonyme/le lambda, la moisson gardée en SQL — genre inconnu
+et mesure folle filtrés, jamais deux fois le même éclat —, publier
+vit dans le canon FR ET dans le ciel client (`fetch_vestiges`
+épinglé avant/après retrait), écarter, introuvable, retirer/rétablir
+épinglés À LA SOURCE client) ; +3 tests Dart (la boucle complète —
+lire, publier, écarter, retirer, semer — ; la clé absente dite
+honnêtement ; le semeur démo fait pousser et la décision déplace
+vraiment) ; 415 verts, analyze 0, pgTAP 283. **Sessions croisées** :
+deux V3.56 vivent dans la roadmap (le nom de l'éclat / la lunette du
+gardien) — livraisons parallèles, numérotation tenue ici à V3.57.
+
 ## 4. Règles inchangées (rappel)
 
 

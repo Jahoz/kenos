@@ -31,6 +31,23 @@ abstract class AdminRepository {
   /// a moon-old poem. The guardian's only moderation gesture — never
   /// automatic, never a threshold.
   Future<void> retractConstellation(String constellationId);
+
+  /// V3.57 — the Shard Sower module: shards awaiting the guardian's
+  /// taste (newest first), the lever that publishes or discards them,
+  /// the library the sky serves, its retire/restore lever, and the
+  /// sowing pass (the AI's two passes live server-side; the survivors
+  /// land as proposals for the human gate).
+  Future<List<VestigeProposal>> fetchVestigeProposals();
+
+  /// True when the proposal existed and was decided. Publishing moves
+  /// the shard into the library (nothing is public before this).
+  Future<bool> decideVestigeProposal(String proposalId, bool approve);
+
+  Future<List<VestigeLibraryEntry>> fetchVestigeLibrary();
+
+  Future<void> setVestigeLive(String id, bool live);
+
+  Future<SowResult> sowVestiges({int count = 6, required String theme});
 }
 
 /// The threshold refused these words (bad credentials or network).

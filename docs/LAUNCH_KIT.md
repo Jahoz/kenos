@@ -121,36 +121,42 @@ avant la montre de 09:00. La part humaine est le partage :
 
 ---
 
-## 3bis. Playbook — le Semeur d'éclats (vestiges, mensuel)
+## 3bis. Playbook — le Semeur d'éclats (module Observatoire, V3.57)
 
 La bibliothèque du vide ne croît JAMAIS seule : aucun cron ne sème
 les vestiges — la porte est humaine par contrat (l'IA propose, deux
-passes vérifient, un humain relit le goût). Le rituel, une fois par
-mois (~20 minutes) :
+passes vérifient, un humain relit le goût). Depuis V3.57 la porte est
+un ÉCRAN : **tout vit dans l'Observatoire** (bouton LES ÉCLATS), plus
+un seul fichier local à préparer une fois.
 
-1. **Semer** : `make db-sow-vestiges SOW_ARGS='--count 12 --theme
-   "astronomie (distances, étoiles, poussières)"'` — l'outil écrit
-   `vestiges_staging.md` (clé gratuite Google AI Studio / Groq /
-   Mistral, voir l'en-tête de `tool/gen_vestiges.dart`). Sans clé :
-   écrire les éclats à la main dans le staging — la porte humaine
-   reste la même.
-2. **Relire** : le staging à la racine du repo. On y vérifie le
-   VRAI (un fait faux est une dette culturelle) et le goût (la voix
-   kenos : sobre, jamais une leçon). Écarter sans pitié.
-3. **Émettre** : `dart run tool/gen_vestiges.dart --emit` écrit le
-   SQL → `bash scripts/prod_admin.sh filemulti
-   supabase/snippets/curate_vestiges.sql` vers la prod (FR canon).
-   Les traductions EN suivent par `tool/translate_vestiges.dart`
-   (staging humain aussi).
-4. **Mesurer** : l'Observatoire (`vestiges_live`) ; la rotation
-   quotidienne côté client (~2/3 à la dérive) fait le reste — le
-   ciel semble se renouveler, la bibliothèque a vraiment grandi.
+**Une fois pour toutes** — la clé du semeur (gratuite, Google AI
+Studio / Groq / Mistral, voir l'en-tête de `tool/gen_vestiges.dart`) :
 
-État (2026-09-17) : **32 FR + 32 EN en prod** (corpus initial V3.16)
-et **une moisson en staging** (`vestiges_staging.md`, astronomie +
-étymologies grecques) qui attend la relecture. Rythme cible : une
-moisson par mois — la culture ne pourrit pas (`live` à vie), chaque
-éclat ajoute pour toujours.
+    supabase secrets set VESTIGE_AI_KEY=AIza...
+    supabase functions deploy vestige-sow
+
+**Le rituel, une fois par mois (~5 minutes)** :
+
+1. **Ouvrir** l'Observatoire (appui long L'Aube) → LES ÉCLATS.
+2. **Semer** : SEMER 4/8/12 + thème libre. La clé vit côté serveur,
+   les deux passes aussi — les survivants tombent en À RELIRE.
+   (Sans clé : le module le DIT — ajoute le secret et recommence.)
+3. **Relire** : chaque carte propose PUBLIER DANS LE CIEL / ÉCARTER.
+   On y vérifie le VRAI (un fait faux est une dette culturelle) et le
+   goût (la voix kenos : sobre, jamais une leçon). Écarter sans
+   pitié ; TOUT PUBLIER existe pour les moissons déjà relues à l'œil.
+4. **Entretenir** : LA BIBLIOTHÈQUE liste tout le canon FR — RETIRER
+   fait sortir un éclat du ciel (réversible : REMETTRE), sans le
+   détruire.
+5. **Mesurer** : le registre porte `vestiges_live`, les propositions
+   en attente, et `vestiges_published` dans le spectre.
+
+Les traductions EN restent un rituel d'outil
+(`tool/translate_vestiges.dart`, staging humain) — Roadmap+ : les
+proposer au module. État (2026-09-17) : **32 FR + 32 EN en prod**
+(corpus initial V3.16) ; la moisson d'astronomie et d'étymologies
+greeques (9 éclats) attend en À RELIRE — première relecture du
+module, doublon de la Voie lactée compris.
 
 ---
 
