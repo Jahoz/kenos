@@ -81,6 +81,27 @@ void main() {
       expect(find.text('L\'ÉTAT DU CIEL'), findsOneWidget);
     });
 
+    testWidgets('the window follows the guardian\'s eye', (tester) async {
+      final repo = _FakeRepo();
+      await _pump(tester, repo: repo);
+      await _cross(tester, 'gardien@kenos.local', 'le long secret');
+      // The ether is always asked for its widest sky — the RPC's
+      // 90-day ceiling; the window only trims what the eye sees.
+      expect(repo.askedDays, 90);
+      expect(find.text('LE SPECTRE — 30 JOURS'), findsOneWidget);
+      // The ledger is long: the windows live under the fold.
+      await tester.ensureVisible(find.text('7 J'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('7 J'));
+      await tester.pumpAndSettle();
+      expect(find.text('LE SPECTRE — 7 JOURS'), findsOneWidget);
+      await tester.ensureVisible(find.text('90 J'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('90 J'));
+      await tester.pumpAndSettle();
+      expect(find.text('LE SPECTRE — 90 JOURS'), findsOneWidget);
+    });
+
     testWidgets('a revoked rank closes the sky', (tester) async {
       await _pump(tester, repo: _ForbiddenRepo());
       await _cross(tester, 'gardien@kenos.local', 'le long secret');
@@ -252,6 +273,7 @@ AdminMetrics _metrics({bool silent = false}) => AdminMetrics(
 
 class _FakeRepo implements AdminRepository {
   int fetches = 0;
+  int? askedDays;
   final List<ConstellationReportSummary> reports;
   final retracted = <String>[];
 
@@ -270,6 +292,7 @@ class _FakeRepo implements AdminRepository {
   @override
   Future<AdminMetrics> fetchMetrics({int days = 30}) async {
     fetches++;
+    askedDays = days;
     return _metrics();
   }
 

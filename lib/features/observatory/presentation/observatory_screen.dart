@@ -31,6 +31,9 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
   _Phase _phase = _Phase.threshold;
   AdminMetrics? _metrics;
   List<ConstellationReportSummary> _reports = const [];
+  // The ledger always asks the ether for its widest sky (three moons,
+  // the RPC's ceiling); the window only chooses what the eye sees.
+  int _windowDays = 30;
   String? _gateError;
   bool _gateBusy = false;
   bool _retractBusy = false;
@@ -52,7 +55,7 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
       // Both answers or none: a moderation list the guardian cannot
       // trust is worse than a sky that says it withdrew.
       final answers = await Future.wait([
-        _repo.fetchMetrics(),
+        _repo.fetchMetrics(days: 90),
         _repo.fetchConstellationReports(),
       ]);
       final metrics = answers[0] as AdminMetrics;
@@ -338,11 +341,18 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
                   },
                 ),
                 const SizedBox(height: 38),
-                _sectionLabel('LE SPECTRE — 30 JOURS'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _sectionLabel('LE SPECTRE — $_windowDays JOURS'),
+                    ),
+                    for (final window in const [7, 30, 90]) _windowButton(window),
+                  ],
+                ),
                 const SizedBox(height: 10),
                 _legend(),
                 const SizedBox(height: 6),
-                SpectrumBars(series: m.series),
+                SpectrumBars(series: _windowed(m.series)),
                 const SizedBox(height: 38),
                 _sectionLabel('LA GRILLE DES SECTEURS'),
                 const SizedBox(height: 14),
@@ -513,6 +523,38 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
       color: AppColors.fade(AppColors.pureLight, 0.5),
     ),
   );
+
+  /// One of the three windows, 7/30/90 days. The chosen one speaks;
+  /// the others wait, faded — the grammar of RAFRAÎCHIR.
+  Widget _windowButton(int days) {
+    final selected = days == _windowDays;
+    return TextButton(
+      onPressed: selected ? null : () => setState(() => _windowDays = days),
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.fade(
+          AppColors.pureLight,
+          selected ? 0.9 : 0.4,
+        ),
+        minimumSize: const Size(44, 44),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        '$days J',
+        style: TextStyle(
+          fontFamily: AppFonts.mono,
+          fontSize: 8.5,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
+
+  /// The visible slice: the last `_windowDays` of what the ether gave.
+  List<DailyPoint> _windowed(List<DailyPoint> series) =>
+      series.length <= _windowDays
+          ? series
+          : series.sublist(series.length - _windowDays);
 
   Widget _legend() => Row(
     mainAxisAlignment: MainAxisAlignment.center,
