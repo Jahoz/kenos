@@ -92,15 +92,27 @@ async function chat(
   messages: { role: string; content: string }[],
   opts: { temperature: number },
 ): Promise<Record<string, unknown>> {
-  const url = validatedUrl(
-    Deno.env.get("VESTIGE_AI_URL") ??
-      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-  );
-  // The dedicated sower key, else the shield's (same project, same
+  // The dedicated sower's key, else the shield's (same project, same
   // discipline: the key never leaves the server secrets either way).
-  const key = Deno.env.get("VESTIGE_AI_KEY") ?? Deno.env.get("MISTRAL_API_KEY");
+  // V3.57b — the fallback now carries its OWN road: VESTIGE_AI_URL and
+  // VESTIGE_AI_MODEL describe the DEDICATED sower, and without its key
+  // they describe nothing. The shield's key rode Google's default
+  // route for weeks — a dead pairing dressed as a living one, answered
+  // only as "le ciel a refusé la moisson" (the live report). The
+  // Mistral key now rides the Mistral pair, the project's own
+  // documented free chat road (see tool/gen_vestiges.dart).
+  const dedicatedKey = Deno.env.get("VESTIGE_AI_KEY");
+  const key = dedicatedKey ?? Deno.env.get("MISTRAL_API_KEY");
   if (!key) throw new Error("unconfigured");
-  const model = Deno.env.get("VESTIGE_AI_MODEL") ?? "gemini-2.5-flash";
+  const url = validatedUrl(
+    dedicatedKey
+      ? (Deno.env.get("VESTIGE_AI_URL") ??
+        "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
+      : "https://api.mistral.ai/v1/chat/completions",
+  );
+  const model = dedicatedKey
+    ? (Deno.env.get("VESTIGE_AI_MODEL") ?? "gemini-2.5-flash")
+    : "mistral-small-latest";
 
   const res = await fetch(url, {
     method: "POST",

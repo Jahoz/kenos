@@ -103,16 +103,26 @@ class _VestigeModuleScreenState extends ConsumerState<VestigeModuleScreen> {
             : _theme.text.trim(),
       );
       if (!mounted) return;
+      // V3.57b — every reason the engine can raise now has its word,
+      // and the engine's detail (status, upstream answer) rides with
+      // it: no more "le ciel a refusé la moisson" as the only answer
+      // to a dead AI pairing (the live report).
+      final base = switch (result.reason) {
+        null => '${result.sown} ÉCLATS ATTENDENT TA LECTURE.',
+        'unconfigured' =>
+          'LA CLÉ N\'EST PAS SÉMÉE — AJOUTE VESTIGE_AI_KEY AUX SECRETS.',
+        'forbidden' => 'LE SEUIL N\'Y VOIT PAS DE GARDIEN.',
+        'empty' => 'LE SEMEUR N\'A RIEN TROUVÉ — CHANGE LE THÈME.',
+        'demo' => 'DÉMO : UN ÉCLAT EN CONSERVE ATTEND TA LECTURE.',
+        'ai' => 'LE SEMEUR A TRÉBUCHÉ — L\'IA N\'A PAS RÉPONDU.',
+        'rpc' => 'L\'ÉTHER A REFUSÉ LES PROPOSITIONS.',
+        _ => 'LE CIEL A REFUSÉ LA MOISSON.',
+      };
+      final detail = result.detail?.trim();
       setState(() {
-        _sowWord = switch (result.reason) {
-          null => '${result.sown} ÉCLATS ATTENDENT TA LECTURE.',
-          'unconfigured' =>
-            'LA CLÉ N\'EST PAS SÉMÉE — AJOUTE VESTIGE_AI_KEY AUX SECRETS.',
-          'forbidden' => 'LE SEUIL N\'Y VOIT PAS DE GARDIEN.',
-          'empty' => 'LE SEMEUR N\'A RIEN TROUVÉ — CHANGE LE THÈME.',
-          'demo' => 'DÉMO : UN ÉCLAT EN CONSERVE ATTEND TA LECTURE.',
-          _ => 'LE CIEL A REFUSÉ LA MOISSON.',
-        };
+        _sowWord = (detail == null || detail.isEmpty)
+            ? base
+            : '$base\n$detail';
       });
       if (result.sown > 0) await _load();
     } catch (_) {

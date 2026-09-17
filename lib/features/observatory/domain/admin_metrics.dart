@@ -370,18 +370,22 @@ class VestigeLibraryEntry {
 
 /// What a sowing pass came back with (V3.57): how many shards the AI
 /// grew, how many survived the fact-check, how many now await review
-/// — and, when the sky refused, the honest reason.
+/// — and, when the sky refused, the honest reason. V3.57b: the
+/// function's `detail` crosses too (the HTTP status, the upstream's
+/// word) — the guardian debugs in the sky, not in the dark.
 class SowResult {
   const SowResult({
     required this.sown,
     this.generated = 0,
     this.reason,
+    this.detail,
   });
 
   factory SowResult.fromJson(Map<String, dynamic> json) => SowResult(
     sown: _int(json['sown']),
     generated: _int(json['generated']),
     reason: json['reason'] as String?,
+    detail: json['detail'] as String?,
   );
 
   final int sown;
@@ -390,6 +394,10 @@ class SowResult {
   /// null = success. 'unconfigured' | 'forbidden' | 'ai' | 'empty' |
   /// 'rpc' | 'demo' — each with its honest word in the UI.
   final String? reason;
+
+  /// The engine's own word on a refusal (status code, upstream
+  /// answer) — carried to the voice, never dropped again.
+  final String? detail;
 }
 
 int _int(dynamic v) => v is num ? v.toInt() : 0;
