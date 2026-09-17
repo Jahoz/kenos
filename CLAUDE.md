@@ -76,8 +76,8 @@ lib/
 make dev                   # Mode démo local (aucun backend requis)
 make dev-local             # PWA release sur l'éther local seedé (:4308) — JAMAIS juger la perf sur `flutter run` (debug, 5-20× plus lent)
 make analyze               # 0 issue
-make test                  # 252 tests (chiffrement, culling, contrôleurs, UI)
-make db-reset && make db-test  # Migrations + 174 invariants pgTAP
+make test                  # 400 tests (chiffrement, culling, contrôleurs, UI)
+make db-reset && make db-test  # Migrations + 256 invariants pgTAP
 make db-seed-load && make db-load-report  # Montée en charge : seed 30 j (scellés LISIBLES, ~12k lignes) + rapport
 make db-verify-load           # Preuve e2e : consommer un écho seedé, l'ouvrir sur l'appareil
 make db-wipe-load              # Reset clean du seed (data réelle + KEK intacts)
@@ -188,6 +188,13 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
   JAMAIS traduit** — scellé, il traverse les frontières dans sa
   langue d'origine. Traducteur : tool/translate_vestiges.dart (Mistral,
   voix kenos, passe vérif, staging humain).
+- **La voix du premier pas (V3.52)** : le français est CANONIQUE —
+  partout, pour tous. Le build WEB sert l'anglais au premier parcours
+  (Seuil, deux portes, Miroir, révélation, panneau d'artefact) quand
+  la plateforme du voyageur parle anglais (`KenosVoice`, `pick(fr, en)`
+  au site d'appel) ; le natif reste FR, tout le reste du produit
+  reste FR. La loi tient : la voix habille les portes, JAMAIS les
+  confidences — le contenu utilisateur n'est pas traduit.
 - **Bouclier de trace (V3.15)** : la trace est la SEULE contenu clair
   vue par l'éther ; l'Edge Function `trace-shield` la lit via Mistral
   moderation (clé en secret serveur, fail-open par contrat). PII →
@@ -201,6 +208,15 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
   canoniquement depuis un parse strict — jamais la chaîne brute.
   `door-preview` (Edge Function) ne connaît que l'ID de piste nu,
   jamais l'écho ni le texte.
+- **La garde des artefacts (V3.51)** : un artefact refermé est public
+  30 jours — le seul contenu utilisateur lisible en clair par tous.
+  `report_constellation` (contentless, un par main, CLOSED seulement,
+  cap 10/jour) ; `admin_list_constellation_reports` ne rend que des
+  métadonnées (comptes, motifs, âge, graine pour le lien ciel —
+  jamais un texte, épinglé en pgTAP) ; `admin_retract_constellation`
+  est le seul geste de modération — jamais automatique, aucun seuil :
+  le retrait est une mort honnête (cascade lignes + signalements,
+  comme le faucheur).
 - **Observatoire (V3.16)** : le dashboard gardien est CONTENTLESS par
   construction — `kenos_metrics_daily` ne stocke que des compteurs,
   bumpés dans la transaction des RPC de cycle de vie (aucune nouvelle

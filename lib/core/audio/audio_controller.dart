@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -99,15 +101,34 @@ class AudioController {
   }
 
   Future<void> playBell(KenosBell bell) =>
-      playAsset(bell.asset, volume: 0.5);  /// One-shot player for any synthesized asset (bells, wave notes).
+      playAsset(bell.asset, volume: 0.5);
+
+  /// One-shot player for any synthesized asset (bells, wave notes).
   /// Fire-and-forget by contract: the wave plays its full baked
   /// envelope (6 s) without blocking or monitoring.
+  ///
+  /// V3.55 — the sky has six throats here too: the one-shot players
+  /// (the engine-less fallback) are capped the same way — beyond six,
+  /// the OLDEST is stopped mid-ring — and each plays at volume/√n so
+  /// a run of notes is a chord, never a clip.
+  static const _oneShotCap = 6;
+
   Future<void> playAsset(String asset, {double volume = 0.5}) async {
     try {
+      while (_oneShots.length >= _oneShotCap) {
+        final oldest = _oneShots.removeAt(0);
+        try {
+          await oldest.stop();
+          await oldest.dispose();
+        } catch (_) {
+          // Already silent: the mercy costs nothing.
+        }
+      }
       final player = AudioPlayer();
       _oneShots.add(player);
+      final scale = 1 / math.sqrt(_oneShots.length.toDouble());
       await player.setAsset(asset);
-      await player.setVolume(_muted ? 0 : volume);
+      await player.setVolume(_muted ? 0 : volume * scale);
       await player.play();
       await player.dispose();
       _oneShots.remove(player);

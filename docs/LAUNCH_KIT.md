@@ -26,15 +26,19 @@ lisible). Un arrivant qui chasse des étoiles trouvera un ciel calme —
 les 17 anneaux ouverts du Jardinier font vivre la carte, mais l'écho
 lui-même est rare. Deux postures :
 
-- **Rester désert** (choix actuel) : chaque écho lancé est un vrai
-  signal, l'Observatoire mesure l'adoption pure. Cohérent avec
-  l'esprit du sanctuaire — la rareté est une profondeur.
+- **Rester désert** : chaque écho lancé est un vrai signal,
+  l'Observatoire mesure l'adoption pure. Cohérent avec l'esprit du
+  sanctuaire — la rareté est une profondeur.
 - **Ressemer** (`make prod-sow`, 360 échos scellés réels, jamais
   d'étoile morte) : le ciel respire pour l'arrivée d'une vague, puis
   `prod-desow` quand l'adoption est lancée.
 
-Recommandation : ressemer **une fenêtre de lancement** (semaine du Show
-HN / presse), puis désemer. L'outil existe pour exactement ce cycle.
+**DÉCISION (Hugo, arbitrage du 2026-09-16 — « Go » sur la reco)** :
+semer **À J-0 DE LA VAGUE**. Le ciel reste désert jusqu'à la veille de
+l'afflux : `make prod-sow` juste avant Show HN / la presse (fraîcheur
+maximale au moment où les regards arrivent), `make prod-desow` quand
+l'adoption est lancée. L'outil existe pour exactement ce cycle — la
+seule chose qui reste à choisir est LA DATE de la vague.
 
 ---
 

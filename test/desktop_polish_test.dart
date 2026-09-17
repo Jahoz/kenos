@@ -23,15 +23,20 @@ void main() {
 
   group('V3.44 — ÉCHAP, le réflexe universel', () {
     testWidgets('Échap renonce au Miroir', (tester) async {
+      // The Mirror reads the interface voice (V3.52): scope above.
       await tester.pumpWidget(
-        MaterialApp(
-          home: Builder(
-            builder: (context) => Center(
-              child: OutlinedButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const MirrorScreen()),
+        ProviderScope(
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => Center(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const MirrorScreen(),
+                    ),
+                  ),
+                  child: const Text('OUVRIR'),
                 ),
-                child: const Text('OUVRIR'),
               ),
             ),
           ),

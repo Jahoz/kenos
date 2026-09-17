@@ -5,9 +5,12 @@ import '../../../../core/audio/audio_providers.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_fonts.dart';
 import '../../../../core/haptics/kenos_haptics.dart';
+import '../../../../core/voice/kenos_voice.dart';
 import '../../../../core/widgets/anonymity_warning.dart';
+import '../../../../core/widgets/hud.dart';
 import '../../cosmic_map/data/artifact_memory.dart';
 import '../../echo/data/echo_providers.dart';
+import '../../echo/data/echo_repository.dart';
 import '../../echo/domain/pii_guard.dart';
 import '../../frequencies/application/spatial_wave_audio.dart';
 import '../../frequencies/domain/kenos_wave.dart';
@@ -47,7 +50,92 @@ Future<void> showContributeSheet(
   );
 }
 
+/// What the seeder chose to do with their UNTOUCHED door (V3.53).
+enum UntouchedDoorChoice { contribute, reseed }
+
+/// The untouched door's question (V3.53): an open salon with zero
+/// lines may be entered as a stranger (the classic offer) or given a
+/// FRESH key — the previous one dies, and since nobody wrote, nobody
+/// is replaced. Dismissing answers nothing.
+Future<UntouchedDoorChoice?> showUntouchedDoorChoice(
+  BuildContext context, {
+  required bool song,
+}) {
+  return showDialog<UntouchedDoorChoice>(
+    context: context,
+    // A question may be walked away from — no key is on screen yet.
+    barrierDismissible: true,
+    builder: (dialogContext) => Dialog(
+      backgroundColor: AppColors.voidBlack,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: AppColors.fade(AppColors.ember, 0.3)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 380),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'LA PORTE N\'A PAS ENCORE ÉTÉ TOUCHÉE',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: AppFonts.mono,
+                  fontSize: 10,
+                  letterSpacing: 2,
+                  color: AppColors.fade(AppColors.ember, 0.8),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Personne n\'a ${song ? 'posé de phrase' : 'écrit de ligne'}. '
+                'Tu peux entrer comme un inconnu — ou tailler une nouvelle '
+                'clé : la précédente mourra, et quiconque la tient encore '
+                'perdra la porte.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: AppFonts.serifItalic,
+                  fontSize: 14,
+                  height: 1.6,
+                  color: AppColors.fade(AppColors.pureLight, 0.6),
+                ),
+              ),
+              const SizedBox(height: 18),
+              TextButton(
+                onPressed: () => Navigator.of(
+                  dialogContext,
+                  rootNavigator: true,
+                ).pop(UntouchedDoorChoice.contribute),
+                child: Text(
+                  song ? 'POSER MA PHRASE' : 'POSER MA LIGNE',
+                  style: const TextStyle(fontFamily: AppFonts.mono, fontSize: 9.5),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(
+                  dialogContext,
+                  rootNavigator: true,
+                ).pop(UntouchedDoorChoice.reseed),
+                child: const Text(
+                  'TAILLER UNE NOUVELLE CLÉ',
+                  style: TextStyle(fontFamily: AppFonts.mono, fontSize: 9.5),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 /// Read a finished constellation — an artifact: it stays, refermé.
+/// `reportable` marks a reading born from the LIVE ether (the only
+/// poems the guardian can still act on — a kept relic of a gone moon
+/// is a memory, not a sky).
 Future<void> showConstellationReading(
   BuildContext context, {
   required List<AssembledLine> lines,
@@ -55,6 +143,7 @@ Future<void> showConstellationReading(
   String? curatedBy,
   ArtifactMemory? memory,
   Offset? keepPosition,
+  bool reportable = false,
 }) {
   return showGeneralDialog(
     context: context,
@@ -72,6 +161,7 @@ Future<void> showConstellationReading(
           curatedBy: curatedBy,
           memory: memory,
           keepPosition: keepPosition,
+          reportable: reportable,
         ),
       );
     },
@@ -153,15 +243,19 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
 
   /// One note, best-effort: the spatial engine when it lives, the
   /// baked wave asset otherwise. The song never blocks, never throws.
+  /// [hold] is the note's tenue — the engine ends the note with it
+  /// (V3.55: no note rings past its phrase).
   Future<void> _playNote(
     int noteIndex, {
     double pan = 0,
     double gain = 0.6,
+    Duration? hold,
   }) async {
     final spatial = await SpatialWaveAudio.instance.playNote(
       noteIndex,
       pan: pan,
       gain: gain,
+      hold: hold,
     );
     if (!spatial) {
       try {
@@ -182,7 +276,11 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
     final n = phrase.notes.length;
     for (var i = 0; i < n; i++) {
       unawaited(
-        _playNote(phrase.notes[i], pan: -0.6 + 1.2 * (i / (n - 1).clamp(1, 7))),
+        _playNote(
+          phrase.notes[i],
+          pan: -0.6 + 1.2 * (i / (n - 1).clamp(1, 7)),
+          hold: Duration(milliseconds: holds[i]),
+        ),
       );
       await Future<void>.delayed(Duration(milliseconds: holds[i]));
     }
@@ -787,6 +885,7 @@ class _ReadingPanel extends ConsumerStatefulWidget {
     this.curatedBy,
     this.memory,
     this.keepPosition,
+    this.reportable = false,
   });
 
   final List<AssembledLine> lines;
@@ -806,6 +905,12 @@ class _ReadingPanel extends ConsumerStatefulWidget {
   /// it never pretends strangers wrote public-domain poetry.
   final String? curatedBy;
 
+  /// V3.51 — the artifact guard: a live-ether reading may be flagged
+  /// for the guardian (contentless, one report per hand). A kept
+  /// relic re-read from the reliquaire is a private memory — nothing
+  /// to report, nothing the guardian could reach.
+  final bool reportable;
+
   @override
   ConsumerState<_ReadingPanel> createState() => _ReadingPanelState();
 }
@@ -817,6 +922,9 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
     duration: const Duration(milliseconds: 2400),
   );
 
+  /// V3.52 — the first journey's voice (stable for the session).
+  KenosVoice get _voice => ref.read(voiceProvider);
+
   /// SONG mode: the melody phrases, the playing cursor, the guard
   /// that dies with the panel (sequential playback — one phrase at a
   /// time, the overload answer).
@@ -826,6 +934,98 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
 
   /// The reliquaire's quiet answer after LE GARDER.
   String? _keepAck;
+
+  /// V3.51 — the artifact guard: a report is being sent.
+  bool _reporting = false;
+
+  Future<void> _reportArtifact() async {
+    if (_reporting || !widget.reportable) return;
+    final reason = await showDialog<EchoReportReason>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: AppColors.voidBlack,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: AppColors.fade(AppColors.pureLight, 0.18)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  _voice.pick('SIGNALER CE POÈME', 'REPORT THIS POEM'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.mono,
+                    fontSize: 10,
+                    letterSpacing: 2,
+                    color: AppColors.pureLight,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _voice.pick(
+                    'Le gardien lira le poème, jamais ton nom. '
+                    'Choisis ce qui demande son œil.',
+                    'The guardian will read the poem, never your name. '
+                    'Choose what needs their eye.',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppFonts.serifItalic,
+                    fontSize: 14,
+                    color: AppColors.fade(AppColors.pureLight, 0.55),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                for (final reason in EchoReportReason.values)
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(reason),
+                    child: Text(
+                      _voice.isEnglish ? reason.labelEn : reason.label,
+                    ),
+                  ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(_voice.pick('ANNULER', 'CANCEL')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!mounted || reason == null) return;
+
+    setState(() => _reporting = true);
+    try {
+      final recorded = await ref
+          .read(constellationRepositoryProvider)
+          .report(widget.figureId, reason.wire);
+      if (!mounted) return;
+      showHud(
+        context,
+        recorded
+            ? _voice.pick(
+                'SIGNALEMENT TRANSMIS AU GARDIEN.',
+                'REPORT FILED FOR THE GUARDIAN.',
+              )
+            : _voice.pick(
+                'TU AS DÉJÀ SIGNALÉ CE POÈME.',
+                'YOU ALREADY REPORTED THIS POEM.',
+              ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      showHud(context, reportRefusalMessage(error));
+    } finally {
+      if (mounted) setState(() => _reporting = false);
+    }
+  }
 
   Future<void> _keep() async {
     final memory = widget.memory;
@@ -846,8 +1046,11 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
     if (!mounted) return;
     setState(() {
       _keepAck = released == null
-          ? 'GARDÉ DANS TON CIEL'
-          : 'GARDÉ — LE PLUS ANCIEN EST RETOURNÉ AU CIEL';
+          ? _voice.pick('GARDÉ DANS TON CIEL', 'KEPT IN YOUR SKY')
+          : _voice.pick(
+              'GARDÉ — LE PLUS ANCIEN EST RETOURNÉ AU CIEL',
+              'KEPT — THE OLDEST WENT BACK TO THE SKY',
+            );
     });
   }
 
@@ -889,7 +1092,14 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
       final holds = phrase.holds;
       for (var i = 0; i < phrase.notes.length; i++) {
         if (!mounted || !_songAlive) return;
-        unawaited(_playNote(phrase.notes[i], pan: pan, gain: gain));
+        unawaited(
+          _playNote(
+            phrase.notes[i],
+            pan: pan,
+            gain: gain,
+            hold: Duration(milliseconds: holds[i]),
+          ),
+        );
         // Each note held exactly as long as the stranger held it:
         // the rhythm crosses the ether with the melody.
         await Future<void>.delayed(Duration(milliseconds: holds[i]));
@@ -903,11 +1113,13 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
     int noteIndex, {
     double pan = 0,
     double gain = 0.6,
+    Duration? hold,
   }) async {
     final spatial = await SpatialWaveAudio.instance.playNote(
       noteIndex,
       pan: pan,
       gain: gain,
+      hold: hold,
     );
     if (!spatial) {
       try {
@@ -946,8 +1158,11 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
                 children: [
                   Text(
                     song != null
-                        ? 'CHANSON REFERMÉE'
-                        : 'CONSTELLATION REFERMÉE',
+                        ? _voice.pick('CHANSON REFERMÉE', 'CLOSED SONG')
+                        : _voice.pick(
+                            'CONSTELLATION REFERMÉE',
+                            'CLOSED CONSTELLATION',
+                          ),
                     style: TextStyle(
                       fontFamily: AppFonts.mono,
                       fontSize: 9,
@@ -969,8 +1184,14 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
                     // station breathing with the sound.
                     Text(
                       _playingPhrase >= 0
-                          ? 'PHRASE ${_playingPhrase + 1} / ${song.length}'
-                          : 'LA FIGURE CHANTE — CHAQUE PHRASE À SA STATION',
+                          ? _voice.pick(
+                              'PHRASE ${_playingPhrase + 1} / ${song.length}',
+                              'PHRASE ${_playingPhrase + 1} / ${song.length}',
+                            )
+                          : _voice.pick(
+                              'LA FIGURE CHANTE — CHAQUE PHRASE À SA STATION',
+                              'THE FIGURE SINGS — EACH PHRASE AT ITS STATION',
+                            ),
                       style: TextStyle(
                         fontFamily: AppFonts.mono,
                         fontSize: 8.5,
@@ -989,7 +1210,9 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
                           _playSong,
                         );
                       },
-                      child: const Text('REJOUER LA CHANSON'),
+                      child: Text(
+                        _voice.pick('REJOUER LA CHANSON', 'REPLAY THE SONG'),
+                      ),
                     ),
                   ] else
                     for (final line in widget.lines) ...[
@@ -1022,8 +1245,14 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
                     widget.curatedBy != null
                         ? '— ${widget.curatedBy} —'
                         : song != null
-                        ? 'UNE CHANSON D\'ÉTRANGERS — ELLE RESTE, REFERMÉE'
-                        : 'UN POÈME D\'ÉTRANGERS — IL RESTE, REFERMÉ',
+                        ? _voice.pick(
+                            'UNE CHANSON D\'ÉTRANGERS — ELLE RESTE, REFERMÉE',
+                            'A SONG OF STRANGERS — IT STAYS, CLOSED',
+                          )
+                        : _voice.pick(
+                            'UN POÈME D\'ÉTRANGERS — IL RESTE, REFERMÉ',
+                            'A POEM OF STRANGERS — IT STAYS, CLOSED',
+                          ),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: AppFonts.mono,
@@ -1038,9 +1267,12 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
                         !widget.memory!.isKept(widget.figureId))
                       TextButton(
                         onPressed: _keep,
-                        child: const Text(
-                          'LE GARDER DANS MON CIEL',
-                          style: TextStyle(
+                        child: Text(
+                          _voice.pick(
+                            'LE GARDER DANS MON CIEL',
+                            'KEEP IT IN MY SKY',
+                          ),
+                          style: const TextStyle(
                             fontFamily: AppFonts.mono,
                             fontSize: 9,
                             letterSpacing: 2,
@@ -1060,10 +1292,38 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
                       ),
                     const SizedBox(height: 12),
                   ],
+                  // V3.51 — the quiet civic gesture: a live-ether poem
+                  // may be flagged for the guardian. Muted by design —
+                  // the report is a duty available, never a suggestion.
+                  if (widget.reportable)
+                    TextButton(
+                      onPressed: _reporting ? null : _reportArtifact,
+                      style: TextButton.styleFrom(
+                        foregroundColor:
+                            AppColors.fade(AppColors.pureLight, 0.45),
+                        minimumSize: const Size.fromHeight(44),
+                      ),
+                      child: Text(
+                        _reporting
+                            ? _voice.pick('TRANSMISSION…', 'TRANSMITTING…')
+                            : _voice.pick(
+                                'SIGNALER CE POÈME',
+                                'REPORT THIS POEM',
+                              ),
+                        style: const TextStyle(
+                          fontFamily: AppFonts.mono,
+                          fontSize: 8.5,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ),
                   OutlinedButton(
                     onPressed: () =>
                         Navigator.of(context, rootNavigator: true).pop(),
-                    child: const Text('RETOURNER AU VIDE'),
+                    child: Text(_voice.pick(
+                      'RETOURNER AU VIDE',
+                      'RETURN TO THE VOID',
+                    )),
                   ),
                   const SizedBox(height: 16),
                 ],

@@ -148,6 +148,7 @@ class _SalonClaimScreenState extends ConsumerState<SalonClaimScreen> {
         lines: lines,
         figureId: meta.id,
         memory: ref.read(artifactMemoryProvider),
+        reportable: true,
       );
     }
   }

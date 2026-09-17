@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 
+import '../../../core/audio/voice_budget.dart';
 import '../domain/kenos_wave.dart';
 import '../domain/spatial_wave_math.dart';
 
@@ -10,6 +11,13 @@ import '../domain/spatial_wave_math.dart';
 /// (flutter_soloud), one preloaded AudioSource per pentatonic note,
 /// each wave placed in the stereo field by its horizontal offset and
 /// attenuated by its distance to the listening point.
+///
+/// V3.55 — THE SKY HAS SIX THROATS: every note used to ring a full
+/// 6-second nebula and stack without limit — fast song phrases (holds
+/// from 120 ms) and quick waves clipped the output hard. Now each
+/// voice lives inside a [VoiceBudget] (the oldest yields, every voice
+/// sings at 1/√n so the power never sums above one), and a note with
+/// a HOLD ends with its tenue instead of the nebula.
 ///
 /// Honest degradation, always: if the engine cannot initialize (web
 /// without WASM, an exotic platform, a test VM), [playNote] returns
@@ -25,12 +33,52 @@ class SpatialWaveAudio {
   static const _presence = Duration(milliseconds: 2400);
   static const _release = Duration(milliseconds: 2400);
 
+  /// A held note's own envelope law: a soft touch-in, an exhale never
+  /// longer than the note itself was.
+  static const _heldAttack = Duration(milliseconds: 120);
+  static const _heldRelease = Duration(milliseconds: 360);
+
+  /// A stolen voice's mercy: a fast fade, never a click.
+  static const _stealFade = Duration(milliseconds: 140);
+
   bool _initTried = false;
   bool _ready = false;
   final List<AudioSource?> _sources =
       List<AudioSource?>.filled(WaveMath.noteCount, null);
 
+  /// The living voices: handle + absolute end, in admission order
+  /// (the budget steals the oldest of these).
+  final List<({SoundHandle handle, DateTime endsAt})> _voices = [];
+  final VoiceBudget _budget = VoiceBudget(maxVoices: 6);
+
   bool get isReady => _ready;
+
+  /// One note's envelope: when the fade-in ends, when the exhale
+  /// begins, how long the exhale lasts, and the note's full life.
+  @visibleForTesting
+  static ({Duration attack, Duration exhaleAt, Duration release, Duration life})
+      envelopeFor(Duration? hold) {
+    if (hold == null) {
+      // The nebula: 1.2 s swell, 2.4 s presence, 2.4 s exhale — the
+      // 6 s of the asset it replaces.
+      return (
+        attack: _attack,
+        exhaleAt: _attack + _presence,
+        release: _release,
+        life: _attack + _presence + _release,
+      );
+    }
+    // The tenue IS the presence: the note sounds for exactly as long
+    // as the stranger held it, then exhales — never past its phrase.
+    final attack = hold < _heldAttack ? hold : _heldAttack;
+    final release = hold < _heldRelease ? hold : _heldRelease;
+    return (
+      attack: attack,
+      exhaleAt: hold,
+      release: release,
+      life: hold + release,
+    );
+  }
 
   Future<void> _ensureInit() async {
     if (_initTried) return;
@@ -60,10 +108,15 @@ class SpatialWaveAudio {
 
   /// Plays one spatialized note. Returns false when the engine is not
   /// available — the caller then plays the baked asset instead.
+  ///
+  /// [hold] is the note's TENUE (the constellation-song's rhythm): a
+  /// held note swells briefly, sounds exactly its hold, then exhales.
+  /// Without a hold the wave keeps its nebula envelope.
   Future<bool> playNote(
     int noteIndex, {
     required double pan,
     required double gain,
+    Duration? hold,
   }) async {
     try {
       await _ensureInit();
@@ -71,16 +124,33 @@ class SpatialWaveAudio {
       final source = _sources[noteIndex.clamp(0, _sources.length - 1)];
       if (source == null) return false;
       final soloud = SoLoud.instance;
+      final env = envelopeFor(hold);
 
-      // The nebula envelope, rebuilt in real time: a 1.2 s swell from
-      // silence, 2.4 s of presence, then a 2.4 s exhale — and the wave
-      // is gone at 6 s, exactly like the asset it replaces.
+      final now = DateTime.now();
+      final verdict = _budget.admit(now, now.add(env.life));
+      // The stolen die first, gently.
+      for (final i in verdict.steal) {
+        try {
+          soloud.fadeVolume(_voices[i].handle, 0, _stealFade);
+          soloud.scheduleStop(
+            _voices[i].handle,
+            _stealFade + const Duration(milliseconds: 60),
+          );
+        } catch (_) {
+          // Already gone: the silence is the same.
+        }
+      }
+      _voices.removeWhere((v) => !v.endsAt.isAfter(now));
+
       final handle = soloud.play(source, volume: 0, pan: pan.clamp(-1, 1));
-      soloud.fadeVolume(handle, gain.clamp(0.0, 1.0), _attack);
-      unawaited(_exhale(soloud, handle, gain));
+      // 1/√n: however many voices ring, the POWER stays one note's.
+      final scaled = gain.clamp(0.0, 1.0) * verdict.gainScale;
+      soloud.fadeVolume(handle, scaled, env.attack);
+      _voices.add((handle: handle, endsAt: now.add(env.life)));
+      unawaited(_exhale(soloud, handle, env));
       soloud.scheduleStop(
         handle,
-        _attack + _presence + _release + const Duration(milliseconds: 200),
+        env.life + const Duration(milliseconds: 200),
       );
       return true;
     } catch (e) {
@@ -91,10 +161,15 @@ class SpatialWaveAudio {
 
   /// The exhale half of the envelope — delayed by design, silent if the
   /// handle died young (ashes don't complain).
-  Future<void> _exhale(SoLoud soloud, SoundHandle handle, double gain) async {
-    await Future<void>.delayed(_attack + _presence);
+  Future<void> _exhale(
+    SoLoud soloud,
+    SoundHandle handle,
+    ({Duration attack, Duration exhaleAt, Duration release, Duration life})
+        env,
+  ) async {
+    await Future<void>.delayed(env.exhaleAt);
     try {
-      soloud.fadeVolume(handle, 0, _release);
+      soloud.fadeVolume(handle, 0, env.release);
     } catch (_) {
       // Already stopped: the silence is the same.
     }

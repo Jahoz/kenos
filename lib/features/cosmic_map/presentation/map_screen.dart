@@ -15,6 +15,7 @@ import '../../../core/constants/app_layout.dart';
 import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/utils/motion_preferences.dart';
 import '../../../core/utils/parallax_math.dart';
+import '../../../core/voice/kenos_voice.dart';
 import '../../../core/widgets/hud.dart';
 import '../../constellations/data/constellation_repository.dart';
 import '../../constellations/data/salon_anchor_store.dart';
@@ -539,6 +540,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
           curatedBy: meta.curatedBy,
           memory: _artifacts,
           keepPosition: Offset(meta.seedX, meta.seedY),
+          reportable: true,
         );
       }
       return;
@@ -547,6 +549,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
       showHud(context, 'TA LIGNE EST DÉJÀ DANS CE CORPS.');
       return;
     }
+    // V3.53 — an UNTOUCHED door offers the seeder a second key: a
+    // silent guest's seat is not a condemnation anymore. Nobody
+    // wrote — nobody is replaced.
+    if (meta.lineCount == 0) {
+      final choice = await showUntouchedDoorChoice(
+        context,
+        song: meta.kind == ConstellationKind.melody,
+      );
+      if (!mounted || choice == null) return;
+      if (choice == UntouchedDoorChoice.reseed) {
+        await _reseedSalonKey(anchor, meta);
+        return;
+      }
+    }
     await showContributeSheet(
       context,
       ref: ref,
@@ -554,6 +570,36 @@ class _MapScreenState extends ConsumerState<MapScreen>
       inviteToken: anchor.token,
     );
     if (mounted) unawaited(_loadSalonDoors());
+  }
+
+  /// V3.53 — the seeder cuts a fresh key: the old one dies with the
+  /// cut, the anchor forgets it, the new link is shown ONCE (the
+  /// V3.19 grammar) and remembered on this device alone.
+  Future<void> _reseedSalonKey(
+    SalonAnchor anchor,
+    ConstellationMeta meta,
+  ) async {
+    try {
+      final token = await ref
+          .read(constellationRepositoryProvider)
+          .reseedKey(meta.id);
+      await _salonDoors.remember(
+        SalonAnchor(
+          id: anchor.id,
+          token: token,
+          seedX: anchor.seedX,
+          seedY: anchor.seedY,
+          kind: anchor.kind,
+          target: anchor.target,
+          heldSince: anchor.heldSince,
+        ),
+      );
+      if (!mounted) return;
+      setState(() => _salonAnchors = _salonDoors.open());
+      await showSalonShareSheet(context, meta: meta, inviteToken: token);
+    } catch (e) {
+      if (mounted) showHud(context, reseedRefusalMessage(e));
+    }
   }
 
   void _maybeSpeakAube() {
@@ -811,6 +857,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
         curatedBy: cst.curatedBy,
         memory: _artifacts,
         keepPosition: Offset(cst.seedX, cst.seedY),
+        reportable: true,
       );
       // No reload: the artifact stays, refermé.
     } else {
@@ -1595,7 +1642,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
                       children: [
                         _GateDoor(
                           key: const ValueKey('gate-constellation'),
-                          label: 'SEMER UNE CONSTELLATION',
+                          label: ref.watch(voiceProvider).pick(
+                            'SEMER UNE CONSTELLATION',
+                            'SOW A CONSTELLATION',
+                          ),
                           onPressed: () async {
                             final seeded = await context.push('/cadavre');
                             if (seeded is SeededConstellation) {
@@ -1606,7 +1656,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
                         SizedBox(width: wide ? 14 : 0, height: wide ? 0 : 10),
                         _GateDoor.first(
                           key: const ValueKey('gate-echo'),
-                          label: 'FORMULER UN ÉCHO',
+                          label: ref.watch(voiceProvider).pick(
+                            'FORMULER UN ÉCHO',
+                            'FORMULATE AN ECHO',
+                          ),
                           onPressed: () => context.push('/mirror'),
                         ),
                       ],

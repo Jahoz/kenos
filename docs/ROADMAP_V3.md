@@ -1649,6 +1649,244 @@ règles → ENTRER atterrit au PAYS LOINTAIN ; le miroir garde son
 seuil ; l'URL du salon jamais détournée ; après ENTRER, aucun
 retour du seuil) ; suite complète 372 verts, analyze 0.
 
+## V3.51 — La garde des artefacts ✅ (livrée 2026-09-16)
+
+Née de la session de réflexion d'avant-vague : le constat, vérifié
+dans le code, qu'un **artefact refermé est public et re-lisible 30
+jours** alors qu'aucun chemin de signalement ni de retrait n'existait
+— `report_echo` garde les échos, et les seuls `delete` sur les
+constellations étaient ceux du faucheur, par âge. Un anneau refermé
+sur des lignes haineuses aurait brillé en public un mois, sans
+remède qu'une session SQL de panique. Avant une vague Show HN, c'est
+le seul chantier urgent.
+
+- **Le signalement suit la grammaire des échos** : contentless (un
+  code de motif, jamais un texte), un par main (`KENOS_*` honnête à
+  chaque refus), **fermé seulement** — un anneau ouvert ne porte rien
+  de lisible, il n'y a rien à juger (`KENOS_INVALID_STATE`). Cap
+  10 signalements/jour/main : la liste du gardien n'est pas un
+  panneau d'affichage non plus.
+- **L'Observatoire reste contentless, par construction** (arbitrage
+  Hugo) : `admin_list_constellation_reports` ne rend QUE des formes —
+  combien de mains, quel motif (le dernier), l'âge, le genre,
+  curatée ou d'étrangers, la lune qui reste, et **la graine** (la
+  coordonnée publique que le ciel sert déjà à tous). Jamais une
+  ligne, jamais un poète, jamais un rapporteur — épinglé par
+  invariant pgTAP (`?|` sur text/curated_by/reporter_id = false).
+- **VOIR DANS LE CIEL** : chaque ligne de signalement porte un lien
+  ciel (`/#/ciel/x/y`, la grammaire V3.49) qui pose l'œil sur
+  l'artefact — le gardien lit le poème **dans le ciel public, où il
+  vit**, jamais dans le dashboard. La session gardien survit au
+  voyage (le provider ne meurt pas avec l'écran).
+- **RETRANCHER, jamais automatique** : le seul geste de modération
+  du gardien — l'artefact retourne au vide exactement comme le
+  faucheur l'aurait pris à 30 jours (lignes et signalements en
+  cascade, aucun orphelin — épinglé avec le reaper). Aucun seuil,
+  aucun compteur ne décide : le brigandage de masse ne censurera
+  jamais un ciel, un humain seul tranche. La confirmation porte la
+  question en **rose** (la couleur de la destruction est réservée,
+  jusque chez le gardien) : « RENVOYER CE POÈME AU VIDE ? — LE
+  LAISSER VIVRE ».
+- **Client** : le panneau de lecture d'un artefact vivant porte
+  « SIGNALER CE POÈME » (muet par design — un devoir disponible,
+  jamais une suggestion ; la relique du reliquaire n'a rien à
+  signaler, le poème est parti). Parité démo exacte (une main, un
+  signalement ; anneau ouvert refusé).
+- **Métriques** : `corpses_reported` / `corpses_retracted` (compteurs
+  contentless, même transaction), l'état vivant porte
+  `constellation_reports_open` — et **un ciel signalé n'est jamais
+  silencieux** (un signalement attend l'œil du gardien : l'Observatoire
+  ouvre le registre, pas le panneau « éther silencieux »).
+
+Gates : +34 invariants pgTAP (`artifact_reports.sql` : le chemin du
+signalement et ses cinq refus, la tempête capée à dix, le guichet
+gardien contre l'anonyme/le lambda/le claim forgé, la liste
+contentless épinglée clé par clé, le retrait — refusé, introuvable,
+vivant, public, cascade, métrique — et le reaper qui emporte le
+signalement avec sa lune) ; +9 tests Dart (parité démo, le panneau
+offre et transmet, une main ne signale pas deux fois, la grammaire
+des refus, le registre du gardien, la question rose, le retrait
+confirmé, le silence brisé) ; suite complète 381 verts, analyze 0,
+pgTAP 238, e2e 28/28. **Déployé et vérifié** (2026-09-16) : `db push`
+(schema_version 20260916120000), PWA sur kenos-lemon (gates bundle +
+domaine verts), smoke nocturne étendu aux trois nouveaux RPC —
+**31 ✓ / 0 ✗**.
+
+**Arbitrages de vague toujours OUVERTS (posés à Hugo, sans réponse à
+l'écriture)** : le ressemage (J-0 vs maintenant vs désert), la langue
+(EN minimale vs français assumé vs i18n complet), la seconde clé du
+salon (si zéro ligne vs à volonté vs jamais), le calendrier des
+lunes sur la landing (poètes seuls vs rien vs archive complète).
+
+## V3.52 — La voix du premier pas ✅ (livrée 2026-09-16)
+
+Les quatre arbitrages de vague, tranchés par Hugo (« Go » sur les
+recommandations, 2026-09-16) :
+
+- **A2 — le ressemage : À J-0 DE LA VAGUE.** Le ciel reste désert
+  jusqu'à la veille de l'afflux : 360 échos scellés semés juste avant
+  Show HN / la presse (`make prod-sow`), désemés quand l'adoption est
+  lancée (`make prod-desow`). Fraîcheur maximale au moment où les
+  regards arrivent — la reco du LAUNCH_KIT, actée.
+- **A3 — la langue : PASSE EN MINIMALE** (livrée ci-dessous).
+- **B2 — la seconde clé du salon : SI ZÉRO LIGNE.** Le semeur peut
+  tailler une nouvelle clé tant que l'anneau n'a reçu AUCUNE ligne —
+  la porte n'a jamais été touchée, personne n'est remplacé. À livrer
+  (prochain chantier).
+- **C3 — les lunes passées : LA LISTE DES POÈTES.** La landing montre
+  quels poètes ont habité le ciel et quels lundis — jamais les poèmes.
+  À livrer.
+
+**A3 livré — le premier parcours parle anglais** : le build WEB sert
+l'anglais à un voyageur dont la plateforme parle anglais ; le français
+reste canonique partout et pour tous les autres. La loi V3.16 tient
+plus que jamais : **le contenu utilisateur n'est jamais traduit** — la
+voix habille les portes, jamais les confidences. Le natif garde la
+voix canonique (la vague est un lien ; les stores sont Roadmap+).
+
+- **`KenosVoice`** (`core/voice/kenos_voice.dart`) : `pick(fr, en)` —
+  chaque chaîne traduite vit À SON SITE D'APPEL, une seule source de
+  vérité par ligne. `resolve` : anglais SI web ET plateforme `en*` ;
+  français sinon. En VM de test `kIsWeb` est faux → toute la suite
+  existante continue d'épingler le canon français, déterministe ; les
+  tests anglais surchargent le provider.
+- **Le périmètre du premier parcours** (tout le reste reste français —
+  le ciel, le HUD, les territoires, les salons, l'Aube) : le SEUIL
+  (trois règles, la ligne du champ de réception, ENTRER), LES DEUX
+  PORTES de la carte, LE MIROIR entier (intentions SOOTHE/CONFIDE/
+  ILLUMINATE + murmures, éditeur, attaches +IMAGE/+SOUND/+DOOR,
+  dialogue de porte, origine, sceau, garde PII, refus d'envoi), LA
+  RÉVÉLATION (télémétrie, dissuasion du rebond, trace — moment de
+  soin inclus : les numéros français restent exacts, dits en anglais
+  —, signalement écho, porte culturelle et voix empruntée), LE
+  PANNEAU D'ARTEFACT (titre, footer, garder, SIGNALER CE POÈME →
+  REPORT THIS POEM, dialogue et motifs). `EchoReportReason` et
+  `EchoColorTheme` portent leurs libellés anglais auprès des français.
+- Les écrans secondaires (cadavres, salon, fréquences, observatoire)
+  restent français : le voyageur profond accepte le sanctuaire tel
+  qu'il parle — le funnel dira s'il faut plus.
+
+Gates : +8 tests Dart (`first_journey_voice_test` : les quatre lois du
+mapper — web+en, canon pour tout le reste, natif canon, pick — le
+seuil parle ses règles en anglais, les portes, le Miroir compose en
+anglais, le panneau d'artefact signale en anglais) ; 7 harnais de test
+gagnent le ProviderScope que la voix exige ; suite complète 389 verts,
+analyze 0.
+
+## V3.53 — La seconde clé ✅ (livrée 2026-09-17, B2 arbitré Hugo 2026-09-16)
+
+Un invité silencieux condamnait sa place : la cible ne serait jamais
+atteinte, l'anneau mourrait à sept jours sous l'œil du semeur. La
+règle tenait — UN LIEN, il meurt avec l'anneau — au prix du geste
+perdu. L'arbitrage la plie sans la briser :
+
+- **Le semeur taille une nouvelle clé SI ET SEULEMENT SI l'anneau a
+  reçu ZÉRO ligne** (`reseed_salon_key`) : la porte n'a jamais été
+  touchée, personne n'est remplacé. Une ligne existe et la porte est
+  verrouillée pour toujours (`KENOS_LINES_EXIST`) — un invité venu
+  est un invité à jamais.
+- **UN SEUL LIEN VIVANT** : l'empreinte sha256 est échangée dans la
+  même transaction — l'ancienne clé meurt à l'instant où la nouvelle
+  naît. Un dump ne tient toujours aucune porte ; le clair traverse le
+  fil exactement une fois, au semeur, comme au semis.
+- **Le silence de la porte tient** : anneau absent, anneau public et
+  salon d'un autre répondent le MÊME `KENOS_NOT_FOUND` — même
+  l'existence d'une porte ne fuit pas. Fermé → `KENOS_CLOSED`. Anon
+  → permission refusée. La vie de l'anneau (7 jours) est intacte :
+  une clé neuve ne ressuscite rien.
+- **Le client** : l'ancre ember d'une porte INTACTE pose la question
+  (« LA PORTE N'A PAS ENCORE ÉTÉ TOUCHÉE » — entrer comme un inconnu,
+  ou tailler) ; la coupe rafraîchit l'ancre locale (la clé vit sur
+  l'appareil du porteur, contrat V3.31) et montre le lien UNE fois —
+  la feuille de partage V3.19, verbatim. Grammaire des refus honnête
+  pour chaque garde. La base ignore toujours l'ancre.
+- Pas de métrique neuve : une rotation de clé n'est pas un événement
+  de vie (rien n'est entré dans l'éther).
+
+Gates : +12 invariants pgTAP (`salon_reseed.sql` : la coupe et son
+format, la clé d'origine morte, la vivante qui résout et claim, la
+base ne garde que l'empreinte, l'étranger/le public/l'absent dans le
+même silence, le fermé, l'anon, une ligne et tout verrouillé) ; +5
+tests Dart (parité démo — la neuve vit, la morte refuse, la ligne
+verrouille, l'anneau public n'est pas un salon — la grammaire, la
+question de la porte intacte et son renoncement) ; suite complète
+394 verts, analyze 0, pgTAP 250.
+
+## V3.54 — Les lunes passées ✅ (livrée 2026-09-17, C3 arbitré Hugo 2026-09-16)
+
+La profondeur du rite du lundi se voit désormais sur la landing :
+**quels poètes ont habité le ciel, et quels lundis — jamais les
+poèmes**. La loi tient partout : « l'éther oublie, même ses plus
+beaux poèmes » — le site n'est pas l'éther, il ne retient que des
+noms.
+
+- **`fetch_past_moons()`** : les lunes LIBÉRÉES seules (aucune fuite
+  du corpus à venir), poète + titre + genre + le lundi — JAMAIS une
+  ligne, jamais une note de source (épinglé en pgTAP, clé par clé).
+  Accordé à **anon** : la landing est une page statique derrière la
+  clé publiable, et une lune libérée est un fait public (la carte
+  montre le poète à tous pendant trente jours). Plafonné à un an de
+  lundis.
+- **Le backlog entre dans le schéma versionné** (`create table if not
+  exists` dans la migration — il ne vivait que dans le snippet
+  opérateur : une base reconstruite par migrations n'en avait pas).
+  Le snippet garde son rôle : remplir le corpus. La table reste
+  opaque aux clients (RLS, révoquée — épinglé).
+- **La landing FR et EN** gagnent la section « LES LUNES PASSÉES »
+  (entre l'état du ciel et le soutien, renuméroté 08) : une liste
+  date·poète·titre dans les jetons du registre. **Dégradation
+  honnête** : la liste statique embarquée est la vérité au dernier
+  déploiement ; `ether.js` la remplace par la vérité vivante quand
+  l'éther répond, se tait sinon — jamais de blocage, jamais de
+  mensonge.
+
+Gates : +6 invariants pgTAP (`past_moons.sql` : l'anon lit le
+calendrier, la plus récente d'abord, le lundi est une date et rien
+d'autre, l'avenir reste secret, jamais une ligne ni une note, la
+table opaque) ; sonde smoke en EXÉCUTION anon (le calendrier est la
+seule surface anon-exécutable avec les fetch de lecture) ; pgTAP 256
+au total. Aucun code app — la landing vit sa vie.
+
+## V3.55 — Le ciel a six gorges ✅ (livrée 2026-09-17, signalement Hugo)
+
+« Saturation du son quand on enchaîne trop vite les notes et leur
+nombre. » Deux causes conjointes, diagnostiquées dans le moteur :
+
+- **Chaque note sonnait SIX SECONDES quoi qu'il arrive** : l'enveloppe
+  nébuleuse (1,2 s de montée / 2,4 s de présence / 2,4 s d'exhale) est
+  celle des ONDES — mais les CHANSONS passent par le même `playNote`.
+  Une phrase rapide (tenues dès 120 ms) empilait des sinus de 6 s
+  pendant que la mélodie avançait : à la troisième note, la boue ; à
+  la sixième, l'écrêtage dur.
+- **Aucun budget de voix** : chaque note ouvrait une voix neuve sur le
+  moteur (flutter_soloud) comme sur le repli (un AudioPlayer par
+  note). N sinus à ~0,6 s'additionnent bien au-delà de 1.
+
+La loi du synthétiseur, appliquée partout :
+
+- **`VoiceBudget`** (`core/audio/voice_budget.dart`, arithmétique pure
+  sur des heures de fin) : **six voix simultanées**, la PLUS ANCIENNE
+  cède quand une neuve demande (vol de voix, fondu de 140 ms — jamais
+  de clic), et chaque voix chante à **1/√n** — la PUISSANCE totale
+  reste celle d'une note seule, un accord n'est jamais un écrêtage.
+  Les voix mortes se taillent seules à l'admission.
+- **La tenue EST la présence** : `playNote` gagne un `hold` — une note
+  tenue touche doucement (120 ms), sonne EXACTEMENT sa tenue, exhale
+  (≤ 360 ms, jamais plus longue que la note) et meurt : plus une note
+  qui sonne au-delà de sa phrase. Les ondes gardent leur nébuleuse
+  (l'asset qu'elles remplacent, 6 s — épinglé par test).
+- **Le repli aussi** : `AudioController.playAsset` plafonne ses
+  one-shots à six (le plus ancien est arrêté net) et joue à volume/√n.
+- Appelants : l'écoute du compositeur et la lecture de chanson passent
+  la tenue de chaque note ; l'écran FRÉQUENCES reste nébuleux.
+
+Gates : +6 tests Dart (`voice_budget_test` : le ciel vide chante
+plein, la septième vole la plus ancienne à 1/√6, les mortes libèrent,
+la tempête vole dans l'ordre ; la nébuleuse reste 6 s, le flutter de
+120 ms vit 240 ms, le souffle de 2 s finit à 2,36 s) ; suite complète
+400 verts, analyze 0. Zéro SQL, zéro migration — la loi vit dans le
+moteur et son repli.
+
 ## 4. Règles inchangées (rappel)
 
 
