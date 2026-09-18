@@ -338,9 +338,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _readEyeGuide();
     // The sky breathes: a quiet pull every 90 s — strangers' lines
     // appear on an OPEN map, states settle to the ether's truth. Pull
-    // only, never a push; the cadence stays invisible.
+    // only, never a push; the cadence stays invisible. V3.58c — the
+    // shards ride the same breath: the daily rotation and the
+    // guardian's harvests reach a sitting traveller too.
     _skyBreath = Timer.periodic(const Duration(seconds: 90), (_) {
-      if (mounted) _loadConstellations();
+      if (mounted) {
+        _loadConstellations();
+        _loadVestiges();
+      }
     });
     // V3.35 — the landscapes ride the camera's own pulse (no timers of
     // their own), and the drone learns the birth radius once it lives.
@@ -911,6 +916,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // L'Aube: once the first sync settles, the sas may speak.
     ref.listen(receptionControllerProvider, (previous, next) {
       if (previous == null || !previous.hasValue) _maybeSpeakAube();
+    });
+
+    // V3.58c — the library rides the session, not the clock: both
+    // loaders fire once at mount, when a cold boot's anonymous
+    // session does not exist YET (it restores async) — the ether was
+    // skipped, the bundle's dozen stood in, and a session could stay
+    // vestige-less and ring-less for its whole life ("je ne vois
+    // aucun vestige", the live report). The moment the session
+    // settles, whatever came back empty reloads for real.
+    ref.listen(sessionReadyProvider, (previous, next) {
+      if (!next.hasValue || (previous?.hasValue ?? false)) return;
+      if (_vestiges.isEmpty) _loadVestiges();
+      if (_constellations.isEmpty) _loadConstellations();
     });
 
     // A new signal lands: the device feels it (single informative
