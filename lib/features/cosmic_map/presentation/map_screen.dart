@@ -1930,6 +1930,10 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
   final Map<String, Offset> _baseScreen = {};
   final Map<String, ValueNotifier<Offset>> _shifts = {};
   final Set<String> _visibleIds = {};
+
+  /// V3.58h — the previous frame's alive set: the hysteresis memory
+  /// that keeps a boundary light from flapping between pipelines.
+  final Set<String> _alivePrev = {};
   Size? _viewportSize;
 
   /// The glimmer field's clock (V3.24): one notifier, one painter —
@@ -2111,6 +2115,16 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
         // hit zones — far lights to approach, never to hold. 180
         // widget-stars were the wide view's floor; ~24 is its flight.
         const aliveBudget = 24;
+        // V3.58h — hysteresis at the alive/glimmer boundary: the rank
+        // order stirs continuously while travelling, and a boundary
+        // light flapping between the widget pipeline and the canvas
+        // one popped at the re-sort cadence — "repart en arrière à
+        // intervalle régulier" (the live report; the widget carries
+        // the tilt parallax the canvas does not). A light ENTERS the
+        // field early (rank ≤ enter) and LEAVES it late (rank ≤ stay):
+        // no boundary, no flap, no pop.
+        const enterBudget = aliveBudget - 6;
+        const stayBudget = aliveBudget + 6;
         final ranked = sights.toList()
           ..sort((a, b) {
             final sa = a.echo.isMine
@@ -2127,7 +2141,8 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
             return a.echo.id.compareTo(b.echo.id);
           });
         final alive = <String>{};
-        var taken = 0;
+        var newcomers = 0;
+        var total = 0;
         for (final s in ranked) {
           final score = s.echo.isMine
               ? 2.0
@@ -2135,9 +2150,16 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
               ? 1.9
               : s.reception;
           if (score <= 0) break;
+          final sticky = score >= 1.9 || _alivePrev.contains(s.echo.id);
+          if (!sticky && newcomers >= enterBudget) continue;
           alive.add(s.echo.id);
-          if (++taken >= aliveBudget) break;
+          total++;
+          if (!sticky) newcomers++;
+          if (total >= stayBudget) break;
         }
+        _alivePrev
+          ..clear()
+          ..addAll(alive);
 
         // Pass 3 — the alive become holdable stars, four buckets deep.
         final buckets = List.generate(
