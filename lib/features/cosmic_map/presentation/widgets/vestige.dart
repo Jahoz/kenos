@@ -204,36 +204,40 @@ class VestigePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    // The shard stays STAR-CORE sized (~16 px): the 32 px box is the
-    // finger's courtesy, the drawing never looms (V3.12c — the real
-    // disproportion was here, not in the constellations).
-    final r = size.shortestSide / 2 - 8;
+    // V3.58f — the balance the owner asked for: SMALLER but
+    // LUMINOUS. The carving shrinks to ~12 px (the 32 px box stays —
+    // it is the finger's courtesy, not the eye's), the stroke
+    // thickens and brightens, and a breath of fill carries the
+    // light. A READ shard rests at 0.42 — a visible memory, never an
+    // extinction ("il s'éteint après lecture", the live report).
+    final r = (size.shortestSide / 2 - 8) * 0.75;
     // The newborn's mark (V3.58e): a thin HOLLOW ring, the sky's own
-    // grammar for "something surrounds this" — the first halo was a
-    // blurred blob twice the Moon's presence and read as mud (the
-    // live report). A ring is angular like its shard, quiet like the
-    // lanes, and dies with the moon of favour.
+    // grammar for "something surrounds this" — angular like its
+    // shard, quiet like the lanes, gone with the moon of favour.
     if (fresh && !read && !kept) {
       canvas.drawCircle(
         center,
-        r * 1.55,
+        r * 1.6,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 0.7
-          ..color = AppColors.fade(color, 0.20),
+          ..color = AppColors.fade(color, 0.24),
       );
     }
-    final baseAlpha = kept ? 0.5 : (read ? 0.22 : (0.26 + 0.20 * pulse));
+    final baseAlpha = kept ? 0.58 : (read ? 0.42 : 0.52);
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = kept || read ? 0.7 : 0.8
+      ..strokeWidth = 0.9
       ..color = AppColors.fade(kept ? AppColors.ember : color, baseAlpha);
 
     canvas.save();
     canvas.translate(center.dx, center.dy);
     canvas.rotate(rotation);
 
-    // The shard: an elongated hexagon — carved, angular, not a light.
+    // The shard: an elongated hexagon — carved, angular, now carrying
+    // a breath of light inside (a fill below the stroke: luminous
+    // without becoming a star — culture leans toward the light, it is
+    // never a confidence).
     final path = Path()
       ..moveTo(-r * 0.35, -r)
       ..lineTo(r * 0.45, -r * 0.8)
@@ -242,6 +246,14 @@ class VestigePainter extends CustomPainter {
       ..lineTo(-r * 0.5, r * 0.7)
       ..lineTo(-r, -r * 0.1)
       ..close();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = AppColors.fade(
+          kept ? AppColors.ember : color,
+          read ? 0.05 : 0.10,
+        ),
+    );
     canvas.drawPath(path, paint);
 
     // A carved line across — a fragment of inscription.
