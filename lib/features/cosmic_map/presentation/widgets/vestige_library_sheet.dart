@@ -292,14 +292,14 @@ class _LibraryPainter extends CustomPainter {
       final isRead = artifacts.isRead(v.id);
       // V3.58 — the three states read at a glance: GARDÉ burns ember
       // (the reliquaire's colour), unread glows teal, read rests dim.
-      // V3.58b — the FRESH burn brighter and larger: a just-published
-      // shard is unmissable in its own library.
+      // V3.58e — the fresh burn a touch brighter, one notch larger:
+      // present, never imposing (the live report).
       final isKept = artifacts.isKept(v.id);
       final isFresh = v.isFresh && !isRead && !isKept;
       final isSelected = selected?.id == v.id;
       final alpha = isSelected
           ? 0.95
-          : (isKept ? 0.85 : (isRead ? 0.22 : (isFresh ? 0.92 : 0.62)));
+          : (isKept ? 0.85 : (isRead ? 0.22 : (isFresh ? 0.86 : 0.62)));
       final rot = (v.id.hashCode & 0x7fffffff) % 60 / 60 * math.pi;
       canvas.save();
       canvas.translate(p.dx, p.dy);
@@ -310,7 +310,7 @@ class _LibraryPainter extends CustomPainter {
             : (isRead
                 ? AppColors.fade(AppColors.pureLight, alpha)
                 : AppColors.fade(AppColors.teal, alpha));
-      final r = isSelected ? 5.2 : (isFresh ? 4.6 : 3.6);
+      final r = isSelected ? 5.2 : (isFresh ? 4.3 : 3.6);
       canvas.drawRect(Rect.fromCenter(center: Offset.zero, width: r * 2, height: r * 2), shard);
       canvas.restore();
     }

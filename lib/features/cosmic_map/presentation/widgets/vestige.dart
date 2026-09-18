@@ -208,14 +208,19 @@ class VestigePainter extends CustomPainter {
     // finger's courtesy, the drawing never looms (V3.12c — the real
     // disproportion was here, not in the constellations).
     final r = size.shortestSide / 2 - 8;
-    // The newborn's halo: a breath of light behind the carving.
+    // The newborn's mark (V3.58e): a thin HOLLOW ring, the sky's own
+    // grammar for "something surrounds this" — the first halo was a
+    // blurred blob twice the Moon's presence and read as mud (the
+    // live report). A ring is angular like its shard, quiet like the
+    // lanes, and dies with the moon of favour.
     if (fresh && !read && !kept) {
       canvas.drawCircle(
         center,
-        r * 1.9,
+        r * 1.55,
         Paint()
-          ..color = AppColors.fade(color, 0.16)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.7
+          ..color = AppColors.fade(color, 0.20),
       );
     }
     final baseAlpha = kept ? 0.5 : (read ? 0.22 : (0.26 + 0.20 * pulse));
