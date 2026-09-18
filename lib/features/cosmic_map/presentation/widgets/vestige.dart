@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -114,8 +113,19 @@ Future<List<Vestige>> _loadAllVestiges() async {
       // V3.16: the shard meets the traveler in their language
       // (device locale, e.g. 'en' or 'fr-FR'); the server falls
       // back to the French canon — the library is never empty.
+      //
+      // V3.58d — dart:io's Platform is STUBBED on the web:
+      // Platform.localeName threw UnsupportedError BEFORE the RPC
+      // ever fired, the catch swallowed it, and every web session
+      // silently fell to the bundled dozen — the ether's library
+      // (every guardian harvest) never reached a browser ("je ne
+      // vois aucun vestige", the live report). The platform
+      // dispatcher speaks every build, tag-shaped ('fr-FR') exactly
+      // as the server normalizes.
+      final locale = WidgetsBinding
+          .instance.platformDispatcher.locale.toLanguageTag();
       final rows = await client.rpc('fetch_vestiges', params: {
-        'p_locale': Platform.localeName,
+        'p_locale': locale,
       });
       if (rows is List && rows.isNotEmpty) {
         return [
