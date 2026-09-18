@@ -220,11 +220,11 @@ class VestigePainter extends CustomPainter {
         r * 1.6,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 0.7
-          ..color = AppColors.fade(color, 0.24),
+          ..strokeWidth = 0.8
+          ..color = AppColors.fade(color, 0.34),
       );
     }
-    final baseAlpha = kept ? 0.58 : (read ? 0.42 : 0.52);
+    final baseAlpha = kept ? 0.58 : (read ? 0.32 : 0.52);
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.9
@@ -251,7 +251,7 @@ class VestigePainter extends CustomPainter {
       Paint()
         ..color = AppColors.fade(
           kept ? AppColors.ember : color,
-          read ? 0.05 : 0.10,
+          read ? 0.03 : 0.10,
         ),
     );
     canvas.drawPath(path, paint);

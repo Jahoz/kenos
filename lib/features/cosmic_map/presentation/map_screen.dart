@@ -658,6 +658,119 @@ class _MapScreenState extends ConsumerState<MapScreen>
       _loadSalonDoors();
     }
   }
+  // ── V3.58g — the resting layout, laid once per library change ────
+  // resolveResting used to run INSIDE the camera builder: every
+  // pan/zoom frame re-laid every shard, ring and salon door against
+  // the throat, the lanes and each other (the phyllotaxis' collision
+  // tries — tens of thousands of distance checks per frame once the
+  // library tripled, plus the merged shown-lists rebuilt with .any()
+  // lookups). The layout depends only on the LISTS — the camera now
+  // reads it, never recomputes it.
+  List<Vestige>? _laidVestigeSource;
+  List<ConstellationMeta>? _laidRingSource;
+  int _laidKeptStamp = -1;
+  int _laidSalonCount = -1;
+  List<Vestige> _laidVestiges = const [];
+  List<ConstellationMeta> _laidConstellations = const [];
+  final Map<String, Offset> _laidVestigeAt = {};
+  final Map<String, Offset> _laidCorpseAt = {};
+  final Map<String, Offset> _laidSalonAt = {};
+
+  ({
+    List<Vestige> vestiges,
+    List<ConstellationMeta> constellations,
+    Map<String, Offset> vestigeAt,
+    Map<String, Offset> corpseAt,
+    Map<String, Offset> salonAt,
+  })
+      _layRestingBodies() {
+    final kept = _artifacts.kept();
+    // Kept objects swap at constant length (the oldest returns to the
+    // sky): the stamp is a cheap content fingerprint, not a count.
+    var keptStamp = 0;
+    for (final k in kept) {
+      keptStamp = keptStamp * 31 + k.id.hashCode;
+    }
+    if (identical(_vestiges, _laidVestigeSource) &&
+        identical(_constellations, _laidRingSource) &&
+        keptStamp == _laidKeptStamp &&
+        _salonAnchors.length == _laidSalonCount) {
+      return (
+        vestiges: _laidVestiges,
+        constellations: _laidConstellations,
+        vestigeAt: _laidVestigeAt,
+        corpseAt: _laidCorpseAt,
+        salonAt: _laidSalonAt,
+      );
+    }
+    _laidVestigeSource = _vestiges;
+    _laidRingSource = _constellations;
+    _laidKeptStamp = keptStamp;
+    _laidSalonCount = _salonAnchors.length;
+
+    // The reliquaire merges in, local forever, ember-marked.
+    final vestigesShown = [
+      ..._vestiges,
+      for (final k in kept)
+        if (k.kind == 'vestige' && !_vestiges.any((v) => v.id == k.id))
+          Vestige(
+            id: k.id,
+            kind: k.vestigeKind ?? 'quote',
+            text: k.texts.first,
+            source: k.source ?? 'kenos',
+            offsetX: k.x,
+            offsetY: k.y,
+          ),
+    ];
+    final constellationsShown = [
+      ..._constellations,
+      for (final k in kept)
+        if (k.kind == 'constellation' &&
+            !_constellations.any((c) => c.id == k.id))
+          ConstellationMeta(
+            id: k.id,
+            seedX: k.x,
+            seedY: k.y,
+            state: 'CLOSED',
+            lineCount: k.texts.length,
+            target: k.target,
+            kind: ConstellationKind.poem,
+            curatedBy: k.curatedBy,
+          ),
+    ];
+    final staticAnchors = <Offset>[];
+    void lay(String id, Offset seed, Map<String, Offset> into) {
+      final at = KenosSystem.resolveResting(
+        seed,
+        occupied: staticAnchors,
+      );
+      into[id] = at;
+      staticAnchors.add(at);
+    }
+
+    _laidVestigeAt.clear();
+    for (final v in vestigesShown) {
+      lay(v.id, Offset(v.offsetX, v.offsetY), _laidVestigeAt);
+    }
+    _laidCorpseAt.clear();
+    for (final cst in constellationsShown) {
+      lay(cst.id, Offset(cst.seedX, cst.seedY), _laidCorpseAt);
+    }
+    _laidSalonAt.clear();
+    for (final door in _salonAnchors) {
+      lay(door.id, Offset(door.seedX, door.seedY), _laidSalonAt);
+    }
+    _laidVestiges = vestigesShown;
+    _laidConstellations = constellationsShown;
+    return (
+      vestiges: _laidVestiges,
+      constellations: _laidConstellations,
+      vestigeAt: _laidVestigeAt,
+      corpseAt: _laidCorpseAt,
+      salonAt: _laidSalonAt,
+    );
+  }
+
 
   /// The sky follows the fingers: one finger travels, two fingers
   /// also zoom (the point between them stays anchored under the
@@ -1020,64 +1133,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
                         // sky even when the moon (or the daily shard
                         // rotation) takes the original back — merged
                         // in, local forever, ember-marked.
-                        final vestigesShown = [
-                          ..._vestiges,
-                          for (final k in _artifacts.kept())
-                            if (k.kind == 'vestige' &&
-                                !_vestiges.any((v) => v.id == k.id))
-                              Vestige(
-                                id: k.id,
-                                kind: k.vestigeKind ?? 'quote',
-                                text: k.texts.first,
-                                source: k.source ?? 'kenos',
-                                offsetX: k.x,
-                                offsetY: k.y,
-                              ),
-                        ];
-                        final constellationsShown = [
-                          ..._constellations,
-                          for (final k in _artifacts.kept())
-                            if (k.kind == 'constellation' &&
-                                !_constellations.any((c) => c.id == k.id))
-                              ConstellationMeta(
-                                id: k.id,
-                                seedX: k.x,
-                                seedY: k.y,
-                                state: 'CLOSED',
-                                lineCount: k.texts.length,
-                                target: k.target,
-                                kind: ConstellationKind.poem,
-                                curatedBy: k.curatedBy,
-                              ),
-                        ];
-                        final staticAnchors = <Offset>[];
-                        final vestigeAt = <String, Offset>{};
-                        for (final v in vestigesShown) {
-                          final at = KenosSystem.resolveResting(
-                            Offset(v.offsetX, v.offsetY),
-                            occupied: staticAnchors,
-                          );
-                          vestigeAt[v.id] = at;
-                          staticAnchors.add(at);
-                        }
-                        final corpseAt = <String, Offset>{};
-                        for (final cst in constellationsShown) {
-                          final at = KenosSystem.resolveResting(
-                            Offset(cst.seedX, cst.seedY),
-                            occupied: staticAnchors,
-                          );
-                          corpseAt[cst.id] = at;
-                          staticAnchors.add(at);
-                        }
-                        final salonAt = <String, Offset>{};
-                        for (final door in _salonAnchors) {
-                          final at = KenosSystem.resolveResting(
-                            Offset(door.seedX, door.seedY),
-                            occupied: staticAnchors,
-                          );
-                          salonAt[door.id] = at;
-                          staticAnchors.add(at);
-                        }
+                        // V3.58g — the layout is LIST-shaped, not
+                        // camera-shaped: it is laid once per library
+                        // change and merely READ by every camera
+                        // frame (it used to re-run the phyllotaxis
+                        // per pan/zoom — tens of thousands of distance
+                        // checks per frame once the library tripled:
+                        // the max-zoom judder after travel).
+                        final laid = _layRestingBodies();
+                        final vestigesShown = laid.vestiges;
+                        final constellationsShown = laid.constellations;
+                        final vestigeAt = laid.vestigeAt;
+                        final corpseAt = laid.corpseAt;
+                        final salonAt = laid.salonAt;
                         return Stack(
                           fit: StackFit.expand,
                           children: [
