@@ -53,6 +53,13 @@ class Vestige {
   /// How many curated shards exist in the current bundle.
   static int knownCount = 0;
 
+  /// V3.58b — the moon of favour, as a property: a shard born less
+  /// than 30 days ago is ALWAYS adrift, and now it LOOKS the part —
+  /// publishing must not only exist, it must be SEEN.
+  bool get isFresh =>
+      createdAt != null &&
+      DateTime.now().difference(createdAt!).inDays < 30;
+
   String get kindLabel => switch (kind) {
         'quote' => 'CITATION',
         'etymology' => 'ÉTYMOLOGIE',
@@ -86,8 +93,8 @@ List<Vestige> dailyRotation(List<Vestige> all, DateTime now) {
   final visible = <Vestige>[];
   for (var i = 0; i < all.length; i++) {
     final shard = all[i];
-    final born = shard.createdAt;
-    final fresh = born != null && now.difference(born).inDays < 30;
+    final fresh = shard.createdAt != null &&
+        now.difference(shard.createdAt!).inDays < 30;
     final slot = (i + day * 5) % all.length;
     if (fresh || slot < all.length * 2 / 3) {
       visible.add(shard);
@@ -161,6 +168,7 @@ class VestigePainter extends CustomPainter {
     required this.pulse,
     this.read = false,
     this.kept = false,
+    this.fresh = false,
   });
 
   final double rotation;
@@ -178,6 +186,11 @@ class VestigePainter extends CustomPainter {
   /// reliquaire's mark, local forever.
   final bool kept;
 
+  /// V3.58b — born within the moon of favour: a soft halo, so a just-
+  /// published shard reads NEW at a glance on the map (publishing
+  /// must be seen, the live report).
+  final bool fresh;
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
@@ -185,6 +198,16 @@ class VestigePainter extends CustomPainter {
     // finger's courtesy, the drawing never looms (V3.12c — the real
     // disproportion was here, not in the constellations).
     final r = size.shortestSide / 2 - 8;
+    // The newborn's halo: a breath of light behind the carving.
+    if (fresh && !read && !kept) {
+      canvas.drawCircle(
+        center,
+        r * 1.9,
+        Paint()
+          ..color = AppColors.fade(color, 0.16)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+      );
+    }
     final baseAlpha = kept ? 0.5 : (read ? 0.22 : (0.26 + 0.20 * pulse));
     final paint = Paint()
       ..style = PaintingStyle.stroke
@@ -220,7 +243,8 @@ class VestigePainter extends CustomPainter {
       oldDelegate.rotation != rotation ||
       oldDelegate.pulse != pulse ||
       oldDelegate.read != read ||
-      oldDelegate.kept != kept;
+      oldDelegate.kept != kept ||
+      oldDelegate.fresh != fresh;
 }
 
 /// The Vestige reveal: serif text, sourced, RE-READABLE (a quote does
@@ -304,7 +328,9 @@ class _VestigePanelState extends State<_VestigePanel> {
                 Text(
                   // V3.58 — the reliquaire's mark rides the header:
                   // a kept shard says so, right where it is read.
+                  // V3.58b — the newborn too: TOUT NOUVEAU, one moon.
                   'VESTIGE — ${vestige.kindLabel}'
+                  '${vestige.isFresh ? ' · TOUT NOUVEAU' : ''}'
                   '${memory?.isKept(vestige.id) == true ? ' · GARDÉ' : ''}',
                   style: TextStyle(
                     fontFamily: AppFonts.mono,

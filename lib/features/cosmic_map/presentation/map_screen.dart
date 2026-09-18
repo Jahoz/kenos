@@ -1205,6 +1205,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                                 ? epoch
                                                                 : DateTime.now(),
                                                           ),
+                                                      fresh: v.isFresh,
                                                       color:
                                                           _artifacts.isKept(
                                                             v.id,

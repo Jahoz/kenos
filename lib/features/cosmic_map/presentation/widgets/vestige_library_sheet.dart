@@ -197,8 +197,10 @@ class _ShardPlaque extends StatelessWidget {
         children: [
           Text(
             // V3.58 — the state travels with the kind: the three lives
-            // of a shard told in one quiet line.
+            // of a shard told in one quiet line. V3.58b — the newborn
+            // says so: TOUT NOUVEAU, for one moon.
             '${vestige.kindLabel}'
+            '${vestige.isFresh && !artifacts.isKept(vestige.id) ? ' · TOUT NOUVEAU' : ''}'
             '${artifacts.isKept(vestige.id) ? ' · GARDÉ DANS TON CIEL' : ''}'
             '${artifacts.isRead(vestige.id) && !artifacts.isKept(vestige.id) ? ' · LU' : ''}',
             textAlign: TextAlign.center,
@@ -290,11 +292,14 @@ class _LibraryPainter extends CustomPainter {
       final isRead = artifacts.isRead(v.id);
       // V3.58 — the three states read at a glance: GARDÉ burns ember
       // (the reliquaire's colour), unread glows teal, read rests dim.
+      // V3.58b — the FRESH burn brighter and larger: a just-published
+      // shard is unmissable in its own library.
       final isKept = artifacts.isKept(v.id);
+      final isFresh = v.isFresh && !isRead && !isKept;
       final isSelected = selected?.id == v.id;
       final alpha = isSelected
           ? 0.95
-          : (isKept ? 0.85 : (isRead ? 0.22 : 0.62));
+          : (isKept ? 0.85 : (isRead ? 0.22 : (isFresh ? 0.92 : 0.62)));
       final rot = (v.id.hashCode & 0x7fffffff) % 60 / 60 * math.pi;
       canvas.save();
       canvas.translate(p.dx, p.dy);
@@ -305,7 +310,7 @@ class _LibraryPainter extends CustomPainter {
             : (isRead
                 ? AppColors.fade(AppColors.pureLight, alpha)
                 : AppColors.fade(AppColors.teal, alpha));
-      final r = isSelected ? 5.2 : 3.6;
+      final r = isSelected ? 5.2 : (isFresh ? 4.6 : 3.6);
       canvas.drawRect(Rect.fromCenter(center: Offset.zero, width: r * 2, height: r * 2), shard);
       canvas.restore();
     }
