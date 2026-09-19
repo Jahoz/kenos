@@ -117,4 +117,16 @@ class ParallaxMath {
     final hours = (angle / (2 * math.pi) * 12).round() % 12;
     return hours == 0 ? 12 : hours;
   }
+
+  /// V3.58i — the living sway calms as the eye approaches. The tilt
+  /// parallax (real gyro, or the sensor-less web's sinusoidal drift)
+  /// keeps the space ALIVE at the overview — and fights the focused
+  /// watch at deep zoom: a whole-field sway stepping at the gate's
+  /// cadence reads as backward pops ("repart en arrière à intervalle
+  /// régulier", the live report). Full amplitude at the resting eye,
+  /// a quarter at max zoom — the feature survives, the distraction
+  /// dies.
+  static double parallaxCalm(double zoom) =>
+      1.0 - 0.75 * (((zoom - eyeBaseZoom) / (8.0 - eyeBaseZoom))
+              .clamp(0.0, 1.0));
 }

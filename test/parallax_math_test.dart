@@ -103,6 +103,19 @@ void main() {
       expect(ParallaxMath.zoomScale(ParallaxMath.eyeBaseZoom), 1.0);
     });
 
+    test('V3.58i — la dérive vivante s\'apaise à mesure qu\'on approche', () {
+      expect(ParallaxMath.parallaxCalm(ParallaxMath.eyeBaseZoom), 1.0,
+          reason: 'pleine vie à la vue large');
+      expect(ParallaxMath.parallaxCalm(8.0), closeTo(0.25, 1e-9),
+          reason: 'un quart au zoom max — le feature survit, la distraction meurt');
+      for (var z = 1.2; z <= 8.0; z += 0.3) {
+        expect(ParallaxMath.parallaxCalm(z), inInclusiveRange(0.25, 1.0));
+        expect(ParallaxMath.parallaxCalm(z + 0.3) <=
+            ParallaxMath.parallaxCalm(z) + 1e-9, isTrue,
+            reason: 'monotone : approcher ne réveille jamais');
+      }
+    });
+
     test('zoomer approfondit, dézoomer recule — jamais de renversement', () {
       final s = ParallaxMath.zoomScale;
       expect(s(2.5), greaterThan(1.0));

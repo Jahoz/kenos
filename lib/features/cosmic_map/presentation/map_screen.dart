@@ -1812,13 +1812,14 @@ class _AmbientBackground extends ConsumerStatefulWidget {
   ConsumerState<_AmbientBackground> createState() => _AmbientBackgroundState();
 }
 
-/// Epsilon gate for the tilt stream: quantized to 0.02 (≤ ~1 px of
-/// parallax at the strongest amplitude). Records compare BY VALUE, so
-/// `select` skips the rebuild while the drift stays sub-pixel — the
-/// eye sees the same sky, the frames stop bleeding.
+/// Epsilon gate for the tilt stream: quantized to 0.008 (≤ ~0.4 px of
+/// parallax at the strongest amplitude — V3.58i, halved: a 1 px step
+/// at ~1 Hz read as a backward pop at deep zoom). Records compare BY
+/// VALUE, so `select` skips the rebuild while the drift stays
+/// sub-pixel — the eye sees the same sky, the frames stop bleeding.
 ({double x, double y}) _gateTilt(AsyncValue<Tilt> value) {
   final t = value.valueOrNull ?? Tilt.zero;
-  return (x: (t.x * 50).round() / 50, y: (t.y * 50).round() / 50);
+  return (x: (t.x * 125).round() / 125, y: (t.y * 125).round() / 125);
 }
 
 class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
@@ -2266,12 +2267,14 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
                 ParallaxMath.offsetPixels(
                   tilt: tilt.x * motionScale,
                   z: bucketZ,
-                  amplitude: 46,
+                  // V3.58i — the sway calms as the eye approaches:
+                  // full at the overview, a quarter at max zoom.
+                  amplitude: 46 * ParallaxMath.parallaxCalm(widget.camera.zoom),
                 ),
                 ParallaxMath.offsetPixels(
                   tilt: tilt.y * motionScale,
                   z: bucketZ,
-                  amplitude: 32,
+                  amplitude: 32 * ParallaxMath.parallaxCalm(widget.camera.zoom),
                 ),
               ),
               child: layer,
