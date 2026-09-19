@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/constants/app_durations.dart';
 import '../core/utils/motion_preferences.dart';
+import '../features/braise/presentation/braise_claim_screen.dart';
 import '../features/constellations/presentation/corpse_screen.dart';
 import '../features/constellations/presentation/salon_claim_screen.dart';
 import '../features/cosmic_map/application/sky_link.dart';
@@ -32,9 +33,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
       final atThreshold = loc == '/onboarding';
       // LE SALON carries its OWN threshold (the rules inside the
-      // claim): the global redirect never touches it.
+      // claim): the global redirect never touches it. LA BRAISE
+      // carries its own too (V3.60) — or none at all, when the sealed
+      // ballot vouches that this traveller already crossed the rules
+      // on another body.
       final atSalon = loc.startsWith('/c/');
-      if (!onboarded && !atThreshold && !atSalon) {
+      final atPassage = loc.startsWith('/pass/');
+      if (!onboarded && !atThreshold && !atSalon && !atPassage) {
         // A fresh visitor on ANY door — a sky link, the Mirror, a
         // raw '/space' — meets the rules first, and the door opens
         // back after ENTRER ('vers': where they were going).
@@ -90,6 +95,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _fade(
           context,
           child: SalonClaimScreen(token: state.pathParameters['token'] ?? ''),
+        ),
+      ),
+      // LA BRAISE (V3.60): the passage link's landing — a body, not a
+      // page. The key (and the sealed ballot behind the dot) hands an
+      // anonymous identity over; the threshold decides whether the
+      // rules are told first.
+      GoRoute(
+        path: '/pass/:payload',
+        pageBuilder: (context, state) => _fade(
+          context,
+          child: BraiseClaimScreen(
+            payload: state.pathParameters['payload'] ?? '',
+          ),
         ),
       ),
       // V3.49 — a PLACE in the void: `/#/ciel/<x>/<y>` lands the eye

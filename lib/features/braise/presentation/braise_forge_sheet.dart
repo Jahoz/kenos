@@ -5,85 +5,62 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/constants/app_layout.dart';
-import '../../../core/utils/app_link_origin.dart';
-import '../data/constellation_repository.dart';
 
-/// LE SALON — the link shown once (V3.19).
+/// LA BRAISE — the link shown once (V3.60).
 ///
-/// The seeder receives the ring's only key at the drop. This panel is
-/// the ONE moment it exists on a screen: after 'J'AI PARTAGÉ' it is
-/// never shown again — the void does not keep it, exactly like a
-/// reception. Sharing is the system sheet when it lives, the honest
-/// clipboard otherwise.
+/// The old body receives its passage key at the forge. This panel is
+/// the ONE moment it exists on a screen: after 'J'AI TRANSMIS' it is
+/// never shown again — and the link itself dies within ten minutes
+/// whether or not it was opened. Discreet by design: nothing here
+/// ever touches the threshold or the sky.
 
-/// Where invite links point. A build-time origin wins (the deployed
-/// PWA); on the web the current origin speaks; a native build without
-/// a known origin returns empty — the panel then says the truth
-/// instead of sharing a broken link. (V3.60: the logic lives in
-/// `appLinkOrigin` now — la Braise carries links the same way.)
-String salonLinkOrigin() => appLinkOrigin();
-
-/// The full invite URL: `https://<origin>/#/c/<token>` (hash routing,
-/// zero server config — ready for universal links the day of stores).
-String salonInviteLink(String token) {
-  final origin = salonLinkOrigin();
-  return origin.isEmpty ? '/#/c/$token' : '$origin/#/c/$token';
-}
-
-Future<void> showSalonShareSheet(
+Future<void> showBraiseForgeSheet(
   BuildContext context, {
-  required ConstellationMeta meta,
-  required String inviteToken,
+  required String link,
 }) {
   return showGeneralDialog(
     context: context,
-    // The key is precious: no accidental dismissal — only the honest
-    // 'J'AI PARTAGÉ' closes this door.
+    // The ember is precious: no accidental dismissal — only the
+    // honest 'J'AI TRANSMIS' closes this door.
     barrierDismissible: false,
-    barrierLabel: 'KENOS_SALON',
+    barrierLabel: 'KENOS_BRAISE',
     barrierColor: AppColors.voidBlack,
     transitionDuration: const Duration(milliseconds: 500),
     useRootNavigator: true,
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return FadeTransition(
         opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        child: _SalonSharePanel(meta: meta, inviteToken: inviteToken),
+        child: _BraiseForgePanel(link: link),
       );
     },
   );
 }
 
-class _SalonSharePanel extends StatefulWidget {
-  const _SalonSharePanel({required this.meta, required this.inviteToken});
+class _BraiseForgePanel extends StatefulWidget {
+  const _BraiseForgePanel({required this.link});
 
-  final ConstellationMeta meta;
-  final String inviteToken;
+  final String link;
 
   @override
-  State<_SalonSharePanel> createState() => _SalonSharePanelState();
+  State<_BraiseForgePanel> createState() => _BraiseForgePanelState();
 }
 
-class _SalonSharePanelState extends State<_SalonSharePanel> {
+class _BraiseForgePanelState extends State<_BraiseForgePanel> {
   Future<void> _share() async {
     try {
       await SharePlus.instance.share(
-        ShareParams(
-          text: salonInviteLink(widget.inviteToken),
-          title: 'On t’invite en salon — KENOS',
-        ),
+        ShareParams(text: widget.link, title: 'La braise — KENOS'),
       );
     } catch (_) {
       // No system sheet on this platform (or the test VM): the
-      // clipboard carries the key, honestly.
+      // clipboard carries the ember, honestly.
       await _copy(quiet: true);
     }
   }
 
   Future<void> _copy({bool quiet = false}) async {
     try {
-      await Clipboard.setData(
-        ClipboardData(text: salonInviteLink(widget.inviteToken)),
-      );
+      await Clipboard.setData(ClipboardData(text: widget.link));
     } catch (_) {
       // The clipboard refused: silence — the link is still on screen,
       // selectable.
@@ -96,9 +73,7 @@ class _SalonSharePanelState extends State<_SalonSharePanel> {
 
   @override
   Widget build(BuildContext context) {
-    final link = salonInviteLink(widget.inviteToken);
-    final linkless = !link.startsWith('http');
-    final isSong = widget.meta.kind == ConstellationKind.melody;
+    final linkless = !widget.link.startsWith('http');
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
@@ -117,7 +92,7 @@ class _SalonSharePanelState extends State<_SalonSharePanel> {
                     Row(
                       children: [
                         Text(
-                          'LE SALON',
+                          'LA BRAISE',
                           style: TextStyle(
                             fontFamily: AppFonts.mono,
                             fontSize: 9,
@@ -129,7 +104,7 @@ class _SalonSharePanelState extends State<_SalonSharePanel> {
                     ),
                     const SizedBox(height: 36),
                     Text(
-                      'L’anneau attend ses invités',
+                      'Ce lien est ton corps',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: AppFonts.serifItalic,
@@ -140,11 +115,9 @@ class _SalonSharePanelState extends State<_SalonSharePanel> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Ce lien est la seule clé de l’anneau.\n'
-                      'Chaque porteur posera ${isSong ? 'une phrase' : 'une ligne'} — '
-                      'jusqu’à ${widget.meta.target}.\n'
-                      'Refermé, ${isSong ? 'la chanson' : 'le poème'} rejoindra l’éther :\n'
-                      'lisible par tous.',
+                      'Ouvre-le sur ton autre appareil.\n'
+                      'Ce que ce corps était l’y attendra :\n'
+                      'les bouteilles, les portes, les anneaux.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: AppFonts.serifItalic,
@@ -165,8 +138,8 @@ class _SalonSharePanelState extends State<_SalonSharePanel> {
                         ),
                       ),
                       child: SelectableText(
-                        link,
-                        key: const ValueKey('salon_link'),
+                        widget.link,
+                        key: const ValueKey('braise_link'),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontFamily: AppFonts.mono,
@@ -184,7 +157,7 @@ class _SalonSharePanelState extends State<_SalonSharePanel> {
                               'LA CLÉ EST LÀ, COPIABLE, MAIS LE LIEN COMPLET\n'
                               'VIT SUR LE WEB.'
                           : 'CE LIEN NE SERA PLUS MONTRE ICI.\n'
-                              'DONNE-LE À QUI TU CHOISIS — OU GARDE-LE.',
+                              'IL MEURT DANS DIX MINUTES — OUVERT OU NON.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: AppFonts.mono,
@@ -201,12 +174,12 @@ class _SalonSharePanelState extends State<_SalonSharePanel> {
                       runSpacing: 10,
                       children: [
                         OutlinedButton(
-                          key: const ValueKey('salon_share'),
+                          key: const ValueKey('braise_share'),
                           onPressed: _share,
                           child: const Text('PARTAGER LE LIEN'),
                         ),
                         OutlinedButton(
-                          key: const ValueKey('salon_copy'),
+                          key: const ValueKey('braise_copy'),
                           onPressed: () => _copy(),
                           child: const Text('COPIER'),
                         ),
@@ -215,10 +188,10 @@ class _SalonSharePanelState extends State<_SalonSharePanel> {
                     const SizedBox(height: 18),
                     Center(
                       child: TextButton(
-                        key: const ValueKey('salon_shared'),
+                        key: const ValueKey('braise_shared'),
                         onPressed: () =>
                             Navigator.of(context, rootNavigator: true).pop(),
-                        child: const Text('J’AI PARTAGÉ'),
+                        child: const Text('J’AI TRANSMIS'),
                       ),
                     ),
                   ],

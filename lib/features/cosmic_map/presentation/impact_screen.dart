@@ -3,7 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
+import '../../braise/data/braise_repository.dart';
+import '../../braise/domain/braise_ballot.dart';
+import '../../braise/domain/braise_link.dart';
+import '../../braise/presentation/braise_forge_sheet.dart';
+import '../../constellations/data/salon_anchor_store.dart';
 import '../../echo/data/echo_providers.dart';
+import '../../echo/data/echo_repository.dart';
 
 /// Anonymous, local observations of what has resonated in the ether.
 class ImpactScreen extends ConsumerWidget {
@@ -130,6 +136,11 @@ class ImpactScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
+                // LA BRAISE (V3.60): the only door out of a body — one
+                // discreet line at the bottom of the ledger, nowhere
+                // else. The threshold and the sky never speak of it.
+                const SizedBox(height: 24),
+                const _BraiseForgeLine(),
                   ],
                 ),
               ),
@@ -163,8 +174,72 @@ class ImpactScreen extends ConsumerWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
+/// LA BRAISE — the discreet forge line (V3.60). One tap: the body's
+/// memories are sealed into the passage link and the ember is minted
+/// server-side (fingerprint only, ten minutes). The link is shown
+/// once, by the forge sheet — the ledger never speaks of it again.
+class _BraiseForgeLine extends ConsumerStatefulWidget {
+  const _BraiseForgeLine();
+
+  @override
+  ConsumerState<_BraiseForgeLine> createState() => _BraiseForgeLineState();
+}
+
+class _BraiseForgeLineState extends ConsumerState<_BraiseForgeLine> {
+  Future<void> _forge() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final store = ref.read(localEchoStoreProvider);
+      final stats = await store.readStats();
+      final doors = ref.read(salonAnchorStoreProvider);
+      await doors.load();
+      final ballot = BraiseBallot(
+        onboarded: true,
+        stats: stats,
+        freqGuideSeen: await store.hasFrequenciesGuideSeen(),
+        corpseGuideSeen: await store.hasCorpseGuideSeen(),
+        eyeGuideSeen: await store.hasEyeGuideSeen(),
+        anchors: doors.open().take(BraiseBallot.maxAnchors).toList(),
+      );
+      final key = await ref.read(braiseRepositoryProvider).forge();
+      final link = BraiseLink.forge(key, await BraiseBallot.pack(ballot, key));
+      // The sheet holds the screen the link exists on: it waits for a
+      // living one, like every share panel.
+      if (!mounted) return;
+      await showBraiseForgeSheet(context, link: link);
+    } catch (e) {
+      // An extinguished body forges no new ember; the sky may also be
+      // far — either way the ledger says it, honestly.
+      messenger.showSnackBar(
+        SnackBar(content: Text(KenosException.from(e).hudMessage)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: TextButton(
+        key: const ValueKey('braise_forge'),
+        onPressed: _forge,
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.fade(AppColors.ember, 0.55),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
+        child: const Text(
+          'TRANSMETTRE LA BRAISE',
+          style: TextStyle(
+            fontFamily: AppFonts.mono,
+            fontSize: 8,
+            letterSpacing: 2,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {  const _StatCard({
     required this.label,
     required this.value,
     required this.color,

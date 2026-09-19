@@ -29,6 +29,7 @@ mot générique ici : il désigne une chose précise, distincte du vestige.
 | **Vestige** | **Un éclat de culture permanente** : citation, étymologie, histoire, fait, haïku — texte clair, aucune identité de compte, aucune réception (une source créditée, pas un auteur) ; multilingue (fr canon + locales). | **Pour toujours** — jamais purgé (`kenos_vestiges`) |
 | **Main** | Compte anonyme déterministe (`curated-hand-N@seed.kenos.local`) portant une ligne curatorisée. | — |
 | **Ancre** | Mémo LOCAL d'une porte de salon tenue (clé en secure_storage, zéro contenu — jamais une ligne) ; graine ember sur la carte, visible du porteur seul. | 7 j (le fauchage) ou la fermeture de l'anneau |
+| **Braise** | Lien de passage d'un corps anonyme à un autre (`/#/pass/<clé>.<ballot scellé>`) : la clé (16 o hex) frappe `claim_passage`, le ballot (souvenirs locaux, AES-GCM sous HKDF de la clé) ne quitte jamais le fragment. Forge sur l'ancien appareil (Impact, discrète), claim une seule fois, remap serveur atomique. | 10 min (le lien) — le corps éteint l'est pour toujours |
 | **Trace** | Réponse one-shot du lecteur à l'auteur (≤ 140 car., fenêtre 10 min), bouteille à la mer. | voir = brûler |
 
 Règle rapide : **un artefact est un poème et vit une lune ; un vestige est un
@@ -76,8 +77,8 @@ lib/
 make dev                   # Mode démo local (aucun backend requis)
 make dev-local             # PWA release sur l'éther local seedé (:4308) — JAMAIS juger la perf sur `flutter run` (debug, 5-20× plus lent)
 make analyze               # 0 issue
-make test                  # 415 tests (chiffrement, culling, contrôleurs, UI)
-make db-reset && make db-test  # Migrations + 283 invariants pgTAP
+make test                  # 437 tests (chiffrement, culling, contrôleurs, UI)
+make db-reset && make db-test  # Migrations + 304 invariants pgTAP
 make db-seed-load && make db-load-report  # Montée en charge : seed 30 j (scellés LISIBLES, ~12k lignes) + rapport
 make db-verify-load           # Preuve e2e : consommer un écho seedé, l'ouvrir sur l'appareil
 make db-wipe-load              # Reset clean du seed (data réelle + KEK intacts)
@@ -181,6 +182,21 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
   lui seul, auto-taillée à 7 jours ou à la fermeture. Le lien reste
   montré une seule fois ; l'ancre ne rouvre jamais le partage, juste
   la porte.
+- **La Braise (V3.60)** : changer d'appareil sans créer de compte.
+  Sur l'ancien corps, une ligne discrète au bas de l'Impact forge un
+  lien unique `/#/pass/<clé>.<ballot>` — grammaire salon : 16 octets
+  hex, la base ne garde que sha256 et seulement 10 minutes, la clé
+  traverse le fil une seule fois. Le ballot (onboarding, stats,
+  guides, ancres vivantes — JAMAIS les cicatrices ni les échos
+  envoyés) voyage chiffré AES-256-GCM sous HKDF de la clé de passage,
+  dans le fragment `#` : le serveur n'en voit pas un octet. Le claim
+  EST le remap : une transaction `FOR UPDATE SKIP LOCKED` re-adresse
+  réceptions, échos en dérive, anneaux semés, lignes et signalements
+  au nouveau corps (collisions : la ligne reste à l'ancien — un
+  stranger, une ligne), consomme le passage (zéro trace), et éteint
+  l'ancien corps (`kenos_passed`, à vie) : `launch_echo` y répond
+  `KENOS_BRAISE_PASSED`. Pas d'email, pas de pseudonyme, pas de
+  récupération — l'ancien appareil mort emporte sa braise (assumé).
 - **Vestiges multilingues (V3.16)** : la voix produit reste FR (canon,
   pour toujours) ; les éclats curatés existent par locale
   (fetch_vestiges(p_locale), normalisation `fr-FR`→`fr`, repli honnête

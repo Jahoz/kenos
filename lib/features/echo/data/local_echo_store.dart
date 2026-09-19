@@ -182,6 +182,13 @@ class LocalEchoStore {
     }
   }
 
+  /// Wholesale stats write — la Braise's transplant only (V3.60): the
+  /// merged memories of a passed identity. Everything else keeps the
+  /// incremental record* path.
+  Future<void> writeStats(UserStats stats) async {
+    await _write(_kStats, jsonEncode(stats.toJson()));
+  }
+
   /// Update stats after sending an echo.
   Future<void> recordEchoSent() async {
     final stats = await readStats();

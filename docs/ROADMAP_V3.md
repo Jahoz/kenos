@@ -2007,6 +2007,60 @@ vraiment) ; 415 verts, analyze 0, pgTAP 283. **Sessions croisées** :
 deux V3.56 vivent dans la roadmap (le nom de l'éclat / la lunette du
 gardien) — livraisons parallèles, numérotation tenue ici à V3.57.
 
+## V3.60 — La Braise ✅ (livrée 2026-09-19, arbitrage Hugo : « garder son identité en restant anonyme — sans trahir le projet »)
+
+Changer d'appareil tuait un voyageur : session anonyme par corps, les
+bouteilles adressées perdues, les portes tenues verrouillées, les
+anneaux semés orphelins. La solution classique (pseudonyme, email,
+magic link) aurait créé UN COMPTE — identifiant unique corrélable,
+récupérable, l'inverse du manifeste. **La Braise est une passe de
+main, pas une récupération** : un lien unique forgé sur l'ancien
+corps, ouvert sur le neuf, les deux appareils côte à côte. L'ancien
+s'éteint à la passe ; s'il est perdu avant elle, la braise meurt avec
+lui — assumé : kenos ne garde aucune identité qui survit à son corps.
+
+- **Grammaire salon, exactement** : clé 16 octets hex, la base ne
+  garde que sha256 (`kenos_passages`) et seulement dix minutes ; la
+  clé traverse le fil une seule fois, à la forge. Absent, faux,
+  expiré, déjà claimé, self-adressé : même `KENOS_PASSAGE_UNKNOWN`.
+  Un dump ne tient aucune braise ; après le claim, même l'empreinte
+  est consumée (la ligne meurt dans la transaction).
+- **Le ballot ne quitte jamais le fil** : onboarding, stats, guides,
+  ancres vivantes (cap 8) — JAMAIS les cicatrices ni les échos
+  envoyés (pas de moyen de viser ses propres étoiles en dérive :
+  « même l'auteur ne relit plus » tient). Scellé AES-256-GCM sous
+  HKDF-SHA256 de la clé de passage, porté par le fragment `#` du
+  lien : le serveur n'en voit pas un octet, pas même l'existence.
+- **Le claim EST le remap** : une transaction `FOR UPDATE SKIP
+  LOCKED` (la grammaire sacrée) re-adresse les réceptions en attente,
+  les échos en dérive (l'exclusion de sa propre carte tient), les
+  anneaux semés (le reseed reste au semeur), les lignes et
+  signalements — les collisions de PK composites laissent la ligne à
+  l'ancien corps : un stranger, une ligne, jamais d'exception. Puis
+  `kenos_passed` (tombstone contentless, à vie) éteint l'ancien :
+  `launch_echo` y répond `KENOS_BRAISE_PASSED` (« CE CORPS A TRANSMIS
+  SA BRAISE ») — il peut encore errer et lire, il n'adresse plus.
+- **Discret par ordre** : rien au Seuil, rien sur la carte, rien au
+  premier parcours. La réception est un deep link sans UI d'entrée
+  (`/pass/` porte son propre Seuil — ou aucun, quand le ballot
+  scellé voue que les règles furent franchies sur l'autre corps) ;
+  la forge est une ligne mono au bas de l'Impact, le seul lieu du
+  vécu intime (« quiet impact, one tap away »). Le lien montré une
+  fois, comme la clé du salon.
+- **Parité démo exacte** : forge en mémoire, claim unique, replay
+  refusé — même silence que le serveur.
+
+Gates : +21 invariants pgTAP (`braise.sql` : forge/fingerprint/
+structure, remaps et collision, replay/TTL/faux/self, extinction
+forge+launch, RLS, purge) ; +22 tests Dart (`braise_test.dart` : la
+démo porte la même braise, le ballot scellé survit à son voyage, la
+fusion des mémoires, le replant des ancres par IO seam, le seuil du
+corps neuf puis la passe, le ballot qui épargne le Seuil, les états
+morts/éteint/injoignable, le lien montré une fois, le mapper du
+refus) ; analyze 0, pgTAP 304. (Note de numérotation : un V3.59
+avait été dépensé hors roadmap par `decfe96` — la présente vit à
+V3.60.)
+
 ## 4. Règles inchangées (rappel)
 
 

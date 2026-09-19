@@ -106,7 +106,15 @@ enum EchoReportReason {
 /// Functional error codes raised by server-side RPCs — exhaustive on
 /// purpose: a new server code must become a new enum value here, not a
 /// silent fallthrough to "unreachable".
-enum KenosErrorCode { rateLimit, invalid, unauthenticated, unreachable }
+enum KenosErrorCode {
+  rateLimit,
+  invalid,
+  unauthenticated,
+  unreachable,
+  // V3.60 — la Braise: this body has transmitted its ember; it may
+  // still wander and read, but it creates no new addressing.
+  braisePassed,
+}
 
 /// Functional exceptions raised by server-side RPCs.
 class KenosException implements Exception {
@@ -128,6 +136,9 @@ class KenosException implements Exception {
     if (message.contains('KENOS_RATE_LIMIT')) {
       return const KenosException(KenosErrorCode.rateLimit);
     }
+    if (message.contains('KENOS_BRAISE_PASSED')) {
+      return const KenosException(KenosErrorCode.braisePassed);
+    }
     if (message.contains('KENOS_INVALID')) {
       return const KenosException(KenosErrorCode.invalid);
     }
@@ -143,6 +154,8 @@ class KenosException implements Exception {
     KenosErrorCode.invalid => 'CET ÉCHO EST MALFORMÉ.',
     KenosErrorCode.unauthenticated => 'L\'ÉTHER NE TE RECONNAÎT PAS.',
     KenosErrorCode.unreachable => 'L\'ÉTHER EST INJOIGNABLE.',
+    KenosErrorCode.braisePassed =>
+      'CE CORPS A TRANSMIS SA BRAISE — UN AUTRE LA PORTE DÉSORMAIS.',
   };
 
   @override
