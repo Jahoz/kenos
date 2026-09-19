@@ -7,12 +7,18 @@ import '../../../../core/constants/app_colors.dart';
 
 /// Background dead star field: painted (no widgets), slow twinkle,
 /// minimal parallax — this is scenery, not matter.
+///
+/// The void leads: magnitudes follow a power law (a skyful of barely
+/// there dust, a handful of beacons) and the layers lean far-heavy,
+/// so the black breathes between stars. A uniform speckle reads as
+/// fabric; depth variance reads as distance (V3.60e — the sky was a
+/// texture, it becomes a space).
 class BackgroundStarFieldPainter extends CustomPainter {
   BackgroundStarFieldPainter({
     required this.time,
     required this.tiltX,
     required this.tiltY,
-    this.starCount = 120,
+    this.starCount = 96,
   });
 
   final double time;
@@ -24,27 +30,55 @@ class BackgroundStarFieldPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
 
-    // Draw stars in three depth layers for enhanced parallax
-    for (var layer = 0; layer < 3; layer++) {
-      final layerSeed = 1337 + layer * 17;
-      final layerRandom = math.Random(layerSeed);
-      final layerStarCount = (starCount / 3).toInt();
-      final baseDepth = 0.15 + (layer * 0.25);
-      final depthRange = 0.20;
-      final layerParallaxScale = 4.0 + (layer * 2.5);
-      
-      for (var i = 0; i < layerStarCount; i++) {
-        final depth = baseDepth + layerRandom.nextDouble() * depthRange;
+    // Three depth layers, far-heavy: the distant shell carries most
+    // of the stars as near-invisible dust, the near one carries few.
+    const layers = <({
+      double share,
+      double depthMin,
+      double depthSpan,
+      double parallax,
+      double rMin,
+      double rMax,
+      double aMin,
+      double aMax,
+      double twinkle,
+    })>[
+      (
+        share: 0.50, depthMin: 0.10, depthSpan: 0.20, parallax: 4.0,
+        rMin: 0.3, rMax: 0.6, aMin: 0.02, aMax: 0.09, twinkle: 0.25,
+      ),
+      (
+        share: 0.33, depthMin: 0.38, depthSpan: 0.20, parallax: 6.5,
+        rMin: 0.4, rMax: 1.0, aMin: 0.05, aMax: 0.22, twinkle: 0.35,
+      ),
+      (
+        share: 0.17, depthMin: 0.66, depthSpan: 0.20, parallax: 9.0,
+        rMin: 0.5, rMax: 1.6, aMin: 0.08, aMax: 0.50, twinkle: 0.45,
+      ),
+    ];
+
+    for (var layer = 0; layer < layers.length; layer++) {
+      final l = layers[layer];
+      final layerRandom = math.Random(1337 + layer * 17);
+      final count = (starCount * l.share).round();
+
+      for (var i = 0; i < count; i++) {
+        final depth = l.depthMin + layerRandom.nextDouble() * l.depthSpan;
         final baseX = layerRandom.nextDouble();
         final baseY = layerRandom.nextDouble();
         final twinklePhase = layerRandom.nextDouble() * 2 * math.pi;
         final twinkleSpeed = 0.2 + layerRandom.nextDouble() * 0.6;
 
-        final x = baseX * size.width + tiltX * layerParallaxScale * depth;
-        final y = baseY * size.height + tiltY * layerParallaxScale * depth;
-        final radius = 0.3 + depth * 1.3;
-        final baseAlpha = (0.08 + depth * 0.25);
-        final twinkle = 0.6 + 0.4 * math.sin(time * twinkleSpeed + twinklePhase);
+        // Power-law magnitude: most stars barely are, a few shine —
+        // the sky's own distribution, and the surest cure for clutter.
+        final magnitude = math.pow(layerRandom.nextDouble(), 2.6).toDouble();
+
+        final x = baseX * size.width + tiltX * l.parallax * depth;
+        final y = baseY * size.height + tiltY * l.parallax * depth;
+        final radius = l.rMin + (l.rMax - l.rMin) * magnitude;
+        final baseAlpha = l.aMin + (l.aMax - l.aMin) * magnitude;
+        final twinkle =
+            (1.0 - l.twinkle) + l.twinkle * math.sin(time * twinkleSpeed + twinklePhase);
         final alpha = baseAlpha * twinkle;
 
         paint.color = AppColors.fade(Colors.white, alpha.clamp(0.0, 1.0));
@@ -96,13 +130,15 @@ class NebulaPainter extends CustomPainter {
       );
     }
 
-    // Layered nebulae with different colors, positions, and pulse rates
-    nebula(const Offset(0.22, 0.3), 0.60, AppColors.indigo, 0.12, 0.5, 0.2);
-    nebula(const Offset(0.8, 0.72), 0.55, AppColors.teal, 0.08, 0.7, 0.15);
-    nebula(const Offset(0.6, 0.15), 0.40, AppColors.purple, 0.06, 0.3, 0.1);
+    // Layered nebulae with different colors, positions, and pulse
+    // rates — veils, not paint: each keeps well short of its edge
+    // so true void survives between them (V3.60e).
+    nebula(const Offset(0.22, 0.3), 0.50, AppColors.indigo, 0.09, 0.5, 0.2);
+    nebula(const Offset(0.8, 0.72), 0.45, AppColors.teal, 0.06, 0.7, 0.15);
+    nebula(const Offset(0.6, 0.15), 0.34, AppColors.purple, 0.042, 0.3, 0.1);
     // Additional subtle layers for depth
-    nebula(const Offset(0.15, 0.75), 0.45, AppColors.cyan, 0.05, 0.6, 0.12);
-    nebula(const Offset(0.9, 0.3), 0.35, AppColors.fade(AppColors.purple, 0.5), 0.04, 0.4, 0.08);
+    nebula(const Offset(0.15, 0.75), 0.38, AppColors.cyan, 0.034, 0.6, 0.12);
+    nebula(const Offset(0.9, 0.3), 0.28, AppColors.fade(AppColors.purple, 0.5), 0.024, 0.4, 0.08);
   }
 
   @override

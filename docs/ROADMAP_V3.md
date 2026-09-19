@@ -2081,6 +2081,32 @@ carte « Braises en main » sur le dashboard, la parité démo tenue
 (+1 invariant pgTAP, +1 test Dart). Gates finaux : analyze 0,
 447 tests Dart, 305 invariants pgTAP.
 
+**V3.60d — les étoiles filantes (livrées 2026-09-19, vœu du cockpit
+Telos : « J'aimerai voir passer des étoiles filantes »).** Une étoile
+lâche tout et traverse, puis le silence : géométrie déterministe
+(`ShootingStar.fromSeed` — descente diagonale 22°–65°, enveloppe
+d'opacité née et morte dans le noir, jamais de pop), une seule à la
+fois, une tous les 9–22 s. La passe seule tourne à cadence image,
+isolée dans son RepaintBoundary sous IgnorePointer (le
+silence-batterie tient : 8 fps pour le scintillement ambiant, ~1 s
+de ticker pour la filante) ; gelée sous reduce-motion — un météore
+est un décor, jamais une information. +5 tests Dart (déterminisme
+par graine, descente jamais verticale ni plate, trajet colinéaire à
+la direction, enveloppe d'opacité, pinceau muet hors fenêtre).
+
+**V3.60e — le ciel respire (livrée 2026-09-19, arbitrage Hugo :
+« trop condensé, ça respire pas — pas l'impression d'immensité
+recherchée »).** Le fond cessait d'être un espace : il était une
+texture. Le champ mort suit désormais une loi de puissance de
+magnitudes (exposant 2,6 — une poussière à peine là, quelques
+balises) et ses couches se rééquilibrent loin-lourdes : 96 étoiles
+au lieu de 120, partagées 50/33/17, la coquille lointaine réduite à
+des murmures (alpha ≤ 0,09) que seules les proches osent dépasser
+(≤ 0,50). Les nébuleuses perdent 25 à 40 % de voile selon l'halo et
+~15 % d'empan : le noir redevient la matière première de
+l'immensité, et les étoiles vives de la carte (échos, vestiges)
+y détachent d'autant.
+
 ## 4. Règles inchangées (rappel)
 
 
