@@ -2107,6 +2107,26 @@ des murmures (alpha ≤ 0,09) que seules les proches osent dépasser
 l'immensité, et les étoiles vives de la carte (échos, vestiges)
 y détachent d'autant.
 
+**V3.60f — le vœu restait hors cadre (livrée 2026-09-19, vu par
+Hugo : « pourquoi je ne vois pas d'étoiles filantes en prod ? »).**
+La filante volait — cadence 9–22 s respectée, ticker vivant,
+portes reduce-motion ouvertes — mais invisible : `travel` était
+borné par `longestSide` (la HAUTEUR en portrait) alors que la
+course horizontale disponible n'était que la largeur ; sur écran
+portrait, presque toute trajectoire sortait du cadre presque
+immédiatement. Le diagnostic a tenu par triple épreuve : sonde
+widget déterministe (le vol a lieu, 10,8 s), hook console sur
+l'app web réelle (`beginPass` à cadence exacte, gates fausses),
+sonde pixel d'isolation (graine 42 : zéro pixel brillant, tête à
+x = −68 px). La géométrie est désormais bornée par **le bord réel
+du ciel dans la direction propre de l'étoile** (construction
+`fromSeed(seed, sky)` : course de 50 à 90 % de la distance
+disponible), et l'entrée se fait dans la moitié du ciel d'où le
+vol repart — chaque traversée couvre au moins un demi-ciel,
+quel que soit l'aspect. +2 tests (régression : la tête reste
+dans le cadre, 300 graines × 3 ciels ; la tête peint des pixels
+visibles à mi-passe — la graine 42 en témoigne).
+
 ## 4. Règles inchangées (rappel)
 
 

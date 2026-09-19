@@ -159,17 +159,49 @@ class ShootingStar {
     required this.tailLength,
   });
 
-  /// [seed] decides everything: same seed, same star.
-  factory ShootingStar.fromSeed(int seed) {
+  /// [seed] decides everything: same seed, same star — for [sky].
+  ///
+  /// The travel is bounded by the sky's own edge along the flight
+  /// direction: `longestSide` once scaled the path by the TALL side of
+  /// a portrait screen while the run available sideways was only its
+  /// width, sending nearly every pass off-screen almost immediately
+  /// (the meteor flew — the eye never saw it).
+  factory ShootingStar.fromSeed(int seed, {required Size sky}) {
     final rng = math.Random(seed);
     final deg = 22 + rng.nextDouble() * 42; // always below the horizon
     final mirrored = rng.nextBool();
+    final angle = (mirrored ? 180 - deg : deg) * math.pi / 180;
+    final direction = Offset(math.cos(angle), math.sin(angle));
+    // Enters from the high band — born INSIDE the sky (the darkness
+    // at birth is the opacity envelope's job, not the off-frame's),
+    // on the half of the sky the flight LEAVES FROM: a leftward wish
+    // enters on the right half — every run crosses at least half a
+    // sky, whatever the aspect.
+    final start = Offset(
+      mirrored ? 0.55 + rng.nextDouble() * 0.41 : 0.04 + rng.nextDouble() * 0.41,
+      0.02 + rng.nextDouble() * 0.28,
+    );
+    final startPx = Offset(start.dx * sky.width, start.dy * sky.height);
+
+    // How far the head may run before leaving its sky, along its own
+    // direction — an aspect-aware ceiling, not a fixed fraction of one
+    // arbitrary side.
+    final runX = direction.dx == 0
+        ? double.infinity
+        : (direction.dx > 0 ? sky.width - startPx.dx : startPx.dx) /
+              direction.dx.abs();
+    final runY = direction.dy == 0
+        ? double.infinity
+        : (sky.height - startPx.dy) / direction.dy;
+    final toEdge = math.max(0.0, math.min(runX, runY));
+
     return ShootingStar(
-      // Enters from the upper band of the sky, edges included.
-      start: Offset(0.04 + rng.nextDouble() * 0.92, -0.06 + rng.nextDouble() * 0.34),
-      angle: (mirrored ? 180 - deg : deg) * math.pi / 180,
+      start: start,
+      angle: angle,
       duration: 0.9 + rng.nextDouble() * 0.6,
-      travel: 0.38 + rng.nextDouble() * 0.24,
+      // Half to nine-tenths of the available run: the wish crosses
+      // the eye's sky, whatever its aspect.
+      travel: toEdge * (0.5 + rng.nextDouble() * 0.4),
       tailLength: 56 + rng.nextDouble() * 54,
     );
   }
@@ -183,7 +215,8 @@ class ShootingStar {
   /// Seconds spent crossing the eye.
   final double duration;
 
-  /// Path length, as a fraction of the sky's longest side.
+  /// Path length in logical pixels, bounded by the sky given at
+  /// construction (see [ShootingStar.fromSeed]).
   final double travel;
 
   /// Tail length in logical pixels.
@@ -191,10 +224,11 @@ class ShootingStar {
 
   Offset direction() => Offset(math.cos(angle), math.sin(angle));
 
-  /// Where the burning head sits at [progress] (0..1).
+  /// Where the burning head sits at [progress] (0..1). [sky] must be
+  /// the same sky the star was seeded for — travel is already in px.
   Offset head(Size sky, double progress) =>
       Offset(start.dx * sky.width, start.dy * sky.height) +
-      direction() * (travel * sky.longestSide * progress);
+      direction() * (travel * progress);
 
   /// Visibility envelope: born dark, dies dark — never a pop.
   double opacity(double progress) {

@@ -1938,8 +1938,11 @@ class _MeteorLayerState extends ConsumerState<_MeteorLayer>
       _schedule();
       return;
     }
+    // The star is seeded for the sky it will actually cross: the
+    // travel must respect this very screen's edges (portrait or not).
+    final sky = context.size ?? const Size(430, 932);
     setState(() {
-      _star = ShootingStar.fromSeed(_rng.nextInt(1 << 31));
+      _star = ShootingStar.fromSeed(_rng.nextInt(1 << 31), sky: sky);
       _progress = 0;
     });
     _pass.start();
