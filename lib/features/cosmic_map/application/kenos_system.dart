@@ -46,13 +46,20 @@ class KenosSystem {
   ///    ones already placed — call in a stable sequence).
   /// Echoes still sweep their swarm (they move; motion crossing a
   /// resting shard is the sky breathing, not a collision).
+  ///
+  /// V3.61 — the clearance widened (0.055 → 0.08): resting bodies
+  /// breathe nearly half again as far apart; the sky was a crowded
+  /// sheet, it becomes a field.
   static Offset resolveResting(
     Offset p, {
     List<Offset> occupied = const [],
-    double clearance = 0.055,
+    double clearance = 0.08,
   }) {
     var q = outsideTheHole(p);
-    // The lanes: dodge both planetary circles radially.
+    // The lanes: dodge both planetary circles radially. The dodge band
+    // stays at 0.055 — the lanes sit 0.11 apart, a wider band would
+    // leave nowhere to stand BETWEEN them (V3.61 learned it the hard
+    // way); only the body-to-body clearance widened.
     for (final lane in [orbitRadiusOf(0), orbitRadiusOf(1)]) {
       final d = (q - blackHole).distance;
       if (d < 1e-9) break;
@@ -87,9 +94,10 @@ class KenosSystem {
       if (clear) break;
       // Phyllotaxis (sunflower packing): station n sits at golden angle
       // n·φ on a spiral of radius c·√(n+1) — the layout that keeps
-      // every pair at least ~c apart, for any cluster size.
+      // every pair at least ~c apart, for any cluster size (c rides
+      // the clearance, V3.61).
       final angle = n * golden;
-      final r = 0.062 * math.sqrt(n + 1);
+      final r = 0.09 * math.sqrt(n + 1);
       q = Offset(
         base.dx + r * math.cos(angle),
         base.dy + r * math.sin(angle),

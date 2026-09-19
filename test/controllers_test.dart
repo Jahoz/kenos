@@ -281,11 +281,11 @@ void main() {
       // travel slack, never the whole sky.
       expect(repo.rects, hasLength(1));
       final r = repo.rects.single;
-      // Default camera: zoom 1.75 → ±0.2857 around (0.5, 0.5), + 0.05 slack.
-      expect(r.loX, closeTo(0.1643, 0.001));
-      expect(r.loY, closeTo(0.1643, 0.001));
-      expect(r.hiX, closeTo(0.8357, 0.001));
-      expect(r.hiY, closeTo(0.8357, 0.001));
+      // Default camera: zoom 2.4 → ±0.2083 around (0.5, 0.5), + 0.05 slack.
+      expect(r.loX, closeTo(0.2417, 0.001));
+      expect(r.loY, closeTo(0.2417, 0.001));
+      expect(r.hiX, closeTo(0.7583, 0.001));
+      expect(r.hiY, closeTo(0.7583, 0.001));
       expect(repo.budgets.single, SectorGrid.viewBudget,
           reason: 'la carte peint des étoiles, pas un catalogue');
     });
@@ -298,10 +298,10 @@ void main() {
       // Re-centring on the opening rect (RECALIBRER semantics): the
       // containment dedup absorbs it — zero new fetch, zero double call.
       await container.read(mapControllerProvider.notifier).refreshViewport(
-            minX: 0.2143,
-            minY: 0.2143,
-            maxX: 0.7857,
-            maxY: 0.7857,
+            minX: 0.2917,
+            minY: 0.2917,
+            maxX: 0.7083,
+            maxY: 0.7083,
           );
       expect(repo.rects, hasLength(1));
     });

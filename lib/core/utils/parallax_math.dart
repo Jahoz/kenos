@@ -45,14 +45,15 @@ class ParallaxMath {
 
   /// The eye's resting zoom — the anchor of [zoomScale]. The launched
   /// look (TravelCamera's default) must stay scale 1.0: the tuned sky
-  /// and its tests are calibrated to it.
-  static const double eyeBaseZoom = 1.75;
+  /// and its tests are calibrated to it (V3.61: the anchor moved with
+  /// the default, 1.75 → 2.4 — the resting eye owns less sky).
+  static const double eyeBaseZoom = 2.4;
 
   /// How much celestial BODIES grow as the eye zooms. Zoom moves the
   /// window (viewExtent) — but a zoom nothing grows through is a zoom
   /// the eye cannot see: the wheel fired for days before anyone
   /// believed it (V3.17). Subtle on purpose, stars stay stars, never
-  /// balloons: 1.0 at the resting eye, ≈0.79 zoomed out, ≈2.5 deep.
+  /// balloons: 1.0 at the resting eye, ≈0.66 zoomed out, ≈2.0 deep.
   static double zoomScale(double zoom) =>
       math.pow(zoom / eyeBaseZoom, 0.6).toDouble();
 

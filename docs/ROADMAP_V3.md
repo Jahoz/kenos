@@ -2127,6 +2127,22 @@ quel que soit l'aspect. +2 tests (régression : la tête reste
 dans le cadre, 300 graines × 3 ciels ; la tête peint des pixels
 visibles à mi-passe — la graine 42 en témoigne).
 
+**V3.61 — l'échelle du monde (livrée 2026-09-20, arbitrage Hugo :
+« tout est trop serré, on a pas l'impression d'espace — ajuste
+vraiment l'échelle »).** Trois leviers, une seule grammaire : **le
+regard** (zoom par défaut 1,75 → 2,4 : l'œil au repos tient ~42 %
+du ciel au lieu de ~57 % — moitié moins d'objets dans le cadre,
+espacements ~1,37× plus larges ; l'ancre `eyeBaseZoom` suit, l'échelle
+des corps au repos reste 1,0) ; **le repos des corps** (dégagement
+0,055 → 0,08 et spirale phyllotaxis proportionnelle : vestiges et
+anneaux respirent ~45 % plus — l'esquive des couloirs planétaires
+reste à 0,055, deux orbites distantes de 0,11 ne pardonnent pas
+plus) ; **la poussière** (le deep field normalise sur l'ancre, plus
+sur un 1,75 codé dur). Le fond cessait d'être une carte postale
+serrée : le vide mène, les mondes encadrent. Calibrations suivies
+(6 tests) ; gates : analyze 0, 454 tests Dart. La preuve par
+l'image : ~10 éléments visibles, 65-70 % de vide au premier regard.
+
 ## 4. Règles inchangées (rappel)
 
 

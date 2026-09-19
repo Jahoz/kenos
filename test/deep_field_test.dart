@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kenos/core/utils/parallax_math.dart';
 import 'package:kenos/features/cosmic_map/application/deep_field.dart';
 import 'package:kenos/features/cosmic_map/application/travel_camera.dart';
 import 'package:kenos/features/cosmic_map/presentation/widgets/deep_field_painter.dart';
@@ -90,7 +91,10 @@ void main() {
 
     test('sizeScale rests at the eye\'s base zoom', () {
       for (final layer in deepFieldLayers) {
-        expect(DeepFieldMath.sizeScale(1.75, layer.factor), 1.0);
+        expect(
+          DeepFieldMath.sizeScale(ParallaxMath.eyeBaseZoom, layer.factor),
+          1.0,
+        );
       }
     });
 

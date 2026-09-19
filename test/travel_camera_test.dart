@@ -50,7 +50,7 @@ void main() {
 
       camera.zoomBy(1.8, focalWorld);
 
-      expect(camera.zoom, closeTo(1.75 * 1.8, 1e-6));
+      expect(camera.zoom, closeTo(2.4 * 1.8, 1e-6));
       final after = camera.worldToScreen(focalWorld, viewport);
       // The anchored point barely moved on screen (clamping may shift
       // it a little — it must NOT fly away).

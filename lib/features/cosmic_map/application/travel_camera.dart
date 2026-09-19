@@ -7,8 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 ///
 /// The world stays the server's normalized [0,1]² (its coordinates are
 /// guarded by SQL bounds), but the eye no longer owns all of it: a
-/// fixed zoom shows about half the sky at once, and one glides the
-/// void to travel.
+/// fixed zoom shows about two fifths of the sky at once, and one
+/// glides the void to travel (V3.61: the resting eye held 57% and the
+/// sky read as a crowded sheet — it now holds ~42%, the void leads).
 ///
 /// V3.40 — the traversable void extends WELL past the known ether
 /// (margin 0.5 → the eye rides [-0.5, 1.5]): the worlds and their
@@ -24,13 +25,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// never spend a frame on a pan.
 class TravelCamera extends ChangeNotifier {
   TravelCamera({
-    double zoom = 1.75,
+    double zoom = 2.4,
     this.margin = 0.5,
     Offset center = const Offset(0.5, 0.5),
   })  : _zoom = zoom.clamp(minZoom, maxZoom),
         _center = center;
 
-  /// How much of the world fills the screen at once (1.75 → ~57%).
+  /// How much of the world fills the screen at once (2.4 → ~42%).
   double _zoom;
   double get zoom => _zoom;
 

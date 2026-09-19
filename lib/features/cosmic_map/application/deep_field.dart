@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import '../../../core/utils/parallax_math.dart';
+
 /// V3.34 — the deep field: scenery with DEPTH of travel.
 ///
 /// The ambient background (nebulae, dead stars) moves with the tilt but
@@ -114,9 +116,12 @@ class DeepFieldMath {
   /// How dust sizes breathe with the eye — damped like the zoom,
   /// gentler than the bodies' own `zoomScale` (dust stays dust, never
   /// a disc). Normalized by the LAYER's own resting zoom, so every
-  /// layer's dust carries its designed size at the resting eye.
+  /// layer's dust carries its designed size at the resting eye
+  /// (V3.61: rides [ParallaxMath.eyeBaseZoom], wherever the eye
+  /// rests).
   static double sizeScale(double zoom, double factor) => math.pow(
-        effectiveZoom(zoom, factor) / effectiveZoom(1.75, factor),
+        effectiveZoom(zoom, factor) /
+            effectiveZoom(ParallaxMath.eyeBaseZoom, factor),
         0.35,
       ).toDouble();
 
