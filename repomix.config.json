@@ -50,21 +50,7 @@
       "*.woff2",
       "*.ttf",
       "*.eot",
-      "*.wasm",
-      "*.wav",
-      ".next",
-      "supabase/.temp",
-      "**/seed*.sql",
-      "test-results",
-      "coverage",
-      "android",
-      "ios",
-      "linux",
-      "macos",
-      "windows",
-      "web",
-      "*.g.dart",
-      "*.freezed.dart"
+      "*.wasm"
     ]
   }
 }
