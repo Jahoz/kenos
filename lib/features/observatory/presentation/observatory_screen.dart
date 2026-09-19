@@ -559,6 +559,13 @@ class _ObservatoryScreenState extends ConsumerState<ObservatoryScreen> {
       value: m.live.constellationReportsOpen,
       color: AppColors.cyan,
     ),
+    // V3.60c — embers mid-hand-over: passage links alive right now
+    // (fingerprints under ten minutes). A shape, never a body.
+    _MeasureCard(
+      label: 'Braises en main',
+      value: m.live.braisesPending,
+      color: AppColors.ember,
+    ),
   ];
 
   /// V3.51 — the artifact guard: every REPORTED public artifact, as

@@ -77,8 +77,8 @@ lib/
 make dev                   # Mode démo local (aucun backend requis)
 make dev-local             # PWA release sur l'éther local seedé (:4308) — JAMAIS juger la perf sur `flutter run` (debug, 5-20× plus lent)
 make analyze               # 0 issue
-make test                  # 437 tests (chiffrement, culling, contrôleurs, UI)
-make db-reset && make db-test  # Migrations + 304 invariants pgTAP
+make test                  # 447 tests (chiffrement, culling, contrôleurs, UI)
+make db-reset && make db-test  # Migrations + 305 invariants pgTAP
 make db-seed-load && make db-load-report  # Montée en charge : seed 30 j (scellés LISIBLES, ~12k lignes) + rapport
 make db-verify-load           # Preuve e2e : consommer un écho seedé, l'ouvrir sur l'appareil
 make db-wipe-load              # Reset clean du seed (data réelle + KEK intacts)
@@ -197,6 +197,16 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
   l'ancien corps (`kenos_passed`, à vie) : `launch_echo` y répond
   `KENOS_BRAISE_PASSED`. Pas d'email, pas de pseudonyme, pas de
   récupération — l'ancien appareil mort emporte sa braise (assumé).
+  - **V3.60a** : l'extinction locale ROSE — forger depuis un corps
+    éteint propose « ÉTEINDRE CE CORPS » (le seul geste destructeur
+    local) : tout le vécu de l'appareil s'efface, le Seuil attend un
+    renaissant.
+  - **V3.60b** : la pastille QR — le lien de passe vit aussi en QR
+    scannable sur la feuille de forge (contraste standard, caméra du
+    device neuf ; au-delà du plafond QR, le texte reste la voie).
+  - **V3.60c** : le census gardien — `braises_passed` (compté dans la
+    transaction du claim) et `braises_pending` (empreintes vivantes)
+    rejoignent le registre contentless de l'Observatoire.
 - **Vestiges multilingues (V3.16)** : la voix produit reste FR (canon,
   pour toujours) ; les éclats curatés existent par locale
   (fetch_vestiges(p_locale), normalisation `fr-FR`→`fr`, repli honnête

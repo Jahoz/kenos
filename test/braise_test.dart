@@ -13,6 +13,7 @@ import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/data/echo_repository.dart';
 import 'package:kenos/features/echo/data/local_echo_store.dart';
 import 'package:kenos/features/echo/data/user_stats_store.dart';
+import 'package:kenos/features/observatory/domain/admin_metrics.dart';
 import 'package:kenos/features/onboarding/presentation/onboarding_screen.dart';
 
 /// LA BRAISE (V3.60) — the anonymous passage. Pinned here: the demo
@@ -616,6 +617,27 @@ void main() {
       final e = KenosException.from(const _RawError('Exception: KENOS_BRAISE_PASSED'));
       expect(e.code, KenosErrorCode.braisePassed);
       expect(e.hudMessage, contains('BRAISE'));
+    });
+  });
+
+  group('le census gardien (V3.60c)', () {
+    test('la série compte les passes, le live tient la braise vivante',
+        () {
+      final day = DailyPoint.fromJson({
+        'day': '2026-09-19',
+        'echoes_launched': 5,
+        'braises_passed': 3,
+      });
+      expect(day.braisesPassed, 3);
+      expect(DailyPoint.fromJson({'day': 'x'}).braisesPassed, 0,
+          reason: 'un ancien ciel ne connaît pas la braise — zéro honnête');
+
+      final live = LiveCounts.fromJson({
+        'echoes_drifting': 9,
+        'braises_pending': 2,
+      });
+      expect(live.braisesPending, 2);
+      expect(LiveCounts.fromJson({}).braisesPending, 0);
     });
   });
 }

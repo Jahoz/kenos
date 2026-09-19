@@ -235,6 +235,9 @@ class LocalAdminRepository implements AdminRepository {
           lines: 9 + (noise).round() ~/ 2,
           newUsers: 4 + (i * 7) % 5,
           activeReaders: 6 + (i * 13) % 7,
+          // A hand-over now and then — never on the last two days, so
+          // the live pending count stays honest to the demo's story.
+          braisesPassed: i > 1 && i % 6 == 2 ? 1 : 0,
         ),
       );
     }
@@ -267,6 +270,9 @@ class LocalAdminRepository implements AdminRepository {
         reportsOpen: 3,
         salonsOpen: 2,
         constellationReportsOpen: _reports.length,
+        // One ember mid-hand-over — the demo sky has its travellers
+        // changing bodies too (V3.60c).
+        braisesPending: 1,
       ),
       sectors: List.generate(
         22,

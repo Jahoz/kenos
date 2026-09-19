@@ -76,6 +76,7 @@ class DailyPoint {
     this.corpsesReported = 0,
     this.corpsesRetracted = 0,
     this.vestigesPublished = 0,
+    this.braisesPassed = 0,
   });
 
   factory DailyPoint.fromJson(Map<String, dynamic> json) => DailyPoint(
@@ -94,6 +95,7 @@ class DailyPoint {
     corpsesReported: _int(json['corpses_reported']),
     corpsesRetracted: _int(json['corpses_retracted']),
     vestigesPublished: _int(json['vestiges_published']),
+    braisesPassed: _int(json['braises_passed']),
   );
 
   final String day; // YYYY-MM-DD (UTC, the server's clock)
@@ -113,6 +115,9 @@ class DailyPoint {
 
   /// V3.57 — shards the guardian published into the library.
   final int vestigesPublished;
+
+  /// V3.60c — anonymous hand-overs: bodies that passed their ember.
+  final int braisesPassed;
 }
 
 class LiveCounts {
@@ -126,6 +131,7 @@ class LiveCounts {
     this.salonsOpen = 0,
     this.constellationReportsOpen = 0,
     this.vestigeProposalsPending = 0,
+    this.braisesPending = 0,
   });
 
   factory LiveCounts.fromJson(Map<String, dynamic> json) => LiveCounts(
@@ -138,6 +144,7 @@ class LiveCounts {
     salonsOpen: _int(json['salons_open']),
     constellationReportsOpen: _int(json['constellation_reports_open']),
     vestigeProposalsPending: _int(json['vestige_proposals_pending']),
+    braisesPending: _int(json['braises_pending']),
   );
 
   final int echoesDrifting;
@@ -151,6 +158,10 @@ class LiveCounts {
 
   /// V3.57 — shards awaiting the guardian's taste (the Sower module).
   final int vestigeProposalsPending;
+
+  /// V3.60c — passage links alive right now (fingerprints under ten
+  /// minutes): embers mid-hand-over, never a body.
+  final int braisesPending;
 }
 
 class SectorCell {

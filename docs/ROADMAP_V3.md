@@ -2061,6 +2061,26 @@ refus) ; analyze 0, pgTAP 304. (Note de numérotation : un V3.59
 avait été dépensé hors roadmap par `decfe96` — la présente vit à
 V3.60.)
 
+**V3.60a-c — les trois compléments (livrés 2026-09-19).** **a)**
+l'extinction locale ROSE : forger depuis un corps déjà éteint propose
+« ÉTEINDRE CE CORPS » — le seul geste destructeur local du produit ;
+tout le vécu de l'appareil s'efface (souvenirs, portes, cicatrices,
+Seuil) et le voyageur peut renaître étranger (+4 tests Dart :
+l'honnêteté d'eraseAll, les portes ne ressuscitent pas, la feuille
+ROSE depuis l'Impact, rester ne touche à rien). **b)** la pastille
+QR : le lien de passe vit aussi en QR scannable sur la feuille de
+forge — contraste standard sur plaquette claire, lue par la caméra
+du device neuf ; une dépendance de rendu seulement (qr_flutter),
+zéro permission de scan ; au-delà du plafond QR la pastille ne
+brûle pas et le texte reste la voie honnête. **c)** le census
+gardien : `braises_passed` (bumpé DANS la transaction du claim —
+aucune lecture nouvelle, l'atomicité sacrée intacte) et
+`braises_pending` (empreintes vivantes, un stock qui ne peut être
+que minuscule ou périmé) rejoignent le registre contentless ; une
+carte « Braises en main » sur le dashboard, la parité démo tenue
+(+1 invariant pgTAP, +1 test Dart). Gates finaux : analyze 0,
+447 tests Dart, 305 invariants pgTAP.
+
 ## 4. Règles inchangées (rappel)
 
 

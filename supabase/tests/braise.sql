@@ -1,12 +1,12 @@
 -- KENOS security tests — LA BRAISE (V3.60): the anonymous passage.
--- One link, one life: forged on the old body, claimed once by the new
+-- One link, one life: forged on the old body, opened on the new
 -- one, then even the fingerprint is gone. The claim IS the remap —
 -- bottles, rings, given lines follow the living body; collisions keep
 -- the row with the old body (one stranger, one line, nothing throws).
 -- The ember keeps its silence: missing, wrong, short, expired and
 -- self-addressed keys all answer KENOS_PASSAGE_UNKNOWN.
 begin;
-select plan(21);
+select plan(22);
 
 create schema if not exists tests;
 grant usage on schema tests to authenticated;
@@ -169,6 +169,15 @@ select throws_ok(
   'the ember dies at the claim — no replay, the fingerprint is gone'
 );
 reset role;
+-- V3.60c — the guardian's ledger counted the hand-over, contentless,
+-- inside the same transaction (exactly one claim succeeded above).
+-- Read as the owner: the ledger itself is locked to RPCs.
+select is(
+  (select braises_passed from public.kenos_metrics_daily
+    where day = current_date),
+  1,
+  'the census counts one passed ember — a shape, never a body'
+);
 
 -- ── D. The ember says nothing ──────────────────────────────────────────
 set local role authenticated;
