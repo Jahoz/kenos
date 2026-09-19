@@ -8,10 +8,12 @@ import 'package:kenos/features/braise/domain/braise_link.dart';
 import 'package:kenos/features/braise/presentation/braise_claim_screen.dart';
 import 'package:kenos/features/braise/presentation/braise_forge_sheet.dart';
 import 'package:kenos/features/constellations/data/salon_anchor_store.dart';
+import 'package:kenos/features/cosmic_map/presentation/impact_screen.dart';
 import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/data/echo_repository.dart';
 import 'package:kenos/features/echo/data/local_echo_store.dart';
 import 'package:kenos/features/echo/data/user_stats_store.dart';
+import 'package:kenos/features/onboarding/presentation/onboarding_screen.dart';
 
 /// LA BRAISE (V3.60) — the anonymous passage. Pinned here: the demo
 /// ether honours the ember exactly like the SQL one (hex key, one
@@ -396,6 +398,174 @@ void main() {
     });
   });
 
+  group('l\'extinction ROSE du vieux corps (V3.60a)', () {
+    test('eraseAll éteint honnêtement la mémoire locale', () async {
+      final store = LocalEchoStore();
+      await store.setOnboarded();
+      await store.writeStats(UserStats(
+        totalEchosSent: 4,
+        totalReceptionsReceived: 1,
+        totalTracesLeft: 2,
+      ));
+      await store.markFrequenciesGuideSeen();
+      await store.markEyeGuideSeen();
+      expect(await store.hasOnboarded(), isTrue);
+
+      await store.eraseAll();
+
+      expect(await store.hasOnboarded(), isFalse);
+      expect((await store.readStats()).totalEchosSent, 0);
+      expect(await store.hasFrequenciesGuideSeen(), isFalse);
+      expect(await store.hasEyeGuideSeen(), isFalse);
+    });
+
+    test('les portes s\'éteignent avec le corps — et ne ressuscitent pas',
+        () async {
+      final io = _MemAnchorIO();
+      final doors = SalonAnchorStore(io: io);
+      await doors.load();
+      await doors.remember(SalonAnchor(
+        id: 'ring-3',
+        token: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d3',
+        seedX: 0.5,
+        seedY: 0.5,
+        kind: 'POEM',
+        target: 5,
+        heldSince: DateTime.now().millisecondsSinceEpoch,
+      ));
+      expect(doors.open(), hasLength(1));
+
+      await doors.eraseAll();
+
+      expect(doors.open(), isEmpty);
+      final reborn = SalonAnchorStore(io: io);
+      await reborn.load();
+      expect(reborn.open(), isEmpty,
+          reason: 'un redémarrage ne rallume pas une porte éteinte');
+    });
+
+    Future<void> pumpImpact(
+      WidgetTester tester, {
+      required BraiseRepository repo,
+      required _StatefulStore store,
+      required SalonAnchorStore doors,
+    }) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            bootstrapProvider.overrideWithValue(
+              const Bootstrap(supabaseConfigured: false, hasOnboarded: true),
+            ),
+            localEchoStoreProvider.overrideWithValue(store),
+            braiseRepositoryProvider.overrideWithValue(repo),
+            salonAnchorStoreProvider.overrideWithValue(doors),
+          ],
+          child: MaterialApp.router(
+            routerConfig: GoRouter(
+              initialLocation: '/impact',
+              routes: [
+                GoRoute(
+                  path: '/impact',
+                  builder: (_, _) => const ImpactScreen(),
+                ),
+                GoRoute(
+                  path: '/onboarding',
+                  builder: (_, _) => const OnboardingScreen(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('forger sur un corps éteint propose la mort douce — ROSE',
+        (tester) async {
+      final store = _StatefulStore(true)
+        ..stats = UserStats(
+          totalEchosSent: 3,
+          totalReceptionsReceived: 0,
+          totalTracesLeft: 0,
+        );
+      final doors = SalonAnchorStore(io: _MemAnchorIO());
+      await doors.load();
+      await doors.remember(SalonAnchor(
+        id: 'ring-4',
+        token: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d4',
+        seedX: 0.5,
+        seedY: 0.5,
+        kind: 'POEM',
+        target: 5,
+        heldSince: DateTime.now().millisecondsSinceEpoch,
+      ));
+      await pumpImpact(
+        tester,
+        repo: _ExtinctBraise(),
+        store: store,
+        doors: doors,
+      );
+
+      // The forge line sits at the ledger's bottom — under the fold
+      // on a phone: bring it into the light first.
+      await tester.ensureVisible(find.byKey(const ValueKey('braise_forge')));
+      await tester.tap(find.byKey(const ValueKey('braise_forge')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ce corps a déjà transmis'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('braise_extinguish')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('braise_stay')), findsOneWidget);
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('braise_extinguish')),
+      );
+      await tester.tap(find.byKey(const ValueKey('braise_extinguish')));
+      await tester.pumpAndSettle();
+
+      // The body went dark, and the Seuil waits for a stranger to be
+      // born: renaissance, not resurrection.
+      expect(find.text('KENOS'), findsOneWidget);
+      expect(store.onboarded, isFalse);
+      expect(store.stats.totalEchosSent, 0);
+      expect(doors.open(), isEmpty);
+    });
+
+    testWidgets('rester encore ne touche à rien', (tester) async {
+      final store = _StatefulStore(true)
+        ..stats = UserStats(
+          totalEchosSent: 3,
+          totalReceptionsReceived: 0,
+          totalTracesLeft: 0,
+        );
+      final doors = SalonAnchorStore(io: _MemAnchorIO());
+      await doors.load();
+      await pumpImpact(
+        tester,
+        repo: _ExtinctBraise(),
+        store: store,
+        doors: doors,
+      );
+
+      await tester.ensureVisible(find.byKey(const ValueKey('braise_forge')));
+      await tester.tap(find.byKey(const ValueKey('braise_forge')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const ValueKey('braise_stay')));
+      await tester.tap(find.byKey(const ValueKey('braise_stay')));
+      await tester.pumpAndSettle();
+
+      expect(store.onboarded, isTrue);
+      expect(store.stats.totalEchosSent, 3);
+      expect(find.text('TON IMPACT'), findsOneWidget,
+          reason: 'le corps reste sur son bilan');
+    });
+  });
+
   group('BraiseForgeSheet — le lien montré une fois', () {
     testWidgets('la braise vit sur l’écran, la porte se ferme à la main',
         (tester) async {
@@ -475,6 +645,13 @@ class _StatefulStore extends LocalEchoStore {
   Future<void> setOnboarded() async => onboarded = true;
 
   @override
+  Future<void> eraseAll() async {
+    onboarded = false;
+    stats = UserStats.empty();
+    freqGuide = corpseGuide = eyeGuide = false;
+  }
+
+  @override
   Future<UserStats> readStats() async => stats;
 
   @override
@@ -508,10 +685,12 @@ class _UnreachableBraise implements BraiseRepository {
   Future<void> claim(String key) async => throw Exception('boom');
 }
 
-/// A repository that answers for an already-transmitted body.
+/// A repository that answers for an already-transmitted body: both
+/// the forge and the claim meet their extinction.
 class _ExtinctBraise implements BraiseRepository {
   @override
-  Future<String> forge() async => 'ab' * 16;
+  Future<String> forge() async =>
+      throw const _RawError('Exception: KENOS_BRAISE_PASSED');
 
   @override
   Future<void> claim(String key) async =>

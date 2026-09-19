@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../braise/data/braise_repository.dart';
 import '../../braise/domain/braise_ballot.dart';
 import '../../braise/domain/braise_link.dart';
+import '../../braise/presentation/braise_extinguish_sheet.dart';
 import '../../braise/presentation/braise_forge_sheet.dart';
 import '../../constellations/data/salon_anchor_store.dart';
 import '../../echo/data/echo_providers.dart';
@@ -208,10 +210,26 @@ class _BraiseForgeLineState extends ConsumerState<_BraiseForgeLine> {
       if (!mounted) return;
       await showBraiseForgeSheet(context, link: link);
     } catch (e) {
-      // An extinguished body forges no new ember; the sky may also be
-      // far — either way the ledger says it, honestly.
+      final kenos = KenosException.from(e);
+      // A body that already transmitted its ember is offered the one
+      // destructive local gesture: going dark here, honestly (ROSE —
+      // the law reserves it for destruction).
+      if (kenos.code == KenosErrorCode.braisePassed && mounted) {
+        final extinguished = await showBraiseExtinguishSheet(context);
+        if (extinguished != true || !mounted) return;
+        await ref.read(localEchoStoreProvider).eraseAll();
+        await ref.read(salonAnchorStoreProvider).eraseAll();
+        ref.read(onboardedProvider.notifier).state = false;
+        ref.invalidate(userStatsProvider);
+        // The Seuil again: the extinguished body may be born a
+        // stranger.
+        if (!mounted) return;
+        context.go('/onboarding');
+        return;
+      }
+      // The sky may simply be far — the ledger says it, honestly.
       messenger.showSnackBar(
-        SnackBar(content: Text(KenosException.from(e).hudMessage)),
+        SnackBar(content: Text(kenos.hudMessage)),
       );
     }
   }

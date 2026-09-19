@@ -80,6 +80,14 @@ class SalonAnchorStore {
     await _persist();
   }
 
+  /// LA BRAISE (V3.60a) — every held door goes dark at once: the
+  /// body's honest death (the keys live on in the body that received
+  /// the ember; this one holds nothing anymore).
+  Future<void> eraseAll() async {
+    _anchors.clear();
+    await _persist();
+  }
+
   Future<void> _persist() async {
     await _io.write(
       _kData,

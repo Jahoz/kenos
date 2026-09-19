@@ -213,6 +213,11 @@ class FakeLocalEchoStore implements LocalEchoStore {
   Future<void> writeStats(UserStats value) async => stats = value;
 
   @override
+  Future<void> eraseAll() async {
+    stats = UserStats.empty();
+  }
+
+  @override
   Future<void> recordEchoSent() async {
     stats = stats.copyWith(totalEchosSent: stats.totalEchosSent + 1);
   }

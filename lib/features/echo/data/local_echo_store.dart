@@ -66,6 +66,34 @@ class LocalEchoStore {
 
   Future<void> setOnboarded() => _write(_kOnboarded, '1');
 
+  /// LA BRAISE (V3.60a) — the body's honest death: every local memory
+  /// this device still holds goes dark at once. The extinguished body
+  /// may then cross the Seuil again and be born a stranger. ROSE is
+  /// the law: this is the one destructive local gesture.
+  Future<void> eraseAll() async {
+    const keys = [
+      _kOnboarded,
+      _kUid,
+      _kSealed,
+      _kReceptions,
+      _kFreqGuide,
+      _kCorpseGuide,
+      _kEyeGuide,
+      _kStats,
+      _kScars,
+    ];
+    for (final key in keys) {
+      _mem.remove(key);
+      try {
+        await _storage
+            .delete(key: key)
+            .timeout(_ioTimeout, onTimeout: () {});
+      } catch (_) {
+        // The keychain refuses: the memory cache is already dark.
+      }
+    }
+  }
+
   /// Local anonymous UUID (backend-less demo mode).
   Future<String> localUserId() async {
     final existing = await _read(_kUid);
