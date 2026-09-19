@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -73,7 +74,12 @@ class _BraiseForgePanelState extends State<_BraiseForgePanel> {
 
   @override
   Widget build(BuildContext context) {
-    final linkless = !widget.link.startsWith('http');
+    final link = widget.link;
+    final linkless = !link.startsWith('http');
+    // The ember's own light: a standard-contrast chip the new device's
+    // camera can read from across the table. Past the QR ceiling the
+    // text link stays the honest road — the chip simply does not burn.
+    final qrFits = link.length <= 2900;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
@@ -127,6 +133,36 @@ class _BraiseForgePanelState extends State<_BraiseForgePanel> {
                       ),
                     ),
                     const SizedBox(height: 30),
+                    if (qrFits)
+                      Center(
+                        child: Container(
+                          key: const ValueKey('braise_qr'),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.pureLight,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: SizedBox(
+                            width: 176,
+                            height: 176,
+                            child: QrImageView(
+                              data: link,
+                              version: QrVersions.auto,
+                              backgroundColor: AppColors.pureLight,
+                              eyeStyle: const QrEyeStyle(
+                                eyeShape: QrEyeShape.square,
+                                color: AppColors.voidBlack,
+                              ),
+                              dataModuleStyle: const QrDataModuleStyle(
+                                dataModuleShape: QrDataModuleShape.square,
+                                color: AppColors.voidBlack,
+                              ),
+                              padding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (qrFits) const SizedBox(height: 24),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
@@ -138,7 +174,7 @@ class _BraiseForgePanelState extends State<_BraiseForgePanel> {
                         ),
                       ),
                       child: SelectableText(
-                        widget.link,
+                        link,
                         key: const ValueKey('braise_link'),
                         textAlign: TextAlign.center,
                         style: TextStyle(

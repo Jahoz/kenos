@@ -591,6 +591,8 @@ void main() {
       expect(find.text('Ce lien est ton corps'), findsOneWidget);
       expect(find.text('PARTAGER LE LIEN'), findsOneWidget);
       expect(find.text('COPIER'), findsOneWidget);
+      expect(find.byKey(const ValueKey('braise_qr')), findsOneWidget,
+          reason: 'la pastille scannable vit avec le lien');
       expect(find.byKey(const ValueKey('braise_link')), findsOneWidget);
       expect(find.textContaining('/#/pass/abc.def'), findsOneWidget);
       expect(
@@ -599,6 +601,9 @@ void main() {
         reason: 'le test VM n\'a pas d\'origine — le panneau dit vrai',
       );
 
+      // The chip grew the sheet: bring the closing word into the
+      // light before it is spoken.
+      await tester.ensureVisible(find.byKey(const ValueKey('braise_shared')));
       await tester.tap(find.byKey(const ValueKey('braise_shared')));
       await tester.pumpAndSettle();
       expect(find.text('Ce lien est ton corps'), findsNothing,
