@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -107,4 +108,112 @@ class NebulaPainter extends CustomPainter {
   @override
   bool shouldRepaint(NebulaPainter old) =>
       old.tiltX != tiltX || old.tiltY != tiltY || (old.time - time).abs() > 0.1;
+}
+
+/// One passing wish: the pure geometry of a shooting star.
+///
+/// Deterministic from its seed, testable without a canvas — the layer
+/// above decides WHEN it flies, this only says WHERE and HOW BRIGHT.
+class ShootingStar {
+  const ShootingStar({
+    required this.start,
+    required this.angle,
+    required this.duration,
+    required this.travel,
+    required this.tailLength,
+  });
+
+  /// [seed] decides everything: same seed, same star.
+  factory ShootingStar.fromSeed(int seed) {
+    final rng = math.Random(seed);
+    final deg = 22 + rng.nextDouble() * 42; // always below the horizon
+    final mirrored = rng.nextBool();
+    return ShootingStar(
+      // Enters from the upper band of the sky, edges included.
+      start: Offset(0.04 + rng.nextDouble() * 0.92, -0.06 + rng.nextDouble() * 0.34),
+      angle: (mirrored ? 180 - deg : deg) * math.pi / 180,
+      duration: 0.9 + rng.nextDouble() * 0.6,
+      travel: 0.38 + rng.nextDouble() * 0.24,
+      tailLength: 56 + rng.nextDouble() * 54,
+    );
+  }
+
+  /// Normalized entry point (fractions of the sky).
+  final Offset start;
+
+  /// Travel direction in radians — descending by construction.
+  final double angle;
+
+  /// Seconds spent crossing the eye.
+  final double duration;
+
+  /// Path length, as a fraction of the sky's longest side.
+  final double travel;
+
+  /// Tail length in logical pixels.
+  final double tailLength;
+
+  Offset direction() => Offset(math.cos(angle), math.sin(angle));
+
+  /// Where the burning head sits at [progress] (0..1).
+  Offset head(Size sky, double progress) =>
+      Offset(start.dx * sky.width, start.dy * sky.height) +
+      direction() * (travel * sky.longestSide * progress);
+
+  /// Visibility envelope: born dark, dies dark — never a pop.
+  double opacity(double progress) {
+    final fadeIn = (progress / 0.22).clamp(0.0, 1.0);
+    final fadeOut = ((1.0 - progress) / 0.38).clamp(0.0, 1.0);
+    return math.min(fadeIn, fadeOut) * 0.7;
+  }
+}
+
+/// Paints one shooting star in flight: a white streak dissolving
+/// into the void behind its head. Scenery, never matter.
+class ShootingStarPainter extends CustomPainter {
+  ShootingStarPainter({
+    required this.star,
+    required this.progress,
+    this.tiltX = 0,
+    this.tiltY = 0,
+  });
+
+  final ShootingStar star;
+  final double progress;
+  final double tiltX;
+  final double tiltY;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final brightness = star.opacity(progress);
+    if (brightness <= 0.01) return;
+
+    // The visitor rides the tilt like the dead field does — a far,
+    // light layer of parallax.
+    final parallax = Offset(tiltX * 3, tiltY * 3);
+    final head = star.head(size, progress) + parallax;
+    final tail = head - star.direction() * star.tailLength;
+
+    final streak = Paint()
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.3
+      ..shader = ui.Gradient.linear(
+        head,
+        tail,
+        [
+          AppColors.fade(Colors.white, brightness),
+          AppColors.fade(Colors.white, 0),
+        ],
+      );
+    canvas.drawLine(head, tail, streak);
+
+    canvas.drawCircle(
+      head,
+      1.6,
+      Paint()..color = AppColors.fade(Colors.white, brightness * 0.9),
+    );
+  }
+
+  @override
+  bool shouldRepaint(ShootingStarPainter old) => true;
 }

@@ -1869,7 +1869,111 @@ class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
               tiltY: tilt.y * motionScale,
             ),
           ),
+          // Shooting stars: rare streaks crossing the dead field. A
+          // const child — the twinkle's 8 fps rebuilds never touch it.
+          const _MeteorLayer(),
         ],
+      ),
+    );
+  }
+}
+
+/// The passing wishes: every so often ONE star lets go and crosses
+/// the sky, then silence again.
+///
+/// The pass alone ticks at frame rate (a ~1 s ticker between long
+/// quiet gaps — the sanctuary's battery silence holds), isolated in
+/// its own RepaintBoundary (the V3.12b lesson: childless full-screen
+/// CustomPaints wear IgnorePointer, and no frame bleeds upward).
+/// Frozen under reduce-motion: a meteor is decoration, never
+/// information.
+class _MeteorLayer extends ConsumerStatefulWidget {
+  const _MeteorLayer();
+
+  @override
+  ConsumerState<_MeteorLayer> createState() => _MeteorLayerState();
+}
+
+class _MeteorLayerState extends ConsumerState<_MeteorLayer>
+    with SingleTickerProviderStateMixin {
+  /// One wish every 9–22 s: rare enough to stay an event.
+  static const _minGap = Duration(seconds: 9);
+  static const _gapSpan = Duration(seconds: 13);
+
+  final math.Random _rng = math.Random();
+  Timer? _nextPass;
+  late final Ticker _pass;
+  ShootingStar? _star;
+  double _progress = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Eager, here and only here: a lazily-initialized ticker would
+    // fire createTicker inside dispose() — an ancestor lookup on a
+    // dying tree.
+    _pass = createTicker(_onPassTick);
+    if (!platformDisablesAnimations()) _schedule();
+  }
+
+  @override
+  void dispose() {
+    _nextPass?.cancel();
+    _pass.dispose();
+    super.dispose();
+  }
+
+  void _schedule() {
+    _nextPass = Timer(
+      _minGap + Duration(milliseconds: _rng.nextInt(_gapSpan.inMilliseconds)),
+      _beginPass,
+    );
+  }
+
+  void _beginPass() {
+    if (!mounted) return;
+    // The sky holds its breath under reduced motion and tries again
+    // later — the wish is never owed.
+    if (context.wantsReducedMotion || platformDisablesAnimations()) {
+      _schedule();
+      return;
+    }
+    setState(() {
+      _star = ShootingStar.fromSeed(_rng.nextInt(1 << 31));
+      _progress = 0;
+    });
+    _pass.start();
+  }
+
+  void _onPassTick(Duration elapsed) {
+    if (!mounted || _star == null) return;
+    final p = elapsed.inMicroseconds / (_star!.duration * 1e6);
+    if (p >= 1) {
+      _pass.stop();
+      setState(() => _star = null);
+      _schedule();
+      return;
+    }
+    setState(() => _progress = p);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_star == null || context.wantsReducedMotion) {
+      return const SizedBox.shrink();
+    }
+    final motionScale = context.wantsReducedMotion ? 0.15 : 1.0;
+    final tilt = ref.watch(tiltProvider.select(_gateTilt));
+    return RepaintBoundary(
+      child: IgnorePointer(
+        child: CustomPaint(
+          painter: ShootingStarPainter(
+            star: _star!,
+            progress: _progress,
+            tiltX: tilt.x * motionScale,
+            tiltY: tilt.y * motionScale,
+          ),
+        ),
       ),
     );
   }
