@@ -386,7 +386,17 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     final diameter = ParallaxMath.starDiameter(z) * scale * widget.displayScale;
     final coreRadius =
         ParallaxMath.coreRadius(z) * scale * widget.displayScale;
-    final color = _echo.isMine ? AppColors.fade(AppColors.teal, 0.55) : _echo.theme.core;
+    // V3.58j — the color carries the INTENTION (TEAL=APAISER,
+    // INDIGO=CONFIER, LUMEN=ÉCLAIRER), for the ether AND for one's
+    // own sealed hearts alike: a reborn phoenix keeps its parent's
+    // gravity (it orbits the same planet), and its color must say
+    // so — the old always-teal lied about the category ("des échos
+    // changent de couleur quand on les relance", the live report).
+    // The SHAPE still tells the story: hollow ring = sealed (the
+    // author's mark), full glow = the readable ether.
+    final color = _echo.isMine
+        ? AppColors.fade(_echo.theme.core, 0.55)
+        : _echo.theme.core;
     final hasUnreadSignal =
         _echo.isMine && _hasUnreadReception();
 
@@ -435,7 +445,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
               painter: _echo.isMine
                   ? ShieldRingPainter(
                       rotation: _controller.value * 6.283,
-                      color: AppColors.teal,
+                      color: _echo.theme.core,
                     )
                   : HoldRingPainter(
                       progress: _controller.value,
@@ -446,7 +456,8 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
                 // content was given away — even its author cannot
                 // read it again. Full glow belongs to the readable
                 // ether alone (and the hollow scars to what was
-                // read). Shape is the distinction; no color needed.
+                // read). Shape says "sealed"; the color says the
+                // INTENTION (V3.58j — no more teal lie on rebirth).
                 child: FadeTransition(
                   opacity: glowFade,
                   child: _echo.isMine
@@ -456,7 +467,10 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: AppColors.fade(AppColors.teal, 0.85),
+                              color: AppColors.fade(
+                                _echo.theme.core,
+                                0.85,
+                              ),
                               width: 1.3,
                             ),
                           ),
