@@ -808,10 +808,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
       return;
     }
     final velocity = details.velocity.pixelsPerSecond;
-    final worldPerSecond = Offset(
-      velocity.dx / (_viewport.width) * _camera.viewExtent,
-      velocity.dy / (_viewport.height) * _camera.viewExtent,
-    );
+    // V3.65 — uniform world scale: one divisor for both axes (the
+    // old per-axis split stretched the glide on wide screens).
+    final worldPerSecond =
+        velocity / _camera.pxPerWorld(_viewport);
     final path = DriftGlide().path(-worldPerSecond).toList();
     if (path.isEmpty) {
       _refreshAfterTravel();
@@ -830,13 +830,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
     });
   }
 
-  /// Screen point → world point (for anchoring the pinch).
-  Offset _screenToWorld(Offset screen) => Offset(
-    (screen.dx - _viewport.width / 2) / _viewport.width * _camera.viewExtent +
-        _camera.center.dx,
-    (screen.dy - _viewport.height / 2) / _viewport.height * _camera.viewExtent +
-        _camera.center.dy,
-  );
+  /// Screen point → world point (for anchoring the pinch) — the
+  /// camera's own uniform inverse (V3.65).
+  Offset _screenToWorld(Offset screen) =>
+      _camera.screenToWorld(screen, _viewport);
 
   /// Publish where the eye rests (music of the spheres listens there).
   void _publishPosition() {
@@ -1095,15 +1092,29 @@ class _MapScreenState extends ConsumerState<MapScreen>
             _AmbientBackground(
               presence:
                   ParallaxMath.etherPresence(_camera.center).clamp(0.0, 1.0),
-              hearthAt: Offset(
-                (0.5 - _camera.center.dx) / _camera.viewExtent + 0.5,
-                (0.5 - _camera.center.dy) / _camera.viewExtent + 0.5,
-              ),
+              // V3.65 — the hearth fraction now rides the uniform
+              // projection (same px-per-world on both axes): on a wide
+              // screen the glow sits where the ether's heart truly is.
+              hearthAt: _viewport == Size.zero
+                  ? const Offset(0.5, 0.5)
+                  : () {
+                      final px = _camera.worldToScreen(
+                        const Offset(0.5, 0.5),
+                        _viewport,
+                      );
+                      return Offset(
+                        px.dx / _viewport.width,
+                        px.dy / _viewport.height,
+                      );
+                    }(),
             ),
             // The matter: the echoes — and the travelling eye.
             LayoutBuilder(
               builder: (context, constraints) {
                 _viewport = Size(constraints.maxWidth, constraints.maxHeight);
+                // V3.65 — the camera learns the aspect: rect walls,
+                // fetch rect and clamps all follow the real screen.
+                _camera.attach(_viewport);
                 return MouseRegion(
                   // Desktop: named bodies whisper their name on hover.
                   cursor: _hoverTarget != null
@@ -1263,7 +1274,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                       // inverted the hierarchy — culture
                                       // whispers now, it no longer
                                       // covers the heavens.
-                                      const shardBudget = 14;
+                                      // V3.65 — and the budget breathes
+                                      // with the surface: 14 on a phone,
+                                      // up to 26 on a tablet (the same
+                                      // library over 3× the sky must
+                                      // not read as a bunched handful).
+                                      final shardBudget =
+                                          (14.0 * c.biggest.longestSide / 900)
+                                              .clamp(14.0, 26.0)
+                                              .round();
                                       final eye = Offset(
                                         c.maxWidth / 2,
                                         c.maxHeight / 2,

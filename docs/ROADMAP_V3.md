@@ -2211,6 +2211,39 @@ l'écran que de distance entre eux et soi. Vérifié par l'image :
 salle », 1 lueur lisible pour 8 lointaines. Calibrations suivies
 (3 tests). Gates : analyze 0, 461 tests Dart.
 
+**V3.65 — l'éther n'est jamais étiré (livrée 2026-09-20, arbitrage
+Hugo sur captures tablette : « tout est concentré au centre, il
+faut exploiter plus de surface »).** Le coupable était la
+projection : `worldToScreen` divisait les DEUX axes par le même
+`viewExtent` puis multipliait par largeur/hauteur réelles — sur un
+écran 16:10, l'éther carré [0,1]² était étiré ×1,6 en largeur
+(orbites elliptiques, contenu tassé sur la diagonale, ~60 % de
+surface gâchée ; les plans profonds portaient le même défaut).
+La loi nouvelle : **échelle uniforme** — `pxPerWorld =
+shortestSide / viewExtent`, le petit côté porte le regard, le grand
+côté montre PLUS de monde (la tablette voit 1,6× de large, le
+téléphone 2,2× de haut — jamais d'étirement, les cercles restent
+des cercles). La caméra apprend l'aspect (`attach`) : rect visible
+rectangulaire et honnête (le fetch serveur suit), murs de clamp
+par axe. Deux remplissages suivent la surface : **le budget de
+vestiges respire** (14 sur téléphone, jusqu'à 26 sur tablette — la
+même bibliothèque sur 3× de ciel ne doit pas lire comme une
+poignée tassée) et **le champ d'étoiles mortes croît avec l'aire**
+(96 plafonnés à 240 — sur tablette, 96 étoiles lisaient comme une
+rumeur). Et la barre d'installation PWA devient autonome : Chrome
+Android ne tire plus `beforeinstallprompt` après deux bannières
+rinçées — la barre s'affiche quand même avec le chemin manuel
+honnête (⋮ → Installer l'application), clé de rejet bumpée pour
+rejoindre les appareils silenciés. Leçon de test : la projection
+uniforme a déplacé TOUS les corps sur portrait — le pan de test
+gestait désormais sur une étoile tenable, dont le hold gagnait
+l'arène ; le geste part maintenant de la gorge (vide par loi
+d'exclusion, stable sous toute projection). Vérifié par l'image en
+1280×800 : anneaux circulaires, contenu sur toute la largeur, tiers
+latéraux habités, barre d'install présente. +5 tests (uniformité,
+rect honnête, aller-retour screen↔world, murs par aspect, regard
+carré sans attach). Gates : analyze 0, 466 tests Dart.
+
 ## 4. Règles inchangées (rappel)
 
 

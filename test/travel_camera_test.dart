@@ -136,6 +136,61 @@ void main() {
     });
   });
 
+  group('V3.65 — l\'éther n\'est jamais étiré : large écran, monde plus large', () {
+    const wide = Size(1600, 1000); // the 16:10 tablet
+
+    test('un delta monde égal reste un delta écran égal (les cercles restent ronds)', () {
+      final camera = TravelCamera()..attach(wide);
+      final a = camera.worldToScreen(const Offset(0.5, 0.5), wide);
+      final dx = camera.worldToScreen(const Offset(0.6, 0.5), wide);
+      final dy = camera.worldToScreen(const Offset(0.5, 0.6), wide);
+      expect((dx - a).distance, closeTo((dy - a).distance, 1e-6),
+          reason: 'avant V3.65 le même Δ valait 1,6× plus en largeur');
+      // The short side carries viewExtent: 0.1 world = 0.1 × zoom ×
+      // shortestSide px at zoom 1.7.
+      expect((dx - a).distance, closeTo(0.1 * 1.7 * 1000, 1e-6));
+    });
+
+    test('le rect visible est un rectangle honnête : 1,6× plus large que haut', () {
+      final camera = TravelCamera()..attach(wide);
+      final r = camera.visibleRect;
+      final w = r.maxX - r.minX;
+      final h = r.maxY - r.minY;
+      // The SHORT side (height, 1000px) carries viewExtent exactly.
+      expect(h, closeTo(1 / 1.7, 1e-9),
+          reason: 'le petit côté porte viewExtent');
+      expect(w, closeTo(1 / 1.7 * 1.6, 1e-9),
+          reason: 'le grand côté montre PLUS de monde, pas un étirement');
+    });
+
+    test('screenToWorld inverse worldToScreen sur écran large', () {
+      final camera = TravelCamera()..attach(wide);
+      camera.panByWorld(const Offset(0.12, -0.07));
+      const p = Offset(0.61, 0.44);
+      final screen = camera.worldToScreen(p, wide);
+      final back = camera.screenToWorld(screen, wide);
+      expect(back.dx, closeTo(p.dx, 1e-9));
+      expect(back.dy, closeTo(p.dy, 1e-9));
+    });
+
+    test('les murs suivent l\'aspect : le clamp horizontal est plus strict en survey', () {
+      final camera = TravelCamera(zoom: 1.0)..attach(wide);
+      camera.panByWorld(const Offset(50, 50));
+      final c = camera.center;
+      // halfW = 0.8 → the wall sits at 1.5 - 0.8 = 0.7.
+      expect(c.dx, lessThanOrEqualTo(0.7 + 1e-9));
+      // halfH = 0.5 → the vertical wall stays at 1.0.
+      expect(c.dy, lessThanOrEqualTo(1.0 + 1e-9));
+    });
+
+    test('sans attach (téléphone, premiers tests) : le regard carré d\'avant', () {
+      final camera = TravelCamera(zoom: 1.75);
+      final r = camera.visibleRect;
+      expect(r.maxX - r.minX, closeTo(1 / 1.75, 1e-9));
+      expect(r.maxY - r.minY, closeTo(1 / 1.75, 1e-9));
+    });
+  });
+
   group('DriftGlide — l\'inertie', () {
     test('la vitesse décroît et s\'arrête', () {
       final glide = DriftGlide(decay: 0.9);

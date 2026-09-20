@@ -75,11 +75,15 @@
     })();
   </script>
   <!-- KENOS install invitation: browsers rarely surface the PWA prompt
-       (Chrome shows its banner once; iOS Safari never does). We offer
-       it ourselves — beforeinstallprompt where it exists, the honest
-       iOS path (Partager → Sur l'écran d'accueil) where it doesn't.
-       Dismissed once, remembered in localStorage. -->
-  <div id="kenos-install" style="display:none; position:fixed; left:0; right:0; bottom:0; z-index:9999; padding:12px 18px calc(12px + env(safe-area-inset-bottom)); background:#030508f2; border-top:1px solid #1ffffff; font-family:'Courier New',monospace;">
+       (Chrome shows its banner twice, then NEVER fires the event again;
+       iOS Safari never does). V3.65 — the bar is AUTONOMOUS: it no
+       longer waits for beforeinstallprompt. If the browser offers the
+       event, INSTALLER triggers it; if it doesn't (the common case on
+       a tablet that once shrugged), the bar still shows the honest
+       manual path (⋮ menu / Partager). Dismissed once, remembered in
+       localStorage (key v2: the re-offer must reach devices silenced
+       by the old event-only logic). -->
+  <div id="kenos-install" style="display:none; position:fixed; left:0; right:0; bottom:0; z-index:9999; padding:12px 18px calc(12px + env(safe-area-inset-bottom)); background:#030508f2; border-top:1px solid #ffffff1f; font-family:'Courier New',monospace;">
     <div style="display:flex; align-items:center; gap:12px;">
       <div style="flex:1; color:#f4f4f6cc; font-size:11px; letter-spacing:1px; line-height:1.5;">
         KENOS peut vivre sur ton écran.<br>
@@ -91,36 +95,49 @@
   </div>
   <script>
     (function () {
-      if (localStorage.getItem('kenos.install.dismissed') === '1') return;
+      if (localStorage.getItem('kenos.install.dismissed.v2') === '1') return;
+      var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      if (standalone) return;
       var bar = document.getElementById('kenos-install');
       var hint = document.getElementById('kenos-install-hint');
       var go = document.getElementById('kenos-install-go');
       var deferred = null;
 
       function show() { setTimeout(function () { bar.style.display = 'block'; }, 2500); }
-      function dismiss() { bar.style.display = 'none'; localStorage.setItem('kenos.install.dismissed', '1'); }
+      function dismiss() { bar.style.display = 'none'; localStorage.setItem('kenos.install.dismissed.v2', '1'); }
       document.getElementById('kenos-install-no').addEventListener('click', dismiss);
 
       var ua = navigator.userAgent.toLowerCase();
       var isIOS = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       if (isIOS) {
-        if (!window.matchMedia('(display-mode: standalone)').matches && !navigator.standalone) {
-          hint.textContent = 'iPHONE : PARTAGER → « SUR L\'ÉCRAN D\'ACCUEIL »';
-          go.textContent = 'COMPRIS';
-          go.addEventListener('click', dismiss);
-          show();
-        }
+        hint.textContent = 'iPHONE / iPAD : PARTAGER → « SUR L\'ÉCRAN D\'ACCUEIL »';
+        go.textContent = 'COMPRIS';
+        go.addEventListener('click', dismiss);
+        show();
         return;
       }
+
+      // Preferred path: the browser hands us the prompt.
       window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
         deferred = e;
         hint.textContent = 'HORS LIGNE, PLEIN ÉCRAN, SANS NAVIGATEUR';
-        go.addEventListener('click', function () {
-          if (deferred) { deferred.prompt(); dismiss(); }
-        });
-        show();
       });
+      go.addEventListener('click', function () {
+        if (deferred) deferred.prompt();
+        dismiss();
+      });
+
+      // The quota is burned on most tablets (the banner was shrugged
+      // at twice) — the event never fires again. Offer the manual
+      // path anyway: Chrome's ⋮ menu always carries the door.
+      setTimeout(function () {
+        if (!deferred) {
+          hint.textContent = 'MENU ⋮ → « INSTALLER L\'APPLICATION »';
+          go.textContent = 'COMPRIS';
+        }
+        show();
+      }, 6000);
     })();
   </script>
   <!--

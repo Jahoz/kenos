@@ -126,6 +126,9 @@ class DeepFieldMath {
       ).toDouble();
 
   /// Decor-plane point → screen point, the deep field's own camera.
+  /// V3.65 — uniform scale like the world camera: the short side
+  /// carries the extent, the long side shows more plane (never a
+  /// stretch — the far universe keeps its proportions on a tablet).
   static Offset worldToScreen(
     Offset dust, {
     required Offset center,
@@ -135,9 +138,10 @@ class DeepFieldMath {
   }) {
     final ve = 1.0 / effectiveZoom(zoom, factor);
     final c = effectiveCenter(center, factor);
+    final scale = viewport.shortestSide / ve;
     return Offset(
-      (dust.dx - c.dx) / ve * viewport.width + viewport.width / 2,
-      (dust.dy - c.dy) / ve * viewport.height + viewport.height / 2,
+      (dust.dx - c.dx) * scale + viewport.width / 2,
+      (dust.dy - c.dy) * scale + viewport.height / 2,
     );
   }
 }

@@ -40,6 +40,15 @@ class BackgroundStarFieldPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
 
+    // V3.65 — the field is screen-anchored, so its DENSITY must ride
+    // the surface: 96 stars spread over a phone read as a sky, the
+    // same 96 over a tablet read as a rumor (3× the area, a third the
+    // presence). The count grows with the area, capped — a big screen
+    // earns a fuller sky, never a fabric.
+    final starTotal = (starCount * size.width * size.height / (430 * 932))
+        .clamp(starCount.toDouble(), 240)
+        .round();
+
     // Three depth layers, far-heavy: the distant shell carries most
     // of the stars as near-invisible dust, the near one carries few.
     const layers = <({
@@ -70,7 +79,7 @@ class BackgroundStarFieldPainter extends CustomPainter {
     for (var layer = 0; layer < layers.length; layer++) {
       final l = layers[layer];
       final layerRandom = math.Random(1337 + layer * 17);
-      final count = (starCount * l.share).round();
+      final count = (starTotal * l.share).round();
 
       for (var i = 0; i < count; i++) {
         final depth = l.depthMin + layerRandom.nextDouble() * l.depthSpan;

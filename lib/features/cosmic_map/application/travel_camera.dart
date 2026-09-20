@@ -56,30 +56,61 @@ class TravelCamera extends ChangeNotifier {
   double _drift = 0;
   double get drift => _drift;
 
-  /// Fraction of the world visible on one axis.
+  /// Fraction of the world visible along the SHORT axis. V3.65 — the
+  /// long axis used to stretch the SAME fraction: a 16:10 tablet drew
+  /// the square ether 1.6× wide (elliptical orbits, a bunched
+  /// diagonal, wasted edges). The scale is uniform now — the width is
+  /// more world, never a stretch.
   double get viewExtent => 1 / zoom;
+
+  /// Screen pixels per world unit — one scale for both axes. This is
+  /// the whole V3.65 law: circles stay circles on every aspect.
+  double pxPerWorld(Size viewport) => viewport.shortestSide / viewExtent;
+
+  /// The projection's viewport, attached by the layout. Until the
+  /// first layout the clamps assume the square gaze of a phone.
+  Size? _attached;
+
+  /// Tell the camera the aspect it looks through (rect walls depend
+  /// on it). Silent on purpose — layouts fire often.
+  void attach(Size viewport) {
+    if (_attached == viewport) return;
+    _attached = viewport;
+    _center = _clamped(_center); // the walls moved with the aspect
+  }
+
+  /// Half of the visible world along each axis — the view is a RECT:
+  /// [viewExtent] on the short side, scaled by the aspect on the long
+  /// one (a 16:10 tablet sees 1.6× more width, unstretched).
+  double get _halfW {
+    final v = _attached;
+    return v == null
+        ? viewExtent / 2
+        : viewExtent / 2 * (v.width / v.shortestSide);
+  }
+
+  double get _halfH {
+    final v = _attached;
+    return v == null
+        ? viewExtent / 2
+        : viewExtent / 2 * (v.height / v.shortestSide);
+  }
 
   /// World-space rect currently visible (with [margin] slack).
   ({double minX, double minY, double maxX, double maxY}) get visibleRect {
-    final half = viewExtent / 2;
     final c = _center;
     return (
-      minX: c.dx - half,
-      minY: c.dy - half,
-      maxX: c.dx + half,
-      maxY: c.dy + half,
+      minX: c.dx - _halfW,
+      minY: c.dy - _halfH,
+      maxX: c.dx + _halfW,
+      maxY: c.dy + _halfH,
     );
   }
 
   /// Pan by a screen-space delta, given the viewport size in logical
   /// pixels. Returns the applied world delta.
-  Offset panByScreen(Offset screenDelta, Size viewport) {
-    final worldDelta = Offset(
-      screenDelta.dx / viewport.width * viewExtent,
-      screenDelta.dy / viewport.height * viewExtent,
-    );
-    return panByWorld(-worldDelta);
-  }
+  Offset panByScreen(Offset screenDelta, Size viewport) =>
+      panByWorld(-(screenDelta / viewport.shortestSide * viewExtent));
 
   /// Pan by a world-space delta (dragging the void moves the eye the
   /// opposite way — the sky follows the finger).
@@ -115,17 +146,30 @@ class TravelCamera extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// World point → screen point for a given viewport.
-  Offset worldToScreen(Offset world, Size viewport) => Offset(
-        (world.dx - _center.dx) / viewExtent * viewport.width +
-            viewport.width / 2,
-        (world.dy - _center.dy) / viewExtent * viewport.height +
-            viewport.height / 2,
-      );
+  /// World point → screen point for a given viewport (uniform scale:
+  /// the short side carries [viewExtent], the long side carries more
+  /// world — V3.65).
+  Offset worldToScreen(Offset world, Size viewport) {
+    final scale = pxPerWorld(viewport);
+    return Offset(
+      (world.dx - _center.dx) * scale + viewport.width / 2,
+      (world.dy - _center.dy) * scale + viewport.height / 2,
+    );
+  }
+
+  /// Screen point → world point — the pinch anchor and the taps,
+  /// inverse of [worldToScreen].
+  Offset screenToWorld(Offset screen, Size viewport) {
+    final scale = pxPerWorld(viewport);
+    return Offset(
+      (screen.dx - viewport.width / 2) / scale + _center.dx,
+      (screen.dy - viewport.height / 2) / scale + _center.dy,
+    );
+  }
 
   Offset _clamped(Offset c) => Offset(
-        c.dx.clamp(-margin + viewExtent / 2, 1.0 + margin - viewExtent / 2),
-        c.dy.clamp(-margin + viewExtent / 2, 1 + margin - viewExtent / 2),
+        c.dx.clamp(-margin + _halfW, 1.0 + margin - _halfW),
+        c.dy.clamp(-margin + _halfH, 1 + margin - _halfH),
       );
 
   /// Poetic drift label: "0.42 A.L." (two decimals, French dot kept

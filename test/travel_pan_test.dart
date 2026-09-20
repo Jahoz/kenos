@@ -42,7 +42,12 @@ void main() {
 
     expect(find.textContaining('DÉRIVE'), findsOneWidget);
 
-    final gesture = await tester.startGesture(const Offset(300, 200));
+    // The gesture starts INSIDE the throat (r < exclusion, void by
+    // law): V3.65's uniform projection moved every body on portrait
+    // screens, and the old start point (300, 200) now lands on a
+    // hold-able star — whose hold recognizer wins the arena and
+    // swallows the pan. The throat is empty on every projection.
+    final gesture = await tester.startGesture(const Offset(195, 342));
     await gesture.moveBy(const Offset(-2, 1));
     await tester.pump(const Duration(milliseconds: 1200));
     await gesture.moveBy(const Offset(-20, 15));
