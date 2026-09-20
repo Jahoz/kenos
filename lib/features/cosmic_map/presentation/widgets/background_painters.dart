@@ -36,19 +36,19 @@ class BackgroundStarFieldPainter extends CustomPainter {
   /// (see [ParallaxMath.etherPresence]).
   final double presence;
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint();
+  /// V3.66 — the sky is dealt once, then only breathes: star
+  /// parameters (position, magnitude, twinkle phase, presence
+  /// ticket) are generated ONCE per star budget — the same seeded
+  /// sequence as the live deal — and every frame only reads them.
+  /// Regenerating 240 stars of RNG + pow per paint read as jank on
+  /// tablets (the painter repaints with every twinkle tick).
+  static List<List<({double x, double y, double depth, double r, double a,
+      double ticket, double phase, double speed, double twinkle})>>? _cache;
+  static int _cacheStarTotal = -1;
 
-    // V3.65 — the field is screen-anchored, so its DENSITY must ride
-    // the surface: 96 stars spread over a phone read as a sky, the
-    // same 96 over a tablet read as a rumor (3× the area, a third the
-    // presence). The count grows with the area, capped — a big screen
-    // earns a fuller sky, never a fabric.
-    final starTotal = (starCount * size.width * size.height / (430 * 932))
-        .clamp(starCount.toDouble(), 240)
-        .round();
-
+  static List<List<({double x, double y, double depth, double r, double a,
+      double ticket, double phase, double speed, double twinkle})>> _deal(
+      int starTotal) {
     // Three depth layers, far-heavy: the distant shell carries most
     // of the stars as near-invisible dust, the near one carries few.
     const layers = <({
@@ -75,38 +75,87 @@ class BackgroundStarFieldPainter extends CustomPainter {
         rMin: 0.5, rMax: 1.6, aMin: 0.08, aMax: 0.50, twinkle: 0.45,
       ),
     ];
+    // Positions live in FRACTIONS of the sky: the same deal fits
+    // every size, only the parallax offset is applied at paint.
+    return [
+      for (var layer = 0; layer < layers.length; layer++)
+        () {
+          final l = layers[layer];
+          final layerRandom = math.Random(1337 + layer * 17);
+          final count = (starTotal * l.share).round();
+          return [
+            for (var i = 0; i < count; i++)
+              () {
+                final depth =
+                    l.depthMin + layerRandom.nextDouble() * l.depthSpan;
+                final baseX = layerRandom.nextDouble();
+                final baseY = layerRandom.nextDouble();
+                final twinklePhase =
+                    layerRandom.nextDouble() * 2 * math.pi;
+                final twinkleSpeed = 0.2 + layerRandom.nextDouble() * 0.6;
+                // Power-law magnitude: most stars barely are, a few
+                // shine — the sky's own distribution, the surest cure
+                // for clutter.
+                final magnitude =
+                    math.pow(layerRandom.nextDouble(), 2.6).toDouble();
+                // V3.63 — presence is density: each star carries its
+                // own leave-ticket in the deal; the fade test runs at
+                // paint time against the live presence.
+                final ticket = layerRandom.nextDouble();
+                return (
+                  x: baseX,
+                  y: baseY,
+                  depth: depth,
+                  r: l.rMin + (l.rMax - l.rMin) * magnitude,
+                  a: l.aMin + (l.aMax - l.aMin) * magnitude,
+                  ticket: ticket,
+                  phase: twinklePhase,
+                  speed: twinkleSpeed,
+                  twinkle: l.twinkle,
+                );
+              }(),
+          ];
+        }(),
+    ];
+  }
 
-    for (var layer = 0; layer < layers.length; layer++) {
-      final l = layers[layer];
-      final layerRandom = math.Random(1337 + layer * 17);
-      final count = (starTotal * l.share).round();
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint();
 
-      for (var i = 0; i < count; i++) {
-        final depth = l.depthMin + layerRandom.nextDouble() * l.depthSpan;
-        final baseX = layerRandom.nextDouble();
-        final baseY = layerRandom.nextDouble();
-        final twinklePhase = layerRandom.nextDouble() * 2 * math.pi;
-        final twinkleSpeed = 0.2 + layerRandom.nextDouble() * 0.6;
+    // V3.65 — the field is screen-anchored, so its DENSITY must ride
+    // the surface: 96 stars spread over a phone read as a sky, the
+    // same 96 over a tablet read as a rumor (3× the area, a third the
+    // presence). The count grows with the area, capped — a big screen
+    // earns a fuller sky, never a fabric.
+    final starTotal = (starCount * size.width * size.height / (430 * 932))
+        .clamp(starCount.toDouble(), 240)
+        .round();
 
-        // Power-law magnitude: most stars barely are, a few shine —
-        // the sky's own distribution, and the surest cure for clutter.
-        final magnitude = math.pow(layerRandom.nextDouble(), 2.6).toDouble();
-        // V3.63 — presence is density: each star carries its own
-        // leave-ticket, drawn once per paint from the same sequence —
-        // deterministic subset, thinner as the eye leaves the ether.
-        final stays = layerRandom.nextDouble() <= presence;
-        if (!stays) continue;
+    if (_cacheStarTotal != starTotal || _cache == null) {
+      _cache = _deal(starTotal);
+      _cacheStarTotal = starTotal;
+    }
 
-        final x = baseX * size.width + tiltX * l.parallax * depth;
-        final y = baseY * size.height + tiltY * l.parallax * depth;
-        final radius = l.rMin + (l.rMax - l.rMin) * magnitude;
-        final baseAlpha = l.aMin + (l.aMax - l.aMin) * magnitude;
-        final twinkle =
-            (1.0 - l.twinkle) + l.twinkle * math.sin(time * twinkleSpeed + twinklePhase);
-        final alpha = baseAlpha * twinkle * (0.35 + 0.65 * presence);
-
+    // The near layer leans deepest under the tilt (parallax grows
+    // with depth) — offsets applied per layer, from the painter's
+    // tilt, not baked into the deal.
+    const layerParallax = [4.0, 6.5, 9.0];
+    for (var layer = 0; layer < _cache!.length; layer++) {
+      final l = layerParallax[layer];
+      for (final s in _cache![layer]) {
+        // V3.63 — presence is density: the leave-ticket fades the
+        // star out as the eye leaves the known ether (deterministic
+        // subset — the same star keeps or loses its seat, whichever
+        // frame asks).
+        if (s.ticket > presence) continue;
+        final x = s.x * size.width + tiltX * l * s.depth;
+        final y = s.y * size.height + tiltY * l * s.depth;
+        final twinkle = (1.0 - s.twinkle) +
+            s.twinkle * math.sin(time * s.speed + s.phase);
+        final alpha = s.a * twinkle * (0.35 + 0.65 * presence);
         paint.color = AppColors.fade(Colors.white, alpha.clamp(0.0, 1.0));
-        canvas.drawCircle(Offset(x, y), radius, paint);
+        canvas.drawCircle(Offset(x, y), s.r, paint);
       }
     }
   }

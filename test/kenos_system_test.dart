@@ -29,8 +29,10 @@ void main() {
         // orbiting lane (no more conjunctions through her sky).
         if (i == 2) {
           expect(dist, closeTo(0.523259, 1e-5), reason: 'Polaris ne bouge pas');
+          // V3.66: Venus's lane widened to 0.40 — the beacon keeps a
+          // clear (if closer) sky: no conjunction touches her.
           expect(dist - KenosSystem.orbitRadiusOf(1),
-              greaterThan(0.15), reason: 'hors de la voie de Vénus');
+              greaterThan(0.10), reason: 'hors de la voie de Vénus');
         } else {
           expect(dist, closeTo(KenosSystem.orbitRadiusOf(i), 1e-9),
               reason: 'chaque monde a sa propre piste');

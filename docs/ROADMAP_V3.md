@@ -2211,9 +2211,9 @@ l'écran que de distance entre eux et soi. Vérifié par l'image :
 salle », 1 lueur lisible pour 8 lointaines. Calibrations suivies
 (3 tests). Gates : analyze 0, 461 tests Dart.
 
-**V3.65 — l'éther n'est jamais étiré (livrée 2026-09-20, arbitrage
-Hugo sur captures tablette : « tout est concentré au centre, il
-faut exploiter plus de surface »).** Le coupable était la
+**V3.66 — l'éther n'est jamais étiré (livrée 2026-09-20, arbitrage Hugo
+sur captures tablette : « tout est concentré au centre, il faut
+exploiter plus de surface »).** Le coupable était la
 projection : `worldToScreen` divisait les DEUX axes par le même
 `viewExtent` puis multipliait par largeur/hauteur réelles — sur un
 écran 16:10, l'éther carré [0,1]² était étiré ×1,6 en largeur
@@ -2243,6 +2243,37 @@ d'exclusion, stable sous toute projection). Vérifié par l'image en
 latéraux habités, barre d'install présente. +5 tests (uniformité,
 rect honnête, aller-retour screen↔world, murs par aspect, regard
 carré sans attach). Gates : analyze 0, 466 tests Dart.
+
+**V3.66 — le système s'ouvre, la matière s'étale (livrée 2026-09-20,
+arbitrage Hugo sur capture tablette démo : « la répartition des
+échos, la proximité des planètes avec le trou noir, la répartition
+générale — et la fluidité »).** La projection honnête (V3.65) avait
+exposé la structure réelle du ciel : **trois planètes serrées contre
+le trou (lanes 0,19/0,28) portant chacune leur matière en perles
+ serrées (shells 0,085–0,135)** — tout le contenu vivait en trois
+grains collés au centre, le reste n'était que décor. Trois
+mouvements : **les lanes s'ouvrent** (0,19/0,28 → 0,26/0,40 — les
+mondes respirent à distance de bras de l'abîme ; Polaris garde le
+ciel clair, à 0,12 de la voie de Vénus), **la gravité s'étale**
+(shells → 0,13/0,18/0,23, bande de naissance 0,11–0,24 : la matière
+s'étale en halos larges, les halos des planètes voisines se
+mêlent où les lanes s'approchent, le bord externe atteint le pays
+lointain 0,63 ; comètes démo 8 % → 18 %), et **le fetch croit le
+rendu** (slack 0,05 → 0,68 : un écho vit jusqu'à 0,63 de ses
+coordonnées stockées — l'ancien slack culait exactement les points
+driftés DANS le champ ; battement TTL 5 min pour ré-apprendre les
+pertes, le containment garde les refetch de pan à zéro). Fluidité :
+**le deal d'étoiles mortes est caché** (240 RNG + pow par frame →
+paramètres générés une fois, le ticket de présence testé au paint)
+et **le voyage ne re-fetch plus** (un sync entier + TTL au lieu
+d'une RPC par fin de geste — le rebuild de liste par geste disparaît
+avec). Vérifié par l'image 1600×1000 démo : trois planètes détachées
+chacune avec son halo propre, matière sur toute la largeur, comètes
+traversantes ; portrait : composition aérée, essaims distincts.
+Tests : Polaris 0,15 → 0,10 (Vénus s'est rapprochée), fusion
+réécrite sur la sémantique TTL (containment skip tient, le battement
+fusionne et purge), +horloge injectable. Gates : analyze 0, 466
+tests Dart.
 
 ## 4. Règles inchangées (rappel)
 

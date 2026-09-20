@@ -124,8 +124,16 @@ class KenosSystem {
   /// the worlds FRAME the holdable lights, they never sit among
   /// them. Moving bodies may orbit within the resting exclusion —
   /// only what RESTS is pushed out (see [blackHoleExclusion]).
+  ///
+  /// V3.66 — they open again (0.19/0.28 → 0.26/0.40): the uniform
+  /// projection made wide screens honest, and honesty showed the
+  /// whole retinue HIDDLING against the hole (a 0.19 lane under a
+  /// shortest-side-sized heart reads as beads on the rim). The gaze
+  /// has since widened (V3.64: 1.7, reception 0.085) — the worlds
+  /// can breathe at arm's length of the abyss and still frame the
+  /// holdable field. The swarms follow (see [echoShells]).
   static double orbitRadiusOf(int index) =>
-      switch (index) { 0 => 0.19, _ => 0.28 };
+      switch (index) { 0 => 0.26, _ => 0.40 };
 
   /// Each lane has its own tempo.
   static Duration _periodOf(int index) => switch (index) {
@@ -168,22 +176,28 @@ class KenosSystem {
 
   // ── Echo orbits ────────────────────────────────────────────────────────
 
-  /// The gravity band's inner edge (V3.23: was 0.08 — the band widens
-  /// from 0.05 to 0.07 of spread, ~40% more room per swarm: at the old
-  /// width, stacked neighbours blanketed each other's catch zones and
-  /// covered stars could not be opened).
-  static const double echoBandMin = 0.075;
+  /// The gravity band's inner edge. V3.66 — the band lifts with the
+  /// lanes (0.075 → 0.11): the swarm spreads AROUND its world instead
+  /// of beading on its face — three tight beads read as a clump, the
+  /// wide sky needs wide gravity.
+  static const double echoBandMin = 0.11;
 
   /// The gravity band's width.
-  static const double echoBandSpan = 0.07;
+  static const double echoBandSpan = 0.13;
 
   /// V3.28 — the band is no longer a hash-continuous smear but THREE
-  /// discrete shells (0.085 / 0.110 / 0.135): each ring turns as a
-  /// ring, at its own fixed tempo, and the swarm reads as structure —
-  /// three lanes per planet — instead of a churn. Still 100%
-  /// deterministic from the echo's identity; the outer rim (0.145) is
-  /// unchanged, so resting bodies and bounds keep their clearances.
-  static const List<double> echoShells = [0.085, 0.110, 0.135];
+  /// discrete shells: each ring turns as a ring, at its own fixed
+  /// tempo, and the swarm reads as structure — three lanes per
+  /// planet — instead of a churn. Still 100% deterministic from the
+  /// echo's identity.
+  ///
+  /// V3.66 — the shells ride wider orbits too (0.085/0.110/0.135 →
+  /// 0.13/0.18/0.23, rim 0.23): matter now spans from the abyss's
+  /// neighbourhood to past the outer lane (0.40 + 0.23 = 0.63 — into
+  /// the far country), and the gravity halos of passing planets
+  /// mingle where their lanes approach. Resting clearances keep
+  /// their meaning: the resolver dodges LANES, shells are transient.
+  static const List<double> echoShells = [0.13, 0.18, 0.23];
 
   /// One full revolution per shell (V3.22's contemplative range kept:
   /// minutes per orbit, never a carousel).

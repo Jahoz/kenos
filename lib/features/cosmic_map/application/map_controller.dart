@@ -18,6 +18,11 @@ import 'travel_camera.dart';
 /// text) and the user's sealed echoes (local store, sealed without
 /// text). Bottle-in-the-sea signals live in [ReceptionController].
 class MapController extends AsyncNotifier<List<Echo>> {
+  MapController({DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
+
+  /// Injectable so tests can age the re-sync TTL without sleeping.
+  final DateTime Function() _clock;
+
   @override
   Future<List<Echo>> build() async {
     // Anonymous session: on failure we still try the map;
@@ -40,6 +45,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
     // rect is recorded so the first gesture-end dedups against it.
     final first = _slackRect(TravelCamera().visibleRect);
     _lastSyncedRect = first;
+    _lastSyncedAt = _clock();
     final fresh = await repo.fetchStarMapInSector(
       first.loX,
       first.loY,
@@ -183,11 +189,19 @@ class MapController extends AsyncNotifier<List<Echo>> {
   /// Slack around the visible rect sent to the ether AND used to
   /// decide which old stars the fresh answer may replace. One single
   /// constant: a star "in rect" is exactly a star the fetch could see.
-  static const _travelSlack = 0.05;
+  /// V3.66 — the fetch must believe the RENDER, not the launch: an
+  /// echo's live position orbits its intent planet (lane 0.40 + shell
+  /// rim 0.23 = up to 0.63 from its stored launch coordinates). The
+  /// old 0.05 slack culled exactly the motes that had drifted INTO
+  /// view — the visible swarm was an accident of launch coordinates.
+  /// The rect still clamps to the server's [0,1]², and the
+  /// containment check keeps travel refetches rare.
+  static const _travelSlack = 0.68;
 
   /// Last rect already synced — a stationary release or a jitter does
   /// not re-ask the ether.
   ({double loX, double loY, double hiX, double hiY})? _lastSyncedRect;
+  DateTime? _lastSyncedAt;
 
   /// Slacks a raw viewport rect to the fetch rect: clamped to the
   /// server's [0,1]², padded by [_travelSlack]. One single formula so
@@ -215,8 +229,17 @@ class MapController extends AsyncNotifier<List<Echo>> {
     final hiX = rect.hiX;
     final hiY = rect.hiY;
     if (hiX - loX <= 0 || hiY - loY <= 0) return;
+    // V3.66 — the render slack now covers the whole sky, so the
+    // containment check alone would sync ONCE per session and never
+    // learn what the ether lost (consumed elsewhere) or gained while
+    // the traveller stood still. A TTL re-asks the ether on a slow
+    // heartbeat — containment still eats the per-pan refetch storm.
+    final syncedAt = _lastSyncedAt;
+    final stale = syncedAt == null ||
+        _clock().difference(syncedAt) > const Duration(minutes: 5);
     final synced = _lastSyncedRect;
-    if (synced != null &&
+    if (!stale &&
+        synced != null &&
         synced.loX <= loX &&
         synced.loY <= loY &&
         synced.hiX >= hiX &&
@@ -224,6 +247,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
       return; // already seen: nothing new beyond the last sync.
     }
     _lastSyncedRect = (loX: loX, loY: loY, hiX: hiX, hiY: hiY);
+    _lastSyncedAt = _clock();
 
     final fresh = await repo.fetchStarMapInSector(
       loX,

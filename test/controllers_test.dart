@@ -256,10 +256,13 @@ void main() {
   late FakeEchoRepository repo;
   late FakeLocalEchoStore store;
   late ProviderContainer container;
+  // Injectable clock: the TTL heartbeat (V3.66) is aged by hand.
+  var now = DateTime(2026, 9, 20, 12);
 
   setUp(() {
     repo = FakeEchoRepository(ether: [_remote('ether-1'), _remote('ether-2')]);
     store = FakeLocalEchoStore();
+    now = DateTime(2026, 9, 20, 12);
     container = ProviderContainer(
       overrides: [
         bootstrapProvider.overrideWithValue(
@@ -267,25 +270,28 @@ void main() {
         ),
         echoRepositoryProvider.overrideWithValue(repo),
         localEchoStoreProvider.overrideWithValue(store),
+        mapControllerProvider.overrideWith(() => MapController(clock: () => now)),
       ],
     );
     addTearDown(container.dispose);
   });
 
   group('MapController', () {
-    test('le premier regard ne charge que le ciel visible, au budget viewport',
-        () async {
+    test('le premier regard charge le ciel que le rendu peut atteindre', () async {
       await container.read(mapControllerProvider.future);
 
       // Exactly ONE fetch on boot — the opening camera's rect plus the
-      // travel slack, never the whole sky.
+      // travel slack, never more than the sky.
       expect(repo.rects, hasLength(1));
       final r = repo.rects.single;
-      // Default camera: zoom 1.7 → ±0.294 around (0.5, 0.5), + 0.05 slack.
-      expect(r.loX, closeTo(0.156, 0.001));
-      expect(r.loY, closeTo(0.156, 0.001));
-      expect(r.hiX, closeTo(0.844, 0.001));
-      expect(r.hiY, closeTo(0.844, 0.001));
+      // V3.66 — the slack covers the RENDER divergence: an echo lives
+      // up to 0.63 from its stored launch coordinates (lane 0.40 +
+      // shell rim 0.23), so the rect is the whole known ether [0,1]²
+      // and the containment check keeps travel refetches at zero.
+      expect(r.loX, closeTo(0.0, 0.001));
+      expect(r.loY, closeTo(0.0, 0.001));
+      expect(r.hiX, closeTo(1.0, 0.001));
+      expect(r.hiY, closeTo(1.0, 0.001));
       expect(repo.budgets.single, SectorGrid.viewBudget,
           reason: 'la carte peint des étoiles, pas un catalogue');
     });
@@ -368,11 +374,13 @@ void main() {
       expect(store.stats.totalTracesLeft, 1);
     });
 
-    test('refreshViewport fusionne : ajoute les nouvelles, garde l\'hors-rect, drop les parties',
+    test('refreshViewport fusionne : le TTL ré-ask, ajoute les nouvelles, drop les parties',
         () async {
       await container.read(mapControllerProvider.future);
 
-      // A star appears in a freshly travelled-to sector.
+      // A star appears in a far sector while the traveller stands
+      // still. The rect is already synced (V3.66: the render slack
+      // covers the whole sky) — the TTL heartbeat is what re-asks.
       repo.ether.add(_remote('far-1', x: 0.95, y: 0.95));
       await container.read(mapControllerProvider.notifier).refreshViewport(
             minX: 0.8,
@@ -381,14 +389,25 @@ void main() {
             maxY: 1.0,
           );
       var echoes = container.read(mapControllerProvider).valueOrNull!;
-      expect(echoes.map((e) => e.id), containsAll(['ether-1', 'ether-2', 'far-1']),
-          reason: 'les étoiles hors rect restent, la nouvelle entre');
+      expect(echoes.map((e) => e.id), isNot(contains('far-1')),
+          reason: 'rect déjà synchronisé : le containment skip tient');
 
-      // The ether no longer returns a star inside the synced rect:
-      // consumed elsewhere — it must leave the map.
+      // Five minutes later, the same gesture re-asks the ether.
+      now = now.add(const Duration(minutes: 6));
+      await container.read(mapControllerProvider.notifier).refreshViewport(
+            minX: 0.8,
+            minY: 0.8,
+            maxX: 1.0,
+            maxY: 1.0,
+          );
+      echoes = container.read(mapControllerProvider).valueOrNull!;
+      expect(echoes.map((e) => e.id), containsAll(['ether-1', 'ether-2', 'far-1']),
+          reason: 'le battement lent fusionne la nouvelle');
+
+      // The ether no longer returns a star the map holds:
+      // consumed elsewhere — the next heartbeat must drop it.
       repo.ether.removeWhere((e) => e.id == 'far-1');
-      // Travel a bit further: a NEW window re-asks the ether (the same
-      // window would be skipped — already synced).
+      now = now.add(const Duration(minutes: 6));
       await container.read(mapControllerProvider.notifier).refreshViewport(
             minX: 0.7,
             minY: 0.7,
@@ -398,7 +417,7 @@ void main() {
       echoes = container.read(mapControllerProvider).valueOrNull!;
       expect(echoes.map((e) => e.id), isNot(contains('far-1')));
       expect(echoes.map((e) => e.id), contains('ether-1'),
-          reason: 'hors rect : intouché par la fusion');
+          reason: 'l\'éther la rend toujours : elle reste');
     });
 
     test('rebound : le phénix devient une étoile scellée à momentum + 1',

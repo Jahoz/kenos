@@ -161,9 +161,10 @@ class LocalEchoRepository implements EchoRepository {
           coordZ: 0.15 + _random.nextDouble() * 0.75,
           theme: echoTheme,
           createdAt: createdAt,
-          // A carried thought travels a wilder arc: some crowd stars
-          // are comets, so the demo map shows the phoenix tails too.
-          momentum: _random.nextDouble() < 0.08
+          // A carried thought travels a wilder arc: crowd stars ride
+          // comets at the demo rate (V3.66: 0.08 → 0.18 — the wide
+          // sky needs crossing arcs, not only three gravity beads).
+          momentum: _random.nextDouble() < 0.18
               ? 1 + _random.nextInt(3)
               : 0,
           // Map metadata only: the door's KIND travels, the door itself
