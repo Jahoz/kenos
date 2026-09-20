@@ -22,7 +22,11 @@ class KenosSystem {
   /// are held outside this world radius, deterministically — the
   /// central object is the app's throat, not a parking spot. Orbiting
   /// echoes and grazing comets are exempt: they move, they don't rest.
-  static const double blackHoleExclusion = 0.15;
+  ///
+  /// V3.62 — widened (0.15 → 0.22): the heart grew to flagship scale,
+  /// and nothing may crowd its gravity. Resting bodies now ring the
+  /// system instead of clustering at its rim.
+  static const double blackHoleExclusion = 0.22;
 
   /// Gently nudges a resting position outside the hole's horizon,
   /// along its own radius. Idempotent, deterministic, poetic: what is
@@ -111,8 +115,17 @@ class KenosSystem {
   /// Each anchor rides its OWN lane (V3.12): the Moon closer and
   /// livelier, Venus wider and slower — the tracks never smear into
   /// one another, conjunctions stay rare. Polaris rides none.
+  ///
+  /// V3.62 — the lanes tightened (0.26/0.37 → 0.19/0.28): at the
+  /// resting eye (±0.21 of sky) the old tracks passed OUTSIDE the
+  /// frame — the worlds existed, the traveller never saw them. The
+  /// heart grew to flagship scale; its retinue now rings it INSIDE
+  /// the first gaze, yet stays clear of the reception field (0.16):
+  /// the worlds FRAME the holdable lights, they never sit among
+  /// them. Moving bodies may orbit within the resting exclusion —
+  /// only what RESTS is pushed out (see [blackHoleExclusion]).
   static double orbitRadiusOf(int index) =>
-      switch (index) { 0 => 0.26, _ => 0.37 };
+      switch (index) { 0 => 0.19, _ => 0.28 };
 
   /// Each lane has its own tempo.
   static Duration _periodOf(int index) => switch (index) {

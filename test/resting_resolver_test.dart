@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kenos/features/cosmic_map/application/celestial_bodies.dart';
 import 'package:kenos/features/cosmic_map/application/kenos_system.dart';
 
 /// V3.12c — serene real estate: everything that RESTS keeps its
@@ -12,14 +13,16 @@ void main() {
     });
 
     test('les couloirs planétaires sont esquivés', () {
-      // Straight on the inner lane (0.26 from the heart).
-      final onLane = KenosSystem.blackHole + const Offset(0.26, 0);
+      // Straight on the inner lane (orbitRadiusOf(0) from the heart).
+      final onLane = KenosSystem.blackHole +
+          Offset(KenosSystem.orbitRadiusOf(0), 0);
       final q = KenosSystem.resolveResting(onLane);
       final d = (q - KenosSystem.blackHole).distance;
       expect((d - KenosSystem.orbitRadiusOf(0)).abs(),
           greaterThanOrEqualTo(0.055 - 1e-9),
           reason: 'un monde chevauche sa file — repoussé hors du couloir');
-      final onOuter = KenosSystem.blackHole + const Offset(0, 0.37);
+      final onOuter = KenosSystem.blackHole +
+          Offset(0, KenosSystem.orbitRadiusOf(1));
       final q2 = KenosSystem.resolveResting(onOuter);
       final d2 = (q2 - KenosSystem.blackHole).distance;
       expect((d2 - KenosSystem.orbitRadiusOf(1)).abs(),
@@ -27,12 +30,13 @@ void main() {
     });
 
     test('Polaris garde son ciel dégagé', () {
-      final q = KenosSystem.resolveResting(
-        Offset(0.5, 0.5 - 0.32), // exactly on the beacon
+      // A shard sown exactly on the beacon: pushed to its clear ring.
+      final q = KenosSystem.resolveResting(CelestialMath.polaris);
+      expect(
+        (q - CelestialMath.polaris).distance,
+        greaterThanOrEqualTo(0.08),
+        reason: 'rien ne repose sur le phare',
       );
-      // Polaris's beacon rays reach ~0.05: the resting body is out.
-      expect(q, isNot(const Offset(0.5, 0.18)),
-          reason: 'rien ne repose sur le phare');
     });
 
     test('deux statiques à la même position se séparent', () {

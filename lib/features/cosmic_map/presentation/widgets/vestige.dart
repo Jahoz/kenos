@@ -210,6 +210,12 @@ class VestigePainter extends CustomPainter {
     // thickens and brightens, and a breath of fill carries the
     // light. A READ shard rests at 0.42 — a visible memory, never an
     // extinction ("il s'éteint après lecture", the live report).
+    //
+    // V3.62 — demoted another step: the shard flood had inverted the
+    // sky's hierarchy (culture covered the heavens). The unread
+    // whisper breathes at 0.30, its fill barely there — a trace to
+    // drift near, never a body. Kept shards (the reliquaire) keep
+    // their ember light: EARNED importance is not borrowed.
     final r = (size.shortestSide / 2 - 8) * 0.75;
     // The newborn's mark (V3.58e): a thin HOLLOW ring, the sky's own
     // grammar for "something surrounds this" — angular like its
@@ -224,10 +230,10 @@ class VestigePainter extends CustomPainter {
           ..color = AppColors.fade(color, 0.34),
       );
     }
-    final baseAlpha = kept ? 0.58 : (read ? 0.32 : 0.52);
+    final baseAlpha = kept ? 0.58 : (read ? 0.22 : 0.30);
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.9
+      ..strokeWidth = 0.8
       ..color = AppColors.fade(kept ? AppColors.ember : color, baseAlpha);
 
     canvas.save();
@@ -251,7 +257,7 @@ class VestigePainter extends CustomPainter {
       Paint()
         ..color = AppColors.fade(
           kept ? AppColors.ember : color,
-          read ? 0.03 : 0.10,
+          read ? 0.02 : 0.05,
         ),
     );
     canvas.drawPath(path, paint);

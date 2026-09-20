@@ -71,23 +71,38 @@ class SystemPainter extends CustomPainter {
         c.dy - r <= size.height + 40;
 
     // ── The black hole: darker than the void itself ────────────────────
+    // V3.62 — the heart is the sky's flagship: diameter ~36% of the
+    // short side (it was ~17% and read as a pebble among shards).
+    // The hierarchy is now loud: hole > worlds > moons > shards.
     final bh = world(KenosSystem.blackHole);
-    final bhRadius = viewport.shortestSide / 12 * bodyScale;
+    final bhRadius = viewport.shortestSide / 5.5 * bodyScale;
     final bhVisible = onScreen(bh, bhRadius * 1.6);
     if (bhVisible) {
 
-    // Gravitational lensing: a faint rose-tinted accretion ring — the
+    // Presence before detail: a wide, deep-blurred gravity halo —
+    // the heart is FELT at the edge of the eye before it is seen.
+    canvas.drawCircle(
+      bh,
+      bhRadius * 1.35,
+      Paint()
+        ..color = AppColors.fade(AppColors.rose, 0.05)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, haloBlur * 1.6),
+    );
+
+    // Gravitational lensing: a rose-tinted accretion ring — the
     // destruction color's only legitimate celestial object, whispering
-    // the reading contract: what crosses never returns.
+    // the reading contract: what crosses never returns. V3.62: the
+    // whisper became a voice — the heart promotes itself.
     final ringPaint = Paint()
       ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, ringBlur)
       ..shader = SweepGradient(
         colors: [
           AppColors.fade(AppColors.rose, 0.0),
-          AppColors.fade(AppColors.roseText, 0.16),
-          AppColors.fade(AppColors.rose, 0.05),
-          AppColors.fade(AppColors.roseText, 0.12),
+          AppColors.fade(AppColors.roseText, 0.30),
+          AppColors.fade(AppColors.rose, 0.10),
+          AppColors.fade(AppColors.roseText, 0.22),
           AppColors.fade(AppColors.rose, 0.0),
         ],
       ).createShader(Rect.fromCircle(center: bh, radius: bhRadius));
@@ -102,8 +117,8 @@ class SystemPainter extends CustomPainter {
       bhRadius,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.8
-        ..color = AppColors.fade(AppColors.roseText, 0.22),
+        ..strokeWidth = 1.2
+        ..color = AppColors.fade(AppColors.roseText, 0.40),
     );
     } // black hole culled
 
@@ -116,7 +131,12 @@ class SystemPainter extends CustomPainter {
     for (var i = 0; i < KenosSystem.planets.length; i++) {
       final theme = KenosSystem.planets[i];
       final p = world(KenosSystem.planetPosition(i, epoch));
-      final bodyR = viewport.shortestSide / 34 * bodyScale;
+      // V3.62 — worlds with variants: each body its own weight (Vénus
+      // reads wide through her rings, Polaris stays a pointed beacon).
+      // Clearly beneath the heart, clearly above the moons and shards.
+      final variant = switch (i) { 0 => 1.0, 1 => 1.12, _ => 0.8 };
+      final bodyR =
+          viewport.shortestSide / 26 * bodyScale * variant;
       final ringR = bodyR * 1.75;
       final bodyVisible = onScreen(p, bodyR * 2.5);
       if (!bodyVisible) continue;
@@ -284,7 +304,9 @@ class SystemPainter extends CustomPainter {
     }
 
     // ── The wanderers (V3.12): named far bodies, each its silhouette ──
-    final wandererR = viewport.shortestSide / 72 * bodyScale;
+    // V3.62 — the moons rise a step (their silhouettes must read),
+    // still a clear rank below the worlds.
+    final wandererR = viewport.shortestSide / 56 * bodyScale;
     for (var i = 0; i < celestialWanderers.length; i++) {
       final w = world(CelestialMath.wandererPosition(i, now));
       if (!onScreen(w, wandererR * 2.5)) continue;
@@ -385,8 +407,10 @@ Rect planetTapRect({
     KenosSystem.planetPosition(index, now),
     viewport,
   );
+  // The finger's courtesy stays generous — bigger than the painted
+  // body, riding the same V3.62 base.
   final r =
-      viewport.shortestSide / 34 * ParallaxMath.zoomScale(camera.zoom);
+      viewport.shortestSide / 26 * ParallaxMath.zoomScale(camera.zoom);
   return Rect.fromCircle(center: p, radius: r);
 }
 

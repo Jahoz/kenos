@@ -1237,25 +1237,71 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                 child: _HeavensClock(
                                   period: const Duration(milliseconds: 250),
                                   builder: (context, vestigeBeat) => LayoutBuilder(
-                                    builder: (context, c) => Stack(
-                                      children: [
-                                        for (final v in vestigesShown)
-                                          Builder(
-                                            builder: (context) {
-                                              final sp = _camera.worldToScreen(
-                                                vestigeAt[v.id] ??
-                                                    Offset(
-                                                      v.offsetX,
-                                                      v.offsetY,
-                                                    ),
-                                                Size(c.maxWidth, c.maxHeight),
-                                              );
-                                              if (sp.dx < -30 ||
-                                                  sp.dx > c.maxWidth + 30 ||
-                                                  sp.dy < -30 ||
-                                                  sp.dy > c.maxHeight + 30) {
-                                                return const SizedBox.shrink();
-                                              }
+                                    builder: (context, c) {
+                                      // V3.62 — the shard budget: the
+                                      // sky carries the shards NEAREST
+                                      // the eye (fresh and kept ones are
+                                      // exempt — publishing must be
+                                      // seen, the reliquaire is owed);
+                                      // the whole library lives in its
+                                      // sheet. The hexagon flood had
+                                      // inverted the hierarchy — culture
+                                      // whispers now, it no longer
+                                      // covers the heavens.
+                                      const shardBudget = 14;
+                                      final eye = Offset(
+                                        c.maxWidth / 2,
+                                        c.maxHeight / 2,
+                                      );
+                                      final onscreen = <({
+                                        Vestige v,
+                                        Offset sp,
+                                        double d,
+                                      })>[];
+                                      for (final v in vestigesShown) {
+                                        final sp = _camera.worldToScreen(
+                                          vestigeAt[v.id] ??
+                                              Offset(
+                                                v.offsetX,
+                                                v.offsetY,
+                                              ),
+                                          Size(c.maxWidth, c.maxHeight),
+                                        );
+                                        if (sp.dx < -30 ||
+                                            sp.dx > c.maxWidth + 30 ||
+                                            sp.dy < -30 ||
+                                            sp.dy > c.maxHeight + 30) {
+                                          continue;
+                                        }
+                                        onscreen.add((
+                                          v: v,
+                                          sp: sp,
+                                          d: (sp - eye).distance,
+                                        ));
+                                      }
+                                      onscreen.sort((a, b) => a.d == b.d
+                                          ? a.v.id.compareTo(b.v.id)
+                                          : a.d.compareTo(b.d));
+                                      var spent = 0;
+                                      return Stack(
+                                        children: [
+                                          for (final shard in onscreen)
+                                            Builder(
+                                              builder: (context) {
+                                                final exempt =
+                                                    shard.v.isFresh ||
+                                                        _artifacts.isKept(
+                                                          shard.v.id,
+                                                        );
+                                                if (!exempt) {
+                                                  if (spent >= shardBudget) {
+                                                    return const SizedBox
+                                                        .shrink();
+                                                  }
+                                                  spent++;
+                                                }
+                                                final v = shard.v;
+                                                final sp = shard.sp;
                                               // Shards grow with the eye
                                               // too (V3.17) — the painter
                                               // sizes itself to its box.
@@ -1313,10 +1359,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                   ),
                                                 ),
                                               );
-                                            },
-                                          ),
-                                      ],
-                                    ),
+                                              },
+                                            ),
+                                        ],
+                                      );
+                                    },
                                   ),
                                 ),
                               ),

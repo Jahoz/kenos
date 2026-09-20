@@ -2143,6 +2143,32 @@ serrée : le vide mène, les mondes encadrent. Calibrations suivies
 (6 tests) ; gates : analyze 0, 454 tests Dart. La preuve par
 l'image : ~10 éléments visibles, 65-70 % de vide au premier regard.
 
+**V3.62 — l'ordre du ciel (livrée 2026-09-20, arbitrage Hugo : « le
+trou noir est trop petit promotionnellement, les vestiges prennent
+trop d'importance — il faut trou noir > planètes > lunes, avec des
+variantes et un impact visuel fort »).** Le ciel était une foule
+d'équivalents : ~35 hexagones identiques à pleine voix noyaient un
+cœur de 17 % de largeur. L'ordre est rétabli, rang par rang :
+**le cœur** (×2,2 — `/12` → `/5,5`, ~36 % de largeur au repos ;
+anneau d'accrétion murmuré puis voix — sweep à 0,30, liseré 0,40,
+halo de gravité flouté ; l'exclusion de repos suit, 0,15 → 0,22 :
+rien ne se pose sur le vaisseau amiral) ; **les mondes** (`/26`,
+variantes : La Lune ×1,0 cratérée, Vénus ×1,12 doublement annelée,
+Polaris ×0,8 phare pointu — dessous le cœur, au-dessus de tout le
+reste) ; **les lunes** (`/56`, silhouettes déjà propres — cœur,
+mi-éclairée, fissurée, brumeuse) ; **les éclats** (le whispered :
+alpha 0,52 → 0,30, remplissage presque rien, et **budget des 14
+plus proches de l'œil** — fraîches et gardées exemptes, la
+bibliothèque vit dans sa feuille). Les couloirs planétaires se
+rapprochent (0,26/0,37 → 0,19/0,28) : la couronne entre dans le
+premier regard mais reste hors du champ de réception (0,16) — les
+mondes encadrent les lumières tenables, ils ne s'y assoient pas
+(le test de hold l'a exigé : à 0,16 le couloir fusionnait avec le
+champ, et plus rien ne se tenait). Un test honnête au passage : le
+« Polaris dégagé » posait sa graine hors du phare depuis toujours —
+il testait le couloir déguisé ; il pose désormais sur le phare.
+Gates : analyze 0, 454 tests Dart.
+
 ## 4. Règles inchangées (rappel)
 
 
