@@ -133,7 +133,7 @@ class KenosSystem {
   /// can breathe at arm's length of the abyss and still frame the
   /// holdable field. The swarms follow (see [echoShells]).
   static double orbitRadiusOf(int index) =>
-      switch (index) { 0 => 0.26, _ => 0.40 };
+      switch (index) { 0 => 0.30, _ => 0.44 };
 
   /// Each lane has its own tempo.
   static Duration _periodOf(int index) => switch (index) {
@@ -191,13 +191,38 @@ class KenosSystem {
   /// planet — instead of a churn. Still 100% deterministic from the
   /// echo's identity.
   ///
-  /// V3.66 — the shells ride wider orbits too (0.085/0.110/0.135 →
-  /// 0.13/0.18/0.23, rim 0.23): matter now spans from the abyss's
-  /// neighbourhood to past the outer lane (0.40 + 0.23 = 0.63 — into
-  /// the far country), and the gravity halos of passing planets
-  /// mingle where their lanes approach. Resting clearances keep
-  /// their meaning: the resolver dodges LANES, shells are transient.
+  /// V3.66 — the shells ride wider orbits (rim 0.23): matter spans
+  /// from the abyss's neighbourhood to past the outer lane.
+  ///
+  /// V3.67 — the shells are only the BASE of each orbit now: every
+  /// bound echo rides its OWN eccentric ellipse (aphelion jitter,
+  /// eccentricity, orientation and tempo hashed from its id — see
+  /// [launchCoordsFor] and [echoPosition]). Three perfect rings
+  /// turning in unison read, on a wide screen, as geometry — Hugo's
+  /// arbitrage: the sky must read as a CROWD, not a diagram.
   static const List<double> echoShells = [0.13, 0.18, 0.23];
+
+  /// Per-echo aphelion jitter on top of the shell (0 .. value).
+  static const double liaisonJitter = 0.06;
+
+  /// Per-echo orbital eccentricity range (bound thoughts). Aphelion
+  /// is bounded (shell + jitter), so the radius always stays within
+  /// [aphelion × (1 - e), aphelion].
+  static const double liaisonEccentricityMin = 0.08;
+  static const double liaisonEccentricityMax = 0.31;
+
+  /// V3.67 — LA PENSÉE ERRANTE: not every thought falls into a
+  /// gravity well. Roughly two in five are born FREE, anywhere in
+  /// the ether, and ride wide slow rings around the VOID itself —
+  /// the deep sky between the worlds carries matter of its own, and
+  /// the map stops being a diagram with a crowded middle. The flag
+  /// derives from `created_at` (known at launch AND at render: the
+  /// same input, the same verdict, forever).
+  static bool isErrantThought(DateTime createdAt) {
+    final h = (createdAt.millisecondsSinceEpoch * 2654435761) &
+        0x7fffffff;
+    return h % 100 < 42;
+  }
 
   /// One full revolution per shell (V3.22's contemplative range kept:
   /// minutes per orbit, never a carousel).
@@ -241,18 +266,14 @@ class KenosSystem {
         .clamp(0.0, 1.0);
   }
 
-  /// An echo's orbit: its shell, decayed by the fall of days.
-  static double _echoOrbitRadius(Echo echo, DateTime at) {
-    final shell = echoShells[_echoShell(echo)];
-    final fall = fallFraction(echo, at);
-    if (fall <= 0) return shell;
-    return shell + (landingRadius - shell) * fall;
+  /// Orbital period: per-shell base, JITTERED PER ECHO (V3.67 — see
+  /// [liaisonEccentricityMax]: the synchronized ring-read is gone).
+  static Duration _echoPeriod(Echo echo) {
+    final baseMs = _shellPeriods[_echoShell(echo)].inMilliseconds;
+    final h = echo.id.hashCode & 0x7fffffff;
+    final jitter = 0.82 + 0.36 * ((h >> 5) % 100) / 100;
+    return Duration(milliseconds: (baseMs * jitter).round());
   }
-
-  /// Orbital period: constant per shell — a lane that turns together
-  /// stays legible as a lane (V3.28; the radius-linear tempo bred
-  /// relative drift and momentary pile-ups inside the old band).
-  static Duration _echoPeriod(Echo echo) => _shellPeriods[_echoShell(echo)];
 
   /// Planet index for an intent: the theme decides the gravity. The
   /// rebound keeps the parent's hue — comets inherit their orbit.
@@ -270,12 +291,29 @@ class KenosSystem {
   /// clamped to the known ether. The sector fetch, the A.L. telemetry
   /// and the lineage anchors then agree with the rendered orbit: the
   /// author drops the thought where it will actually drift.
+  ///
+  /// V3.67 — a free thought ([isErrantThought]) is born anywhere in
+  /// the ether, on its own wide ring around the void: birth radius
+  /// 0.20–0.62 of the sky (never inside the system's throat, at most
+  /// grazing the known rim), angle free. The client computes this
+  /// BEFORE the RPC — no server law moves — and the render derives
+  /// the same verdict from the same `created_at`.
   static Offset launchCoordsFor(
     EchoColorTheme theme,
     DateTime at, [
     math.Random? rng,
   ]) {
     final random = rng ?? math.Random();
+    if (isErrantThought(at)) {
+      // Birth on the wide ring: 0.20–0.62 of the sky — the deep
+      // field between the worlds, grazing the known rim at most.
+      final r = 0.20 + random.nextDouble() * 0.42;
+      final a = random.nextDouble() * 2 * math.pi;
+      return Offset(
+        (blackHole.dx + r * math.cos(a)).clamp(0.02, 0.98),
+        (blackHole.dy + r * math.sin(a)).clamp(0.02, 0.98),
+      );
+    }
     final planet = planetPosition(themeIndexOf(theme), at);
     final radius = echoBandMin + random.nextDouble() * echoBandSpan;
     final angle = random.nextDouble() * 2 * math.pi;
@@ -295,16 +333,65 @@ class KenosSystem {
     if (echo.momentum > 0) {
       return _cometPosition(echo, at);
     }
+    // A free thought rides its own wide slow ring around the VOID:
+    // radius inherited from where it was born, tempo from its id —
+    // a sky of drifting strangers, desynchronized by construction.
+    if (isErrantThought(echo.createdAt)) {
+      final birth = Offset(echo.coordX, echo.coordY);
+      final r = (birth - blackHole).distance.clamp(0.18, 0.62);
+      final h = echo.id.hashCode & 0x7fffffff;
+      final period = Duration(
+        hours: 3 + (h % 7),
+      );
+      final phase =
+          (at.millisecondsSinceEpoch + h % 9973) / period.inMilliseconds;
+      final angle = 2 * math.pi * phase;
+      return Offset(
+        blackHole.dx + r * math.cos(angle),
+        blackHole.dy + r * math.sin(angle),
+      );
+    }
+    // A bound thought: its OWN eccentric ellipse around its intent
+    // planet — APHELION (shell + jitter), eccentricity, orientation
+    // and tempo all hashed from the identity. The halo reads as a
+    // crowd of crossing arcs, never as a drawn ring.
     final planet = planetPosition(planetIndexOf(echo), at);
-    final radius = _echoOrbitRadius(echo, at);
+    final h = echo.id.hashCode & 0x7fffffff;
+    // LA CHUTE DES JOURS decays the APHELION toward the world it was
+    // confided to (the fall keeps the shape — only the span shrinks).
+    final fall = fallFraction(echo, at);
+    final freshAphelion = liaisonAphelion(echo);
+    final aphelion = fall <= 0
+        ? freshAphelion
+        : freshAphelion + (landingRadius - freshAphelion) * fall;
+    final e = liaisonEccentricity(echo);
+    final omega = 2 * math.pi * ((h >> 17) % 360) / 360;
+    final a = aphelion / (1 + e); // aphelion-bounded semi-major axis
     final period = _echoPeriod(echo);
-    final phase = (at.millisecondsSinceEpoch + echo.id.hashCode % 9973) /
-        period.inMilliseconds;
-    final angle = 2 * math.pi * phase;
-    return Offset(
-      planet.dx + radius * math.cos(angle),
-      planet.dy + radius * math.sin(angle),
-    );
+    final phase =
+        (at.millisecondsSinceEpoch + h % 9973) / period.inMilliseconds;
+    final theta = 2 * math.pi * phase;
+    final rr = a * (1 - e * e) / (1 + e * math.cos(theta));
+    final x = rr * math.cos(theta + omega);
+    final y = rr * math.sin(theta + omega);
+    return Offset(planet.dx + x, planet.dy + y);
+  }
+
+  /// The bound echo's APHELION (farthest point from its world):
+  /// its shell plus an identity-hashed jitter. Public so the fall's
+  /// tests can speak the same geometry (V3.67).
+  static double liaisonAphelion(Echo echo) {
+    final h = echo.id.hashCode & 0x7fffffff;
+    final shell = echoShells[_echoShell(echo)];
+    return shell + ((h >> 3) % 61) * (liaisonJitter / 60);
+  }
+
+  /// The bound echo's orbital eccentricity (identity-hashed).
+  static double liaisonEccentricity(Echo echo) {
+    final h = echo.id.hashCode & 0x7fffffff;
+    return liaisonEccentricityMin +
+        ((h >> 11) % 100) / 100 * (liaisonEccentricityMax -
+            liaisonEccentricityMin);
   }
 
   // ── Comets (momentum > 0) ─────────────────────────────────────────────

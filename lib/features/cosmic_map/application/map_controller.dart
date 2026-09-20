@@ -189,14 +189,14 @@ class MapController extends AsyncNotifier<List<Echo>> {
   /// Slack around the visible rect sent to the ether AND used to
   /// decide which old stars the fresh answer may replace. One single
   /// constant: a star "in rect" is exactly a star the fetch could see.
-  /// V3.66 — the fetch must believe the RENDER, not the launch: an
-  /// echo's live position orbits its intent planet (lane 0.40 + shell
-  /// rim 0.23 = up to 0.63 from its stored launch coordinates). The
-  /// old 0.05 slack culled exactly the motes that had drifted INTO
-  /// view — the visible swarm was an accident of launch coordinates.
-  /// The rect still clamps to the server's [0,1]², and the
-  /// containment check keeps travel refetches rare.
-  static const _travelSlack = 0.68;
+  /// V3.66 — the fetch must believe the RENDER, not the launch: a
+  /// bound echo lives up to 0.73 from its stored launch coordinates
+  /// (V3.67: lane 0.44 + eccentric aphelion 0.29; errant thoughts
+  /// stay near their birth ring by construction). The old 0.05 slack
+  /// culled exactly the motes that had drifted INTO view. The rect
+  /// still clamps to the server's [0,1]², and the containment check
+  /// keeps travel refetches rare.
+  static const _travelSlack = 0.78;
 
   /// Last rect already synced — a stationary release or a jitter does
   /// not re-ask the ether.

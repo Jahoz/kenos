@@ -2275,6 +2275,39 @@ réécrite sur la sémantique TTL (containment skip tient, le battement
 fusionne et purge), +horloge injectable. Gates : analyze 0, 466
 tests Dart.
 
+**V3.67 — la foule remplace le diagramme (livrée 2026-09-20,
+arbitrage Hugo sur captures Mac : « répartition moins linéaire et
+synchronisée des échos, la Lune encore trop près du trou noir, on
+n'exploite pas l'espace »).** Trois couches de vérité tombaient
+ensemble : les échos liés orbitaient en **trois anneaux parfaits
+tournant à l'unisson** (la loi V3.28 elle-même), **toute la matière
+vivant à moins de 0,73 du centre** (l'espace profond n'était que
+décor), et La Lune à 0,26 de l'abîme. La loi nouvelle a trois
+mouvements : **les lanes s'ouvrent encore** (0,26/0,40 → 0,30/0,44 —
+La Lune et Vénus détachées ; Polaris garde le ciel clair à 0,08 de
+la voie de Vénus), **la pensée errante naît** (~42 % des lancements,
+verdict déterministe sur `created_at` — connu du lancement AU rendu,
+aucune loi serveur ne bouge : semées sur l'anneau 0,20–0,62 du ciel,
+elles dérivent en anneaux lents de 3–10 h autour du VIDE — l'espace
+entre les mondes porte enfin sa propre matière), **et les liées
+quittent le compas** (chaque écho porte SON ellipse : aphélie
+coque + jitter 0–0,06, excentricité 0,08–0,31, orientation et tempo
+0,82–1,18× hachés de l'identité — le halo lit comme une foule
+d'arcs croisés, jamais comme un anneau tiré au compas ; la chute
+des jours décline désormais l'APHÉLIE, la forme garde son sens).
+Le fetch suit (slack 0,78 : lane 0,44 + aphélie 0,29 ; les errantes
+restent près de leur anneau de naissance par construction). Leçon
+de conique : l'aphélie de `a(1−e²)/(1+e·cosθ)` est `a(1+e)`, pas
+`a` — l'axe est dérivé de l'aphélie visée. Tests : bande elliptique
+balayée (±0,01 pour la marche de la planète pendant le balayage),
+dé-synchronisation (deux nés au même instant ne tournent pas du
+même pas), errance (grange exclue, anneau constant), grâce/chute/
+pleine lune réécrites sur l'enveloppe de l'ellipse, orbites dans
+l'éther traversable ±0,25 (le rim est réel, V3.40). Vérifié par
+l'image 1680×1000 : « foule organique sur toute la largeur, pas
+d'arcs géométriques, centre équilibré ». Gates : analyze 0, 467
+tests Dart.
+
 ## 4. Règles inchangées (rappel)
 
 
