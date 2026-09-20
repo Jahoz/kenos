@@ -25,19 +25,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// never spend a frame on a pan.
 class TravelCamera extends ChangeNotifier {
   TravelCamera({
-    double zoom = 2.4,
+    double zoom = 1.7,
     this.margin = 0.5,
     Offset center = const Offset(0.5, 0.5),
   })  : _zoom = zoom.clamp(minZoom, maxZoom),
         _center = center;
 
-  /// How much of the world fills the screen at once (2.4 → ~42%).
+  /// How much of the world fills the screen at once (1.7 → ~59%).
   double _zoom;
   double get zoom => _zoom;
 
   /// Pinch bounds: deep enough to split the tightest clusters (8×
   /// separates stars born a few pixels apart), never a map of pixels.
-  static const double minZoom = 1.2;
+  /// V3.64 — the survey floor opens (1.2 → 1.0): the whole known
+  /// ether in one gaze, a majestic map — far lights, nothing at hand.
+  static const double minZoom = 1.0;
   static const double maxZoom = 8.0;
 
   /// How far past the known ether the void still carries the eye —

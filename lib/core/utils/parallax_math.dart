@@ -45,15 +45,17 @@ class ParallaxMath {
 
   /// The eye's resting zoom — the anchor of [zoomScale]. The launched
   /// look (TravelCamera's default) must stay scale 1.0: the tuned sky
-  /// and its tests are calibrated to it (V3.61: the anchor moved with
-  /// the default, 1.75 → 2.4 — the resting eye owns less sky).
-  static const double eyeBaseZoom = 2.4;
+  /// and its tests are calibrated to it (V3.61 moved it 1.75 → 2.4 to
+  /// de-clutter; V3.64 walks it back to 1.7 — the WIDER gaze is safe
+  /// now that the reading bubble shrank: most lights on screen are
+  /// glimmers to approach, not things at hand).
+  static const double eyeBaseZoom = 1.7;
 
   /// How much celestial BODIES grow as the eye zooms. Zoom moves the
   /// window (viewExtent) — but a zoom nothing grows through is a zoom
   /// the eye cannot see: the wheel fired for days before anyone
   /// believed it (V3.17). Subtle on purpose, stars stay stars, never
-  /// balloons: 1.0 at the resting eye, ≈0.66 zoomed out, ≈2.0 deep.
+  /// balloons: 1.0 at the resting eye, ≈0.73 zoomed out, ≈2.5 deep.
   static double zoomScale(double zoom) =>
       math.pow(zoom / eyeBaseZoom, 0.6).toDouble();
 
@@ -71,8 +73,14 @@ class ParallaxMath {
   /// that must be approached. Distance is the price of the bottle in
   /// the sea. Zooming in deep shrinks viewExtent and brings the whole
   /// screen inside the field: approaching IS zooming, too.
-  static const double receptionRadius = 0.16;
-  static const double receptionFade = 0.18;
+  ///
+  /// V3.64 — the bubble shrank (0.16 → 0.085): the field once covered
+  /// nearly the whole resting view — everything visible was readable,
+  /// no distance was real, the ether read as a room ("tout est trop
+  /// proche", the live report). Reading is now a PLACE one travels
+  /// to; the sky between lights is crossed, not surveyed.
+  static const double receptionRadius = 0.085;
+  static const double receptionFade = 0.12;
 
   /// 1 inside the field, 0 beyond it, a linear breath between.
   static double receptionIntensity({

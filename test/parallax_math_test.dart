@@ -130,11 +130,11 @@ void main() {
     });
 
     test('subtil par construction : jamais des ballons', () {
-      // Au zoom maximal (8), un corps ne grossit que ~2,1×.
-      expect(ParallaxMath.zoomScale(8.0), closeTo(2.06, 0.05));
-      // Au zoom minimal (1,2), il rétrécit franchement (~0,66×) —
-      // V3.61 : l'ancre a suivi le regard, 1,75 → 2,4.
-      expect(ParallaxMath.zoomScale(1.2), closeTo(0.66, 0.02));
+      // Au zoom maximal (8), un corps ne grossit que ~2,5×.
+      expect(ParallaxMath.zoomScale(8.0), closeTo(2.53, 0.05));
+      // Au zoom minimal (1,0), il rétrécit à peine (~0,73×) —
+      // V3.64 : l'ancre a suivi le regard, 2,4 → 1,7.
+      expect(ParallaxMath.zoomScale(1.0), closeTo(0.73, 0.02));
     });
   });
 

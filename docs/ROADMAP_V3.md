@@ -2192,6 +2192,25 @@ foyer lisible — « l'isolement avec une lueur au dos ». +7 tests
 (présence pleine/fondante/monotone/nulle, répignage des couches).
 Gates : analyze 0, 461 tests Dart.
 
+**V3.64 — la distance réelle (livrée 2026-09-20, arbitrage Hugo :
+« toujours pas la sensation d'immensité, tout est encore trop
+proche »).** Le diagnostic était structurel : le champ de réception
+(rayon 0,16) couvrait presque toute la demi-vue (0,21) — **tout ce
+que l'œil voyait, il pouvait le lire** ; aucune distance n'était
+réelle, l'éther était une pièce. Deux mouvements inverses :
+**la bulle de lecture rétrécit** (0,16 → 0,085, fondu 0,18 → 0,12 —
+lire devient un lieu où l'on SE REND ; le reste du visible est
+scintillement d'approche, la bouteille redevient cherchée) ; **le
+regard s'élargit** (zoom par défaut 2,4 → 1,7, ancre suivie ; le
+plancher de survey s'ouvre à 1,0 — l'éther entier d'un regard, une
+carte majestueuse où rien n'est à portée). Le paradoxe V3.61 se
+dénoue : resserrer le regard avait désencombré l'écran mais rendu
+tout l'écran atteignable ; la vraie immensité est moins d'objets à
+l'écran que de distance entre eux et soi. Vérifié par l'image :
+« ciel vaste et presque vide, petite zone atteignable — pas une
+salle », 1 lueur lisible pour 8 lointaines. Calibrations suivies
+(3 tests). Gates : analyze 0, 461 tests Dart.
+
 ## 4. Règles inchangées (rappel)
 
 
