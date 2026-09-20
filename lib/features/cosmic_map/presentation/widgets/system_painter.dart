@@ -52,6 +52,15 @@ class SystemPainter extends CustomPainter {
     // bodies did not, and the wheel felt dead.
     final bodyScale = ParallaxMath.zoomScale(_zoom);
 
+    // V3.63 — bodies RECEDE with distance (a screen-proportional heart
+    // once stayed flagship-huge seen from the far country, floating in
+    // the very void it was supposed to make feel vast). Each body
+    // keeps its full presence only near the eye; leaving the system,
+    // it all dwindles in the traveller's wake — the strongest cue
+    // that a distance was CROSSED.
+    double far(Offset worldAt) =>
+        (1.0 - (worldAt - _center).distance * 0.5).clamp(0.3, 1.0);
+
     // Small screens pay blur in PHYSICAL pixels (a phone at DPR 3
     // rasterizes nine times the area): the halos soften by half
     // there — the mobile breath (V3.25).
@@ -75,7 +84,7 @@ class SystemPainter extends CustomPainter {
     // short side (it was ~17% and read as a pebble among shards).
     // The hierarchy is now loud: hole > worlds > moons > shards.
     final bh = world(KenosSystem.blackHole);
-    final bhRadius = viewport.shortestSide / 5.5 * bodyScale;
+    final bhRadius = viewport.shortestSide / 5.5 * bodyScale * far(KenosSystem.blackHole);
     final bhVisible = onScreen(bh, bhRadius * 1.6);
     if (bhVisible) {
 
@@ -136,7 +145,7 @@ class SystemPainter extends CustomPainter {
       // Clearly beneath the heart, clearly above the moons and shards.
       final variant = switch (i) { 0 => 1.0, 1 => 1.12, _ => 0.8 };
       final bodyR =
-          viewport.shortestSide / 26 * bodyScale * variant;
+          viewport.shortestSide / 26 * bodyScale * variant * far(KenosSystem.planetPosition(i, epoch));
       final ringR = bodyR * 1.75;
       final bodyVisible = onScreen(p, bodyR * 2.5);
       if (!bodyVisible) continue;
@@ -306,9 +315,10 @@ class SystemPainter extends CustomPainter {
     // ── The wanderers (V3.12): named far bodies, each its silhouette ──
     // V3.62 — the moons rise a step (their silhouettes must read),
     // still a clear rank below the worlds.
-    final wandererR = viewport.shortestSide / 56 * bodyScale;
     for (var i = 0; i < celestialWanderers.length; i++) {
       final w = world(CelestialMath.wandererPosition(i, now));
+      final wandererR =
+          viewport.shortestSide / 56 * bodyScale * far(CelestialMath.wandererPosition(i, now));
       if (!onScreen(w, wandererR * 2.5)) continue;
       final body = Paint()..color = AppColors.fade(AppColors.pureLight, 0.4);
       final limb = Paint()

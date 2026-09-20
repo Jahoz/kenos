@@ -1088,8 +1088,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Spatial void + diffuse nebulae + dead star field (scenery).
-            const _AmbientBackground(),
+            // V3.63 — the void is a place: presence fades the ambient
+            // sky as the eye leaves the known ether, and the ether's
+            // heart is projected for the hearth glow (home, seen from
+            // the far country).
+            _AmbientBackground(
+              presence:
+                  ParallaxMath.etherPresence(_camera.center).clamp(0.0, 1.0),
+              hearthAt: Offset(
+                (0.5 - _camera.center.dx) / _camera.viewExtent + 0.5,
+                (0.5 - _camera.center.dy) / _camera.viewExtent + 0.5,
+              ),
+            ),
             // The matter: the echoes — and the travelling eye.
             LayoutBuilder(
               builder: (context, constraints) {
@@ -1158,7 +1168,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
                             RepaintBoundary(
                               child: IgnorePointer(
                                 child: CustomPaint(
-                                  painter: DeepFieldPainter(camera: _camera),
+                                  painter: DeepFieldPainter(
+                                    camera: _camera,
+                                    presence: ParallaxMath.etherPresence(
+                                      _camera.center,
+                                    ).clamp(0.0, 1.0),
+                                  ),
                                 ),
                               ),
                             ),
@@ -1852,8 +1867,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
 /// The twinkle ticks at ~8 fps through a plain timer — scenery must
 /// breathe without repainting at display rate (a sanctuary app owes
 /// the battery some silence). Frozen entirely under reduce-motion.
+///
+/// V3.63 — the scenery rides the ether's PRESENCE: leaving the known
+/// ether, the veils die and the dead sky thins — and home glows at
+/// the traveller's back. Emptiness is geography, not decoration.
 class _AmbientBackground extends ConsumerStatefulWidget {
-  const _AmbientBackground();
+  const _AmbientBackground({required this.presence, required this.hearthAt});
+
+  /// 1.0 inside the known ether, 0.0 in the far country.
+  final double presence;
+
+  /// The ether's heart as screen fractions (where the hearth glows
+  /// from, when the traveller is far).
+  final Offset hearthAt;
 
   @override
   ConsumerState<_AmbientBackground> createState() => _AmbientBackgroundState();
@@ -1907,6 +1933,9 @@ class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
               tiltX: tilt.x * 0.5 * motionScale,
               tiltY: tilt.y * 0.5 * motionScale,
               time: _time,
+              presence: widget.presence,
+              hearthAt: widget.hearthAt,
+              hearthGlow: (1.0 - widget.presence).clamp(0.0, 1.0),
             ),
           ),
           CustomPaint(
@@ -1914,6 +1943,7 @@ class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
               time: _time,
               tiltX: tilt.x * motionScale,
               tiltY: tilt.y * motionScale,
+              presence: widget.presence,
             ),
           ),
           // Shooting stars: rare streaks crossing the dead field. A

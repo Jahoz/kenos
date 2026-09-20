@@ -13,18 +13,28 @@ import '../../../../core/constants/app_colors.dart';
 /// so the black breathes between stars. A uniform speckle reads as
 /// fabric; depth variance reads as distance (V3.60e — the sky was a
 /// texture, it becomes a space).
+///
+/// V3.63 — the field rides the ether's PRESENCE: leaving the known
+/// ether thins the dead sky itself (the kept stars are a random
+/// subset — sparser, then none), and the survivors dim. The far
+/// country is EMPTY, not decorated.
 class BackgroundStarFieldPainter extends CustomPainter {
   BackgroundStarFieldPainter({
     required this.time,
     required this.tiltX,
     required this.tiltY,
     this.starCount = 96,
+    this.presence = 1.0,
   });
 
   final double time;
   final double tiltX;
   final double tiltY;
   final int starCount;
+
+  /// V3.63 — 1.0 inside the known ether, 0.0 in the far country
+  /// (see [ParallaxMath.etherPresence]).
+  final double presence;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -72,6 +82,11 @@ class BackgroundStarFieldPainter extends CustomPainter {
         // Power-law magnitude: most stars barely are, a few shine —
         // the sky's own distribution, and the surest cure for clutter.
         final magnitude = math.pow(layerRandom.nextDouble(), 2.6).toDouble();
+        // V3.63 — presence is density: each star carries its own
+        // leave-ticket, drawn once per paint from the same sequence —
+        // deterministic subset, thinner as the eye leaves the ether.
+        final stays = layerRandom.nextDouble() <= presence;
+        if (!stays) continue;
 
         final x = baseX * size.width + tiltX * l.parallax * depth;
         final y = baseY * size.height + tiltY * l.parallax * depth;
@@ -79,7 +94,7 @@ class BackgroundStarFieldPainter extends CustomPainter {
         final baseAlpha = l.aMin + (l.aMax - l.aMin) * magnitude;
         final twinkle =
             (1.0 - l.twinkle) + l.twinkle * math.sin(time * twinkleSpeed + twinklePhase);
-        final alpha = baseAlpha * twinkle;
+        final alpha = baseAlpha * twinkle * (0.35 + 0.65 * presence);
 
         paint.color = AppColors.fade(Colors.white, alpha.clamp(0.0, 1.0));
         canvas.drawCircle(Offset(x, y), radius, paint);
@@ -93,15 +108,69 @@ class BackgroundStarFieldPainter extends CustomPainter {
 
 /// Diffuse nebulae: multiple color halos with layered effects,
 /// subtly swaying with the tilt and pulsing over time.
+///
+/// V3.63 — the veils die with distance: leaving the known ether, the
+/// presence fades them to near-nothing (the far country is not
+/// decorated). And the traveller gone far sees the HEARTH — the
+/// ether's own glow at their back, teal and indigo, the light of
+/// the populated world as one soft distant stain. Distance made
+/// visible: you know how far you are by how small home glows.
 class NebulaPainter extends CustomPainter {
-  NebulaPainter({required this.tiltX, required this.tiltY, this.time = 0.0});
+  NebulaPainter({
+    required this.tiltX,
+    required this.tiltY,
+    this.time = 0.0,
+    this.presence = 1.0,
+    this.hearthAt,
+    this.hearthGlow = 0.0,
+  });
 
   final double tiltX;
   final double tiltY;
   final double time;
 
+  /// V3.63 — 1.0 inside the known ether, 0.0 in the far country.
+  final double presence;
+
+  /// The hearth's screen position as fractions of the sky (the
+  /// ether's heart projected); null = never far enough to see it.
+  final Offset? hearthAt;
+
+  /// 0..1 — how far the traveller is (1 - presence, shaped).
+  final double hearthGlow;
+
   @override
   void paint(Canvas canvas, Size size) {
+    // The hearth first — behind every veil: home seen from the far
+    // country, one soft warm-cold stain on the black. The eye's
+    // window is narrow (viewExtent ~0.42): positionally, home leaves
+    // the frame almost immediately — so the stain is COMPASS-shaped:
+    // clamped to the rim, in home's true direction, fading with
+    // presence. However far, the traveller can feel where it burns.
+    final hearth = hearthAt;
+    if (hearth != null && hearthGlow > 0.02) {
+      const rim = 0.14;
+      final c = Offset(
+        (hearth.dx.clamp(rim, 1 - rim)) * size.width,
+        (hearth.dy.clamp(rim, 1 - rim)) * size.height,
+      );
+      final radius = size.longestSide * 0.55;
+      final rect = Rect.fromCircle(center: c, radius: radius);
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.width, size.height).inflate(radius),
+        Paint()
+          ..blendMode = BlendMode.plus
+          ..shader = RadialGradient(
+            colors: [
+              AppColors.fade(AppColors.teal, 0.16 * hearthGlow),
+              AppColors.fade(AppColors.indigo, 0.09 * hearthGlow),
+              AppColors.fade(AppColors.indigo, 0),
+            ],
+          ).createShader(rect),
+      );
+    }
+
+    final veil = 0.2 + 0.8 * presence;
     void nebula(
       Offset relativeCenter,
       double relativeRadius,
@@ -112,7 +181,7 @@ class NebulaPainter extends CustomPainter {
     ) {
       // Add subtle pulsing to nebulae
       final pulse = 1.0 + pulseAmount * math.sin(time * pulseSpeed);
-      final alpha = baseAlpha * pulse.clamp(0.7, 1.3);
+      final alpha = baseAlpha * pulse.clamp(0.7, 1.3) * veil;
       
       final center = Offset(
         relativeCenter.dx * size.width + tiltX * 12,
@@ -143,7 +212,12 @@ class NebulaPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(NebulaPainter old) =>
-      old.tiltX != tiltX || old.tiltY != tiltY || (old.time - time).abs() > 0.1;
+      old.tiltX != tiltX ||
+      old.tiltY != tiltY ||
+      (old.time - time).abs() > 0.1 ||
+      old.presence != presence ||
+      old.hearthAt != hearthAt ||
+      (old.hearthGlow - hearthGlow).abs() > 0.01;
 }
 
 /// One passing wish: the pure geometry of a shooting star.

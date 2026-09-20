@@ -8,12 +8,20 @@ import '../../application/travel_camera.dart';
 /// riding slower layers than the world as the eye travels. Culled per
 /// mote (an off-screen mote costs a comparison), static by design — no
 /// ticker, no twinkle: the far field does not breathe, it only recedes.
+///
+/// V3.63 — the dust rides the ether's presence but never dies past a
+/// floor: the far country is EMPTY of decoration, yet the last dust
+/// keeps the void in depth — emptiness with relief, not a flat black.
 class DeepFieldPainter extends CustomPainter {
-  DeepFieldPainter({required this.camera})
+  DeepFieldPainter({required this.camera, this.presence = 1.0})
       : _center = camera.center,
         _zoom = camera.zoom;
 
   final TravelCamera camera;
+
+  /// V3.63 — 1.0 inside the known ether, 0.0 in the far country
+  /// (see [ParallaxMath.etherPresence]); the dust floors at 30%.
+  final double presence;
 
   /// Camera VALUES captured at construction (the camera is a single
   /// mutable instance — comparing it to itself never fires).
@@ -28,6 +36,7 @@ class DeepFieldPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
+    final dustVeil = 0.3 + 0.7 * presence;
     for (var li = 0; li < deepFieldLayers.length; li++) {
       final layer = deepFieldLayers[li];
       final scale = DeepFieldMath.sizeScale(_zoom, layer.factor);
@@ -46,7 +55,7 @@ class DeepFieldPainter extends CustomPainter {
             sp.dy > size.height + r + 1) {
           continue;
         }
-        paint.color = AppColors.fade(AppColors.pureLight, mote.alpha);
+        paint.color = AppColors.fade(AppColors.pureLight, mote.alpha * dustVeil);
         canvas.drawCircle(sp, r, paint);
       }
     }
@@ -54,5 +63,7 @@ class DeepFieldPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(DeepFieldPainter oldDelegate) =>
-      oldDelegate._center != _center || oldDelegate._zoom != _zoom;
+      oldDelegate._center != _center ||
+      oldDelegate._zoom != _zoom ||
+      (oldDelegate.presence - presence).abs() > 0.01;
 }

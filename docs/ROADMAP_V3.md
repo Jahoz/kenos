@@ -2169,6 +2169,29 @@ champ, et plus rien ne se tenait). Un test honnête au passage : le
 il testait le couloir déguisé ; il pose désormais sur le phare.
 Gates : analyze 0, 454 tests Dart.
 
+**V3.63 — le vide est un lieu (livrée 2026-09-20, arbitrage Hugo :
+« penser à l'immensité, accentuer la sensation de voyage — on doit
+créer du vide »).** Le vide traversable existait depuis V3.40, mais
+il portait les mêmes voiles et la même poussière que le cœur :
+voyager lisait comme une texture qui glisse, pas une distance qui
+se franchit. La présence de l'éther connu devient géographie
+(`etherPresence` : pleine jusqu'à 0,35 du cœur, smoothstep vers rien
+à 1,1 — le bord de la marge) : **le ciel ambiant se vide en
+s'éloignant** (chaque étoile morte porte son billet de départ —
+sous-ensemble déterministe, puis rien ; les voiles meurent à 20 % ;
+la poussière profonde garde un plancher de 30 % — un vide avec du
+relief, pas un noir plat), **les corps reculent dans le sillage**
+(un cœur proportionnel à l'écran restait amiral vu du grand large,
+flottant dans le vide qu'il devait rendre immense — chaque corps
+porte désormais son facteur de distance), **et le foyer brûle dans
+le dos** (la lueur teal/indigo de l'éther habité, boussole
+raccrochée au cadre dans la vraie direction du cœur — si loin qu'on
+soit, le voyageur sait où ça brûle). Vérifié par l'image : milieu de
+cadre en noir quasi pur, système vu au loin compact et soumis,
+foyer lisible — « l'isolement avec une lueur au dos ». +7 tests
+(présence pleine/fondante/monotone/nulle, répignage des couches).
+Gates : analyze 0, 461 tests Dart.
+
 ## 4. Règles inchangées (rappel)
 
 

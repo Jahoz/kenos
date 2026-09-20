@@ -85,6 +85,23 @@ class ParallaxMath {
     return 1 - (d - receptionRadius) / receptionFade;
   }
 
+  /// V3.63 — the known ether's PRESENCE at the traveller's eye. The
+  /// traversable void extends far past the last light (V3.40), but it
+  /// wore the same dust and veils as the heart: travel read as a
+  /// texture sliding, not a distance crossed. Presence is geography
+  /// now — full within the lit ether, dying to nothing in the far
+  /// country. Leaving IS watching the sky empty itself; and the
+  /// traveller gone far sees the ether glow at their back (the
+  /// hearth). Full to 0.35 from the heart, smoothstepped to nothing
+  /// at 1.1 (the rim of the traversable margin).
+  static double etherPresence(Offset eye) {
+    final d = (eye - const Offset(0.5, 0.5)).distance;
+    if (d <= 0.35) return 1.0;
+    if (d >= 1.1) return 0.0;
+    final t = (d - 0.35) / (1.1 - 0.35);
+    return 1.0 - t * t * (3 - 2 * t);
+  }
+
   /// V3.37 — the zoom where far lights move fast enough that a 30 fps
   /// glimmer canvas reads as judder (motion magnified by the eye): at
   /// and beyond it the glimmer field rides every tick. Below it the
