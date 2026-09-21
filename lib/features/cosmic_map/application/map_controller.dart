@@ -267,10 +267,22 @@ class MapController extends AsyncNotifier<List<Echo>> {
         e.coordY >= loY &&
         e.coordY <= hiY;
 
-    // Drop foreign stars the rect no longer returns (gone from the
-    // ether); keep sealed ones whatever happens.
+    // Drop stars the rect no longer returns (gone from the ether —
+    // consumed elsewhere or purged). V3.58k — the old blanket
+    // `e.isMine` exemption let sealed ghosts ACCUMULATE forever: each
+    // rebounce added a phoenix, the consumed parent stayed on the map
+    // as an untouchable ghost ("le volume d'écho s'est bizarrement
+    // augmenté", the live report). Sealed hearts get a 2-minute grace
+    // (the just-launched race: the server might not return it on the
+    // very next sync); past the grace, the ether's truth is the truth.
+    final now = _clock();
     final kept = current
-        .where((e) => e.isMine || !inRect(e) || freshIds.contains(e.id))
+        .where((e) =>
+            !inRect(e) ||
+            freshIds.contains(e.id) ||
+            (e.isMine &&
+                now.difference(e.createdAt) <
+                    const Duration(minutes: 2)))
         .toList();
 
     // Upsert fresh rows.
