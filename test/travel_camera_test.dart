@@ -50,7 +50,7 @@ void main() {
 
       camera.zoomBy(1.8, focalWorld);
 
-      expect(camera.zoom, closeTo(1.7 * 1.8, 1e-6));
+      expect(camera.zoom, closeTo(1.25 * 1.8, 1e-6));
       final after = camera.worldToScreen(focalWorld, viewport);
       // The anchored point barely moved on screen (clamping may shift
       // it a little — it must NOT fly away).
@@ -128,11 +128,11 @@ void main() {
         () {
       final camera = TravelCamera();
       camera.panByWorld(const Offset(100, 100));
-      expect(camera.center.dx, lessThanOrEqualTo(1.5));
-      expect(camera.center.dy, lessThanOrEqualTo(1.5));
+      expect(camera.center.dx, lessThanOrEqualTo(1.65));
+      expect(camera.center.dy, lessThanOrEqualTo(1.65));
       camera.panByWorld(const Offset(-200, -200));
-      expect(camera.center.dx, greaterThanOrEqualTo(-0.5));
-      expect(camera.center.dy, greaterThanOrEqualTo(-0.5));
+      expect(camera.center.dx, greaterThanOrEqualTo(-0.65));
+      expect(camera.center.dy, greaterThanOrEqualTo(-0.65));
     });
   });
 
@@ -147,8 +147,8 @@ void main() {
       expect((dx - a).distance, closeTo((dy - a).distance, 1e-6),
           reason: 'avant V3.65 le même Δ valait 1,6× plus en largeur');
       // The short side carries viewExtent: 0.1 world = 0.1 × zoom ×
-      // shortestSide px at zoom 1.7.
-      expect((dx - a).distance, closeTo(0.1 * 1.7 * 1000, 1e-6));
+      // shortestSide px at zoom 1.25.
+      expect((dx - a).distance, closeTo(0.1 * 1.25 * 1000, 1e-6));
     });
 
     test('le rect visible est un rectangle honnête : 1,6× plus large que haut', () {
@@ -157,9 +157,9 @@ void main() {
       final w = r.maxX - r.minX;
       final h = r.maxY - r.minY;
       // The SHORT side (height, 1000px) carries viewExtent exactly.
-      expect(h, closeTo(1 / 1.7, 1e-9),
+      expect(h, closeTo(1 / 1.25, 1e-9),
           reason: 'le petit côté porte viewExtent');
-      expect(w, closeTo(1 / 1.7 * 1.6, 1e-9),
+      expect(w, closeTo(1 / 1.25 * 1.6, 1e-9),
           reason: 'le grand côté montre PLUS de monde, pas un étirement');
     });
 
@@ -177,10 +177,10 @@ void main() {
       final camera = TravelCamera(zoom: 1.0)..attach(wide);
       camera.panByWorld(const Offset(50, 50));
       final c = camera.center;
-      // halfW = 0.8 → the wall sits at 1.5 - 0.8 = 0.7.
-      expect(c.dx, lessThanOrEqualTo(0.7 + 1e-9));
-      // halfH = 0.5 → the vertical wall stays at 1.0.
-      expect(c.dy, lessThanOrEqualTo(1.0 + 1e-9));
+      // halfW = 0.8 → the wall sits at 1.65 - 0.8 = 0.85.
+      expect(c.dx, lessThanOrEqualTo(0.85 + 1e-9));
+      // halfH = 0.5 → the vertical wall sits at 1.65 - 0.5 = 1.15.
+      expect(c.dy, lessThanOrEqualTo(1.15 + 1e-9));
     });
 
     test('sans attach (téléphone, premiers tests) : le regard carré d\'avant', () {

@@ -124,8 +124,8 @@ void main() {
       expect(KenosSystem.isErrantThought(errantAt), isTrue);
       expect(KenosSystem.isErrantThought(boundAt), isFalse);
 
-      // An errant launch lands on its wide ring (0.20–0.62 of the
-      // sky, clear of the system's throat), never in a gravity band
+      // An errant launch lands on its wide ring (0.28–0.92 of the
+      // sky, clear of the system's retinue), never in a gravity band
       // by design.
       final rng = Random(11);
       for (var i = 0; i < 30; i++) {
@@ -135,9 +135,9 @@ void main() {
           rng,
         );
         final fromCenter = (p - KenosSystem.blackHole).distance;
-        expect(fromCenter, greaterThanOrEqualTo(0.18),
-            reason: 'jamais dans la gorge du système');
-        expect(fromCenter, lessThanOrEqualTo(0.63));
+        expect(fromCenter, greaterThanOrEqualTo(0.27),
+            reason: 'jamais dans l\'escorte du système');
+        expect(fromCenter, lessThanOrEqualTo(0.93));
       }
 
       // A bound launch still falls inside its planet's gravity band.
@@ -195,10 +195,10 @@ void main() {
               reason: 'née dans la bande de gravité de sa planète',
             );
           } else {
-            // ...or on its wide ring around the void (V3.67).
+            // ...or on its wide ring around the void (V3.67/68).
             final fromCenter = (p - KenosSystem.blackHole).distance;
-            expect(fromCenter, greaterThanOrEqualTo(0.18));
-            expect(fromCenter, lessThanOrEqualTo(0.63));
+            expect(fromCenter, greaterThanOrEqualTo(0.27));
+            expect(fromCenter, lessThanOrEqualTo(0.93));
           }
         }
       }
@@ -297,17 +297,17 @@ void main() {
     test('les orbites restent dans l\'éther traversable', () {
       final echo =
           _echo('bounds-check', EchoColorTheme.teal, createdAt: boundAt);
-      // V3.67: widened lanes, eccentric aphelia and errant rings let
-      // a mote GRAZE past the known rim [0,1] — the traversable void
-      // is real (V3.40) — but never fly off it.
+      // V3.67/68: eccentric aphelia and errant rings (to 0.95 of the
+      // sky) let a mote drift past the known rim [0,1] — within the
+      // traversable margin (V3.40) — but never fly off it.
       for (final delta in [
         Duration.zero,
         const Duration(hours: 3),
         const Duration(days: 2),
       ]) {
         final p = KenosSystem.echoPosition(echo, t0.add(delta));
-        expect(p.dx, inInclusiveRange(-0.25, 1.25));
-        expect(p.dy, inInclusiveRange(-0.25, 1.25));
+        expect(p.dx, inInclusiveRange(-0.5, 1.5));
+        expect(p.dy, inInclusiveRange(-0.5, 1.5));
       }
     });
   });

@@ -25,13 +25,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// never spend a frame on a pan.
 class TravelCamera extends ChangeNotifier {
   TravelCamera({
-    double zoom = 1.7,
-    this.margin = 0.5,
+    double zoom = 1.25,
+    this.margin = 0.65,
     Offset center = const Offset(0.5, 0.5),
   })  : _zoom = zoom.clamp(minZoom, maxZoom),
         _center = center;
 
-  /// How much of the world fills the screen at once (1.7 → ~59%).
+  /// How much of the world fills the screen at once (1.25 → ~80% of
+  /// the short side). V3.68 — the gaze pulls back: the system (V3.67's
+  /// lanes and halos) was WIDER than the old 1.7 window — the eye
+  /// lived INSIDE the retinue, and no rearrangement of matter could
+  /// read as immensity from within. At 1.25 the system is a JEWEL in
+  /// the middle distance and the sky carries it.
   double _zoom;
   double get zoom => _zoom;
 
@@ -42,8 +47,17 @@ class TravelCamera extends ChangeNotifier {
   static const double minZoom = 1.0;
   static const double maxZoom = 8.0;
 
-  /// How far past the known ether the void still carries the eye —
-  /// emptiness is the point (see the class doc: V3.40).
+  /// V3.40 — the traversable void extends WELL past the known ether
+  /// (the eye rides [-0.65, 1.65]): the worlds and their rings are
+  /// CIRCLES in a SQUARE ether — the wanderers (r up to 0.65) step
+  /// past the square's rim along the axes, and Venus at her aphelion
+  /// hugged the old +0.1 wall, hard to reach and reading like the
+  /// edge of a box. Beyond the last light there is now REAL reachable
+  /// emptiness — the far country is genuinely vast, every named body
+  /// is centerable, and "the void is more vast" is a traversable
+  /// truth. V3.68 — the margin widens with the pulled-back gaze
+  /// (0.5 → 0.65): at the 1.25 window the old walls would have
+  /// caged the named heavens again — immensity must be REACHABLE.
   final double margin;
 
   Offset _center;

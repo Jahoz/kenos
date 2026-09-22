@@ -2308,6 +2308,35 @@ l'image 1680×1000 : « foule organique sur toute la largeur, pas
 d'arcs géométriques, centre équilibré ». Gates : analyze 0, 467
 tests Dart.
 
+**V3.68 — le joyau dans l'immensité (livrée 2026-09-22, arbitrage
+Hugo : « tout est encore trop condensé autour du trou noir, on doit
+sentir qu'on est dans un espace immense »).** Le diagnostic était
+cette fois GÉOMÉTRIQUE : le système (lanes 0,30/0,44 + halos
+jusqu'à 0,73 de rayon) était PLUS LARGE que la fenêtre visible au
+repos (0,59 au zoom 1,7) — l'œil vivait À L'INTÉRIEUR de
+l'escorte, et aucun réarrangement de matière ne peut lire comme
+immense depuis l'intérieur. Quatre mouvements conjoints :
+**le regard recule** (zoom par défaut 1,7 → 1,25 — la fenêtre
+passe à 0,80 : le système tient dans le cadre avec des marges de
+vide), **le système se compacte** (lanes 0,24/0,38, shells
+0,09/0,14/0,19, jitter 0,05 — l'enveloppe tombe à 0,62 ; les
+escadrons liés redeviennent l'escorte de leur monde, pas le
+locataire du ciel), **la foule part au large** (errantes 42 % →
+65 %, anneau de naissance 0,20–0,62 → 0,28–0,92 : la matière
+peuple le champ profond jusqu'aux coins du rim — l'immensité est
+une séparation d'échelles : un système joyau, des dériveuses entre
+les étoiles), **et la marge s'étend** (0,5 → 0,65 : au regard 1,25
+les vieux murs auraient recager les cieux nommés — Europe
+atteignait 1,118 ; l'immensité doit être TRAVERSABLE). La présence
+suit (fade 0,35–1,1 → 0,55–1,25 : la bande habitée couvre le regard
+reculé, seul le vrai rim se vide). Vérifié par l'image 1680×1000 :
+système à 20-25 % de la largeur, vide réel entre le joyau et les
+errantes, lumières jusqu'aux bords — verdict « immensité
+atteinte » ; portrait : composition tenue. Pins suivis (zoom
+défaut, zoomScale 8 ≈ 3,05 / 1,0 ≈ 0,875, présence, murs
+d'aspect, bornes traversables ±0,5/1,5, anneau errant 0,27–0,93).
+Gates : analyze 0, 467 tests Dart.
+
 ## 4. Règles inchangées (rappel)
 
 

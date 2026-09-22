@@ -112,10 +112,6 @@ class KenosSystem {
     return Offset(q.dx.clamp(0.02, 0.98), q.dy.clamp(0.02, 0.98));
   }
 
-  /// Each anchor rides its OWN lane (V3.12): the Moon closer and
-  /// livelier, Venus wider and slower — the tracks never smear into
-  /// one another, conjunctions stay rare. Polaris rides none.
-  ///
   /// V3.62 — the lanes tightened (0.26/0.37 → 0.19/0.28): at the
   /// resting eye (±0.21 of sky) the old tracks passed OUTSIDE the
   /// frame — the worlds existed, the traveller never saw them. The
@@ -127,13 +123,18 @@ class KenosSystem {
   ///
   /// V3.66 — they open again (0.19/0.28 → 0.26/0.40): the uniform
   /// projection made wide screens honest, and honesty showed the
-  /// whole retinue HIDDLING against the hole (a 0.19 lane under a
-  /// shortest-side-sized heart reads as beads on the rim). The gaze
-  /// has since widened (V3.64: 1.7, reception 0.085) — the worlds
-  /// can breathe at arm's length of the abyss and still frame the
-  /// holdable field. The swarms follow (see [echoShells]).
+  /// whole retinue HIDDLING against the hole.
+  ///
+  /// V3.68 — the system becomes a JEWEL (0.30/0.44 → 0.24/0.38,
+  /// halos tightened with it): spreading the lanes ever wider made
+  /// the SYSTEM bigger than the sky it lives in — every frame was
+  /// retinue, the eye lived inside it. The gaze pulled back (V3.68's
+  /// 1.25) and the retinue compacted: the system sits in the middle
+  /// distance, clear of the exclusion, lanes 0.14 apart (the resting
+  /// dodge keeps its corridor), and the CROWD carries the sky
+  /// (see [isErrantThought] — most thoughts are free now).
   static double orbitRadiusOf(int index) =>
-      switch (index) { 0 => 0.30, _ => 0.44 };
+      switch (index) { 0 => 0.24, _ => 0.38 };
 
   /// Each lane has its own tempo.
   static Duration _periodOf(int index) => switch (index) {
@@ -176,23 +177,18 @@ class KenosSystem {
 
   // ── Echo orbits ────────────────────────────────────────────────────────
 
-  /// The gravity band's inner edge. V3.66 — the band lifts with the
-  /// lanes (0.075 → 0.11): the swarm spreads AROUND its world instead
-  /// of beading on its face — three tight beads read as a clump, the
-  /// wide sky needs wide gravity.
-  static const double echoBandMin = 0.11;
+  /// The gravity band's inner edge. V3.68 — the band tightens with
+  /// the system (0.11 → 0.08): the bound swarm is the world's own
+  /// retinue, a compact halo — the CROWD lives free (errant).
+  static const double echoBandMin = 0.08;
 
   /// The gravity band's width.
-  static const double echoBandSpan = 0.13;
+  static const double echoBandSpan = 0.16;
 
   /// V3.28 — the band is no longer a hash-continuous smear but THREE
   /// discrete shells: each ring turns as a ring, at its own fixed
-  /// tempo, and the swarm reads as structure — three lanes per
-  /// planet — instead of a churn. Still 100% deterministic from the
-  /// echo's identity.
-  ///
-  /// V3.66 — the shells ride wider orbits (rim 0.23): matter spans
-  /// from the abyss's neighbourhood to past the outer lane.
+  /// tempo, and the swarm reads as structure instead of a churn.
+  /// Still 100% deterministic from the echo's identity.
   ///
   /// V3.67 — the shells are only the BASE of each orbit now: every
   /// bound echo rides its OWN eccentric ellipse (aphelion jitter,
@@ -200,10 +196,14 @@ class KenosSystem {
   /// [launchCoordsFor] and [echoPosition]). Three perfect rings
   /// turning in unison read, on a wide screen, as geometry — Hugo's
   /// arbitrage: the sky must read as a CROWD, not a diagram.
-  static const List<double> echoShells = [0.13, 0.18, 0.23];
+  ///
+  /// V3.68 — compact (0.13/0.18/0.23 → 0.09/0.14/0.19, rim 0.24):
+  /// the system is a jewel, its swarms tight around their worlds;
+  /// most thoughts drift FREE across the whole ether.
+  static const List<double> echoShells = [0.09, 0.14, 0.19];
 
   /// Per-echo aphelion jitter on top of the shell (0 .. value).
-  static const double liaisonJitter = 0.06;
+  static const double liaisonJitter = 0.05;
 
   /// Per-echo orbital eccentricity range (bound thoughts). Aphelion
   /// is bounded (shell + jitter), so the radius always stays within
@@ -218,10 +218,16 @@ class KenosSystem {
   /// the map stops being a diagram with a crowded middle. The flag
   /// derives from `created_at` (known at launch AND at render: the
   /// same input, the same verdict, forever).
+  ///
+  /// V3.68 — the errant are the MAJORITY now (~65%) and their rings
+  /// span the whole sky (birth 0.28–0.92): the bound swarms are the
+  /// worlds' own retinues, compact; the CROWD is the sky. Immensity
+  /// is a scale separation — a jewel of a system, and drifters
+  /// between the stars.
   static bool isErrantThought(DateTime createdAt) {
     final h = (createdAt.millisecondsSinceEpoch * 2654435761) &
         0x7fffffff;
-    return h % 100 < 42;
+    return h % 100 < 65;
   }
 
   /// One full revolution per shell (V3.22's contemplative range kept:
@@ -294,8 +300,8 @@ class KenosSystem {
   ///
   /// V3.67 — a free thought ([isErrantThought]) is born anywhere in
   /// the ether, on its own wide ring around the void: birth radius
-  /// 0.20–0.62 of the sky (never inside the system's throat, at most
-  /// grazing the known rim), angle free. The client computes this
+  /// 0.28–0.92 of the sky (never inside the system's retinue, out to
+  /// the known rim's corners), angle free. The client computes this
   /// BEFORE the RPC — no server law moves — and the render derives
   /// the same verdict from the same `created_at`.
   static Offset launchCoordsFor(
@@ -305,9 +311,9 @@ class KenosSystem {
   ]) {
     final random = rng ?? math.Random();
     if (isErrantThought(at)) {
-      // Birth on the wide ring: 0.20–0.62 of the sky — the deep
-      // field between the worlds, grazing the known rim at most.
-      final r = 0.20 + random.nextDouble() * 0.42;
+      // Birth on the wide ring: 0.28–0.92 of the sky — the deep
+      // field between the worlds, out to the known rim's corners.
+      final r = 0.28 + random.nextDouble() * 0.64;
       final a = random.nextDouble() * 2 * math.pi;
       return Offset(
         (blackHole.dx + r * math.cos(a)).clamp(0.02, 0.98),
@@ -338,7 +344,7 @@ class KenosSystem {
     // a sky of drifting strangers, desynchronized by construction.
     if (isErrantThought(echo.createdAt)) {
       final birth = Offset(echo.coordX, echo.coordY);
-      final r = (birth - blackHole).distance.clamp(0.18, 0.62);
+      final r = (birth - blackHole).distance.clamp(0.25, 0.95);
       final h = echo.id.hashCode & 0x7fffffff;
       final period = Duration(
         hours: 3 + (h % 7),
