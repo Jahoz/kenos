@@ -6,7 +6,6 @@ import 'package:kenos/app/kenos_app.dart';
 import 'package:kenos/features/cosmic_map/application/kenos_system.dart';
 import 'package:kenos/features/cosmic_map/application/motion_service.dart';
 import 'package:kenos/features/cosmic_map/application/travel_camera.dart';
-import 'package:kenos/features/cosmic_map/presentation/map_screen.dart';
 import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/data/local_echo_repository.dart';
 import 'package:kenos/features/echo/data/local_echo_store.dart';
@@ -21,10 +20,6 @@ import 'package:kenos/features/echo/data/local_echo_store.dart';
 /// otherwise ride behind the bottom gates at the wrong hour, and a
 /// test must not depend on when it runs.
 void main() {
-  setUp(() {
-    MapScreen.territoriesAnnounced.clear();
-  });
-
   Future<void> boot(WidgetTester tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1.0;

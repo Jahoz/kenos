@@ -33,9 +33,11 @@ import '../application/motion_service.dart';
 import '../application/poem_breath.dart';
 import '../application/read_scar_controller.dart';
 import '../application/reception_controller.dart';
+import '../application/session_whispers.dart';
 import '../application/travel_camera.dart';
 import '../application/void_territories.dart';
 import '../data/artifact_memory.dart';
+import '../data/vestige_repository.dart';
 import 'widgets/accretion_painter.dart';
 import 'widgets/awakening_sas.dart';
 import 'widgets/background_painters.dart';
@@ -64,21 +66,12 @@ class MapScreen extends ConsumerStatefulWidget {
   /// it once. Null: the heart, as always.
   final Offset? eye;
 
-  /// V3.35 — the landscapes already whispered this session (silence
-  /// is the default state): resettable by tests, like the star's own
-  /// once-per-session whisper.
-  static final Set<VoidTerritory> territoriesAnnounced = {};
-
   @override
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
 class _MapScreenState extends ConsumerState<MapScreen>
     with WidgetsBindingObserver {
-  /// The Awakening sas speaks once per session, after the first
-  /// receptions sync — never again (silence is the default state).
-  static bool _aubeSpokenThisSession = false;
-
   /// The Vestiges: curated culture drifting in the void (V3.9).
   List<Vestige> _vestiges = const [];
 
@@ -239,18 +232,32 @@ class _MapScreenState extends ConsumerState<MapScreen>
   Timer? _closureTimer;
 
   /// The camera's own pulse (V3.35): territories crossed, drone depth.
+  /// A landscape speaks ONCE per session (session state — see
+  /// [territoriesAnnouncedProvider]); the born territory is ridden,
+  /// never announced — the sky does not greet itself.
   void _onEyeTravels() {
     final territory = VoidTerritories.territoryAt(_camera.center);
     if (territory != _territory) {
       final wasBorn = _territory == null;
       _territory = territory;
       if (wasBorn) return;
-      if (!MapScreen.territoriesAnnounced.contains(territory)) {
-        MapScreen.territoriesAnnounced.add(territory);
-        _territoryTimer?.cancel();
-        setState(() => _territoryWhispering = territory);
-        _territoryTimer = Timer(const Duration(seconds: 7), () {
-          if (mounted) setState(() => _territoryWhispering = null);
+      final announced = ref.read(territoriesAnnouncedProvider);
+      if (!announced.contains(territory)) {
+        // Provider writes are forbidden inside widget lifecycles, and
+        // the camera's notifications can arrive there (a deep link
+        // pans the eye inside didUpdateWidget) — the announcement
+        // rides the next turn of the event loop.
+        Future(() {
+          if (!mounted) return;
+          final current = ref.read(territoriesAnnouncedProvider);
+          if (current.contains(territory)) return;
+          ref.read(territoriesAnnouncedProvider.notifier).state =
+              {...current, territory};
+          _territoryTimer?.cancel();
+          setState(() => _territoryWhispering = territory);
+          _territoryTimer = Timer(const Duration(seconds: 7), () {
+            if (mounted) setState(() => _territoryWhispering = null);
+          });
         });
       }
     }
@@ -425,8 +432,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   Future<void> _loadVestiges() async {
-    final vestiges = await loadVestiges();
-    if (mounted) setState(() => _vestiges = vestiges);
+    final all = await ref.read(vestigeRepositoryProvider).fetchAll();
+    if (mounted) setState(() => _vestiges = dailyRotation(all, DateTime.now()));
   }
 
   Future<void> _loadArtifactMemory() async {
@@ -493,7 +500,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       setState(() => _salonAnchors = _salonDoors.open());
       unawaited(_loadConstellations()); // the artifact joins the public sky
     } catch (e) {
-      if (e.toString().contains('KENOS_INVITE_UNKNOWN')) {
+      if (refusalOf(e) == ConstellationRefusal.inviteUnknown) {
         // The door died with its ring (reaped at seven days): the
         // anchor was a memory of a dead key — it goes too.
         await _salonDoors.forget(anchor.id);
@@ -518,7 +525,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
           .read(constellationRepositoryProvider)
           .fetchInvited(anchor.token);
     } catch (e) {
-      if (!e.toString().contains('KENOS_INVITE_UNKNOWN')) {
+      if (refusalOf(e) != ConstellationRefusal.inviteUnknown) {
         if (mounted) showHud(context, 'L\'ÉTHER EST INJOIGNABLE.');
         return;
       }
@@ -607,12 +614,25 @@ class _MapScreenState extends ConsumerState<MapScreen>
     }
   }
 
+  /// Guards the aube against a double fire within one frame (the
+  /// session truth itself is [aubeSpokenProvider] — it survives
+  /// remounts; this flag only dedupes the deferred flip below).
+  bool _aubeScheduled = false;
+
   void _maybeSpeakAube() {
-    if (_aubeSpokenThisSession || !mounted) return;
+    if (_aubeScheduled || !mounted) return;
+    if (ref.read(aubeSpokenProvider)) return;
     final receptions = ref.read(receptionControllerProvider).valueOrNull;
     if (receptions == null) return; // still syncing: wait.
-    _aubeSpokenThisSession = true;
-    unawaited(maybeShowAwakening(context, ref));
+    _aubeScheduled = true;
+    // Session-state writes are forbidden inside build frames — the
+    // listen that calls here fires during one. The flip (and the
+    // sas) ride the next turn.
+    Future(() {
+      if (!mounted) return;
+      ref.read(aubeSpokenProvider.notifier).state = true;
+      unawaited(maybeShowAwakening(context, ref));
+    });
   }
 
   @override

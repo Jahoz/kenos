@@ -15,8 +15,9 @@ import 'user_stats_store.dart';
 /// Any native storage error falls back to an in-memory cache:
 /// the app must never crash over a keychain issue.
 class LocalEchoStore {
-  LocalEchoStore({FlutterSecureStorage? storage})
-    : _storage = storage ?? const FlutterSecureStorage();
+  LocalEchoStore({FlutterSecureStorage? storage, Duration? ioTimeout})
+    : _storage = storage ?? const FlutterSecureStorage(),
+      _ioTimeout = ioTimeout ?? const Duration(seconds: 2);
 
   final FlutterSecureStorage _storage;
   final Map<String, String> _mem = {};
@@ -34,8 +35,9 @@ class LocalEchoStore {
   static const _maxScars = 80;
 
   /// Safety net: a wedged keychain I/O must never freeze the
-  /// experience — we fall back to the memory cache.
-  static const _ioTimeout = Duration(seconds: 2);
+  /// experience — we fall back to the memory cache. Injectable so
+  /// the timeout path is testable at human speed.
+  final Duration _ioTimeout;
 
   Future<String?> _read(String key) async {
     if (_mem.containsKey(key)) return _mem[key];

@@ -3,6 +3,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../echo/data/echo_providers.dart';
 import '../../echo/domain/echo_cipher.dart';
+import '../domain/constellation_refusal.dart';
+
+// The refusal grammar (SalonKeyRefused, the refusal interpreter and
+// the four voice functions) lives in the domain now — re-exported
+// here so every existing import keeps resolving.
+export '../domain/constellation_refusal.dart';
 
 /// A constellation on the map: metadata only (seed, state, counts).
 class ConstellationMeta {
@@ -74,15 +80,6 @@ class SeededConstellation {
   bool get isSalon => inviteToken != null;
 }
 
-/// The salon door refused the key — demo parity for the SQL guard
-/// (KENOS_INVITE_UNKNOWN: missing and wrong look alike).
-class SalonKeyRefused implements Exception {
-  const SalonKeyRefused();
-
-  @override
-  String toString() => 'KENOS_INVITE_UNKNOWN';
-}
-
 /// One assembled line of a read constellation.
 class AssembledLine {
   const AssembledLine({required this.number, required this.text});
@@ -100,108 +97,6 @@ class ContributeResult {
 
   final int count;
   final AssembledLine? previous;
-}
-
-/// What the ether actually said when a line was refused — the
-/// writer deserves the reason, not a shrug. Every KENOS_* the SQL
-/// grammar can raise has its word here; a PostgREST error with no
-/// known code is a true refusal, anything else is the sky being far
-/// (never "refused": nothing was refused, the ether never answered).
-String contributeRefusalMessage(Object error) {
-  final raw = error.toString();
-  if (raw.contains('KENOS_ALREADY_CONTRIBUTED')) {
-    return 'TA PHRASE EST DÉJÀ DANS CE CORPS.';
-  }
-  if (raw.contains('KENOS_RATE_LIMIT')) {
-    return 'LE CIEL SOUFFLE — REVIENS DANS DEUX MINUTES.';
-  }
-  if (raw.contains('KENOS_CLOSED')) {
-    return 'LE POÈME S\'EST REFERMÉ AILLEURS.';
-  }
-  if (raw.contains('KENOS_NOT_FOUND')) {
-    return 'CET ANNEAU A RETOURNÉ AU VIDE.';
-  }
-  if (raw.contains('KENOS_INVALID_LENGTH')) {
-    return 'LA PHRASE EST TROP LONGUE POUR LE CIEL.';
-  }
-  if (raw.contains('KENOS_INVITE_UNKNOWN')) {
-    return 'LE SALON N\'A PAS RECONNU TA CLÉ.';
-  }
-  if (raw.contains('KENOS_UNAUTHENTICATED')) {
-    return 'L\'ÉTHER NE TE RECONNAÎT PLUS.';
-  }
-  if (error is! PostgrestException) {
-    return 'L\'ÉTHER EST INJOIGNABLE — LA LIGNE RESTE À TOI.';
-  }
-  return 'L\'ÉTHER A REFUSÉ LA LIGNE.';
-}
-
-/// The same honesty for a refused seed — the two guards a hand meets
-/// (cadence, open-ring cap) both have a remedy, and it is not silence.
-String seedRefusalMessage(Object error) {
-  final raw = error.toString();
-  if (raw.contains('KENOS_RATE_LIMIT')) {
-    return 'LE CIEL SOUFFLE — DEUX MINUTES ENTRE DEUX ANNEAUX.';
-  }
-  if (raw.contains('KENOS_SEED_CAP')) {
-    return 'TA MAIN TIENT DÉJÀ CINQ POÈMES OUVERTS.';
-  }
-  if (raw.contains('KENOS_UNAUTHENTICATED')) {
-    return 'L\'ÉTHER NE TE RECONNAÎT PLUS.';
-  }
-  if (error is! PostgrestException) {
-    return 'L\'ÉTHER EST INJOIGNABLE.';
-  }
-  return 'L\'ÉTHER A REFUSÉ LA CONSTELLATION.';
-}
-
-/// The same honesty for a refused artifact report — the closed poem is
-/// the only user content the ether shows in clear to everyone; the
-/// reader who judges it worthy of the guardian's eye deserves the
-/// reason of every refusal (V3.51).
-String reportRefusalMessage(Object error) {
-  final raw = error.toString();
-  if (raw.contains('KENOS_INVALID_STATE')) {
-    return 'RIEN N\'EST LISIBLE DANS CET ANNEAU.';
-  }
-  if (raw.contains('KENOS_NOT_FOUND')) {
-    return 'CET ARTEFACT A RETOURNÉ AU VIDE.';
-  }
-  if (raw.contains('KENOS_RATE_LIMIT')) {
-    return 'LE CIEL SOUFFLE — REVIENS DEMAIN.';
-  }
-  if (raw.contains('KENOS_INVALID_REPORT_REASON')) {
-    return 'L\'ÉTHER NE CONNAÎT PAS CE MOTIF.';
-  }
-  if (raw.contains('KENOS_UNAUTHENTICATED')) {
-    return 'L\'ÉTHER NE TE RECONNAÎT PLUS.';
-  }
-  if (error is! PostgrestException) {
-    return 'L\'ÉTHER EST INJOIGNABLE — LE CIEL GARDERA.';
-  }
-  return 'L\'ÉTHER A REFUSÉ LE SIGNALEMENT.';
-}
-
-/// The same honesty for a refused key cut (V3.53) — the seeder who
-/// replaces a silent guest deserves the door's reason, not silence.
-String reseedRefusalMessage(Object error) {
-  final raw = error.toString();
-  if (raw.contains('KENOS_LINES_EXIST')) {
-    return 'LA PORTE A DÉJÀ ÉTÉ TOUCHÉE.';
-  }
-  if (raw.contains('KENOS_CLOSED')) {
-    return 'LE POÈME S\'EST REFERMÉ.';
-  }
-  if (raw.contains('KENOS_NOT_FOUND')) {
-    return 'AUCUNE PORTE À RESEMER.';
-  }
-  if (raw.contains('KENOS_UNAUTHENTICATED')) {
-    return 'L\'ÉTHER NE TE RECONNAÎT PLUS.';
-  }
-  if (error is! PostgrestException) {
-    return 'L\'ÉTHER EST INJOIGNABLE.';
-  }
-  return 'L\'ÉTHER A REFUSÉ LA CLÉ.';
 }
 
 /// The Exquisite Corpse contract (V3.13 — classic rule): seed,

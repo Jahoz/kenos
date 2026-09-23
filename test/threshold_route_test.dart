@@ -107,7 +107,6 @@ void main() {
 
   testWidgets('déjà entré : aucune boucle, le seuil ne revient pas',
       (tester) async {
-    MapScreen.territoriesAnnounced.clear();
     await bootFresh(tester);
     // The store starts cold (fresh) — enter once.
     expect(find.text('KENOS'), findsOneWidget);

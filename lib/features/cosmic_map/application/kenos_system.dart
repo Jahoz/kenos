@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import '../../../core/heavens/heavens.dart';
 import '../../echo/domain/echo.dart';
 import '../../echo/domain/echo_color_theme.dart';
 import 'celestial_bodies.dart';
@@ -16,7 +17,7 @@ class KenosSystem {
   KenosSystem._();
 
   /// The black hole sits at the heart of the known ether.
-  static const Offset blackHole = Offset(0.5, 0.5);
+  static const Offset blackHole = Heavens.blackHole;
 
   /// Nothing RESTS upon the black hole (V3.12b): vestiges and corpses
   /// are held outside this world radius, deterministically — the
@@ -115,8 +116,8 @@ class KenosSystem {
   /// V3.62 — the lanes tightened (0.26/0.37 → 0.19/0.28): at the
   /// resting eye (±0.21 of sky) the old tracks passed OUTSIDE the
   /// frame — the worlds existed, the traveller never saw them. The
-  /// heart grew to flagship scale; its retinue now rings it INSIDE
-  /// the first gaze, yet stays clear of the reception field (0.16):
+  /// heart grew to flagship scale; its retinue now rings it INSIDE the
+  /// first gaze, yet stays clear of the reception field (0.16):
   /// the worlds FRAME the holdable lights, they never sit among
   /// them. Moving bodies may orbit within the resting exclusion —
   /// only what RESTS is pushed out (see [blackHoleExclusion]).
@@ -133,25 +134,17 @@ class KenosSystem {
   /// distance, clear of the exclusion, lanes 0.14 apart (the resting
   /// dodge keeps its corridor), and the CROWD carries the sky
   /// (see [isErrantThought] — most thoughts are free now).
-  static double orbitRadiusOf(int index) =>
-      switch (index) { 0 => 0.24, _ => 0.38 };
-
-  /// Each lane has its own tempo.
-  static Duration _periodOf(int index) => switch (index) {
-        0 => const Duration(minutes: 30),
-        _ => const Duration(minutes: 55),
-      };
-
-  /// The outermost planetary lane — beyond it only comets and
-  /// wanderers travel.
-  static double get outerOrbit => orbitRadiusOf(1);
+  ///
+  /// The radii live in [Heavens] now (the world's own astronomy,
+  /// shared with the ether's data layer) — delegated, one law.
+  static double orbitRadiusOf(int index) => Heavens.orbitRadiusOf(index);
 
   /// One full revolution of the innermost lane (legacy reference).
   static const Duration planetPeriod = Duration(minutes: 40);
 
-  /// Base angles (radians) spread the three intents apart at epoch.
-  /// (A literal: Duration members are not const-evaluable here.)
-  static const double _epoch = 72 * 3600000.0;
+  /// The outermost planetary lane — beyond it only comets and
+  /// wanderers travel.
+  static double get outerOrbit => orbitRadiusOf(1);
 
   /// The three celestial anchors, in fixed order.
   static const List<EchoColorTheme> planets = [
@@ -160,30 +153,19 @@ class KenosSystem {
     EchoColorTheme.lumen, // ÉCLAIRER
   ];
 
-  /// World position of a planet at a given moment.
-  static Offset planetPosition(int index, DateTime at) {
-    // Polaris holds still: the fixed point of the whole turning sky
-    // (V3.12 — the named heavens).
-    if (index == 2) return CelestialMath.polaris;
-    final phase =
-        (at.millisecondsSinceEpoch + _epoch) / _periodOf(index).inMilliseconds;
-    final angle = 2 * math.pi * (phase + index / planets.length);
-    final radius = orbitRadiusOf(index);
-    return Offset(
-      blackHole.dx + radius * math.cos(angle),
-      blackHole.dy + radius * math.sin(angle),
-    );
-  }
+  /// World position of a planet at a given moment (the heavens'
+  /// own law — delegated to [Heavens], the shared deterministic
+  /// astronomy).
+  static Offset planetPosition(int index, DateTime at) =>
+      Heavens.planetPosition(index, at);
 
   // ── Echo orbits ────────────────────────────────────────────────────────
 
-  /// The gravity band's inner edge. V3.68 — the band tightens with
-  /// the system (0.11 → 0.08): the bound swarm is the world's own
-  /// retinue, a compact halo — the CROWD lives free (errant).
-  static const double echoBandMin = 0.08;
+  /// The gravity band's inner edge (see [Heavens.echoBandMin]).
+  static const double echoBandMin = Heavens.echoBandMin;
 
-  /// The gravity band's width.
-  static const double echoBandSpan = 0.16;
+  /// The gravity band's width (see [Heavens.echoBandSpan]).
+  static const double echoBandSpan = Heavens.echoBandSpan;
 
   /// V3.28 — the band is no longer a hash-continuous smear but THREE
   /// discrete shells: each ring turns as a ring, at its own fixed
@@ -211,24 +193,10 @@ class KenosSystem {
   static const double liaisonEccentricityMin = 0.08;
   static const double liaisonEccentricityMax = 0.31;
 
-  /// V3.67 — LA PENSÉE ERRANTE: not every thought falls into a
-  /// gravity well. Roughly two in five are born FREE, anywhere in
-  /// the ether, and ride wide slow rings around the VOID itself —
-  /// the deep sky between the worlds carries matter of its own, and
-  /// the map stops being a diagram with a crowded middle. The flag
-  /// derives from `created_at` (known at launch AND at render: the
-  /// same input, the same verdict, forever).
-  ///
-  /// V3.68 — the errant are the MAJORITY now (~65%) and their rings
-  /// span the whole sky (birth 0.28–0.92): the bound swarms are the
-  /// worlds' own retinues, compact; the CROWD is the sky. Immensity
-  /// is a scale separation — a jewel of a system, and drifters
-  /// between the stars.
-  static bool isErrantThought(DateTime createdAt) {
-    final h = (createdAt.millisecondsSinceEpoch * 2654435761) &
-        0x7fffffff;
-    return h % 100 < 65;
-  }
+  /// V3.67 — LA PENSÉE ERRANTE (the flag derives from `created_at`;
+  /// the law lives in [Heavens], shared with the ether's data layer).
+  static bool isErrantThought(DateTime createdAt) =>
+      Heavens.isErrantThought(createdAt);
 
   /// One full revolution per shell (V3.22's contemplative range kept:
   /// minutes per orbit, never a carousel).
@@ -283,11 +251,8 @@ class KenosSystem {
 
   /// Planet index for an intent: the theme decides the gravity. The
   /// rebound keeps the parent's hue — comets inherit their orbit.
-  static int themeIndexOf(EchoColorTheme theme) => switch (theme) {
-        EchoColorTheme.teal => 0,
-        EchoColorTheme.indigo => 1,
-        _ => 2,
-      };
+  /// (The binding is the theme's own law: [EchoColorTheme.skyPlanetIndex].)
+  static int themeIndexOf(EchoColorTheme theme) => theme.skyPlanetIndex;
 
   /// Planet index for an echo: its intent decides its gravity.
   static int planetIndexOf(Echo echo) => themeIndexOf(echo.theme);
@@ -299,35 +264,17 @@ class KenosSystem {
   /// author drops the thought where it will actually drift.
   ///
   /// V3.67 — a free thought ([isErrantThought]) is born anywhere in
-  /// the ether, on its own wide ring around the void: birth radius
-  /// 0.28–0.92 of the sky (never inside the system's retinue, out to
-  /// the known rim's corners), angle free. The client computes this
-  /// BEFORE the RPC — no server law moves — and the render derives
-  /// the same verdict from the same `created_at`.
+  /// the ether, on its own wide ring around the void. The client
+  /// computes this BEFORE the RPC — no server law moves — and the
+  /// render derives the same verdict from the same `created_at`.
+  /// The placement itself lives in [Heavens] (one law, shared with
+  /// the demo ether's seeding).
   static Offset launchCoordsFor(
     EchoColorTheme theme,
     DateTime at, [
     math.Random? rng,
-  ]) {
-    final random = rng ?? math.Random();
-    if (isErrantThought(at)) {
-      // Birth on the wide ring: 0.28–0.92 of the sky — the deep
-      // field between the worlds, out to the known rim's corners.
-      final r = 0.28 + random.nextDouble() * 0.64;
-      final a = random.nextDouble() * 2 * math.pi;
-      return Offset(
-        (blackHole.dx + r * math.cos(a)).clamp(0.02, 0.98),
-        (blackHole.dy + r * math.sin(a)).clamp(0.02, 0.98),
-      );
-    }
-    final planet = planetPosition(themeIndexOf(theme), at);
-    final radius = echoBandMin + random.nextDouble() * echoBandSpan;
-    final angle = random.nextDouble() * 2 * math.pi;
-    return Offset(
-      (planet.dx + radius * math.cos(angle)).clamp(0.02, 0.98),
-      (planet.dy + radius * math.sin(angle)).clamp(0.02, 0.98),
-    );
-  }
+  ]) =>
+      Heavens.launchCoordsForPlanet(theme.skyPlanetIndex, at, rng);
 
   /// World position of an echo at a given moment — the orbit everyone
   /// agrees on, derived only from the server timestamp and identity.

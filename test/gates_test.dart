@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/app/kenos_app.dart';
 import 'package:kenos/core/constants/app_colors.dart';
 import 'package:kenos/features/cosmic_map/application/motion_service.dart';
-import 'package:kenos/features/cosmic_map/presentation/map_screen.dart';
 import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/data/local_echo_repository.dart';
 import 'package:kenos/features/echo/data/local_echo_store.dart';
@@ -16,10 +15,6 @@ import 'package:kenos/features/echo/data/local_echo_store.dart';
 /// light and near-full text, and the corpse's indigo is gone from
 /// the gate (it lives on the map, where it has contrast).
 void main() {
-  setUp(() {
-    MapScreen.territoriesAnnounced.clear();
-  });
-
   Future<void> boot(WidgetTester tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;

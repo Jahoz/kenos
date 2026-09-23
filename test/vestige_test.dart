@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kenos/features/cosmic_map/data/vestige_repository.dart';
 import 'package:kenos/features/cosmic_map/presentation/widgets/vestige.dart';
 
 void main() {
   group('Vestiges — la culture curatée', () {
     test('le JSON embarqué charge : vestiges quotidiens, textes sourcés, positions [0,1]',
         () async {
-      final vestiges = await loadVestiges();
+      final all = await const BundledVestigeRepository().fetchAll();
+      final vestiges = dailyRotation(all, DateTime.now());
       expect(vestiges, isNotEmpty);
       // Daily rotation: ~2/3 of the 12 drift on any given day (8 ± a
       // few) — always shards left for tomorrow.
       expect(vestiges.length, greaterThanOrEqualTo(6),
           reason: 'la dérive quotidienne doit rester dense');
-      expect(Vestige.knownCount, greaterThanOrEqualTo(12),
+      expect(all.length, greaterThanOrEqualTo(12),
           reason: 'la bibliothèque complète est comptée');
       for (final v in vestiges) {
         expect(v.text, isNotEmpty, reason: 'vestige vide : ${v.id}');

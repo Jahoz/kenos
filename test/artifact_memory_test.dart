@@ -5,6 +5,7 @@ import 'package:kenos/features/constellations/data/constellation_repository.dart
 import 'package:kenos/features/constellations/presentation/constellation_sheets.dart';
 import 'package:kenos/features/cosmic_map/data/artifact_memory.dart';
 import 'package:kenos/features/cosmic_map/presentation/widgets/vestige.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// The traveller's memory of artifacts: read markers are a memory,
 /// not a burn (seven days, this device only), and the reliquaire
@@ -254,7 +255,7 @@ class _RefusingConstellationRepo implements ConstellationRepository {
     required String text,
     String? inviteToken,
   }) async =>
-      throw Exception('PostgrestException: $code');
+      throw PostgrestException(message: code);
 
   @override
   Future<bool?> hasContributed(String id) async => null;

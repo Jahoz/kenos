@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import '../../../core/heavens/heavens.dart';
 import '../../echo/domain/echo_color_theme.dart';
 
 /// V3.12 — the named heavens: every anchor and wanderer carries a name,
@@ -103,8 +104,8 @@ class CelestialMath {
   /// — constant conjunctions, colliding skies. The corner (r≈0.523)
   /// clears every lane: 0.26 from the Moon's path, 0.16 from
   /// Venus's — the beacon watches the system instead of standing in
-  /// its traffic.
-  static const Offset polaris = Offset(0.13, 0.13);
+  /// its traffic. (The point itself lives in [Heavens] — one law.)
+  static const Offset polaris = Heavens.polaris;
 
   /// A wanderer's world position: far slow arcs beyond every orbit,
   /// found only by travelling. Each drifts at its own imperceptible

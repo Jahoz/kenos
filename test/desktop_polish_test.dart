@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/app/kenos_app.dart';
 import 'package:kenos/features/cosmic_map/application/motion_service.dart';
-import 'package:kenos/features/cosmic_map/presentation/map_screen.dart';
 import 'package:kenos/features/cosmic_map/presentation/widgets/sky_map_sheet.dart';
 import 'package:kenos/features/create_echo/presentation/mirror_screen.dart';
 import 'package:kenos/features/echo/data/echo_providers.dart';
@@ -17,10 +16,6 @@ import 'package:kenos/features/echo/data/local_echo_store.dart';
 /// cursor, the phone's silent line folds its counts away, and the
 /// CARTE breathes on tablets.
 void main() {
-  setUp(() {
-    MapScreen.territoriesAnnounced.clear();
-  });
-
   group('V3.44 — ÉCHAP, le réflexe universel', () {
     testWidgets('Échap renonce au Miroir', (tester) async {
       // The Mirror reads the interface voice (V3.52): scope above.

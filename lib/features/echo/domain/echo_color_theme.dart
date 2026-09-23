@@ -61,6 +61,16 @@ enum EchoColorTheme {
     EchoColorTheme.lumen => AppColors.pureLight,
   };
 
+  /// The world this intention's thoughts gravitate around — sky law
+  /// (anchor order: teal/La Lune 0, indigo/Vénus 1, lumen/Polaris 2,
+  /// see `Heavens.planetPosition`). The ether's own data layer reads
+  /// it to seed the demo sky where real launches are born.
+  int get skyPlanetIndex => switch (this) {
+    EchoColorTheme.teal => 0,
+    EchoColorTheme.indigo => 1,
+    EchoColorTheme.lumen => 2,
+  };
+
   /// Halo / charge ring.
   Color get halo => switch (this) {
     EchoColorTheme.teal => AppColors.cyan,
