@@ -163,14 +163,16 @@ class ParallaxMath {
   /// a quarter at max zoom — the feature survives, the distraction
   /// dies.
   ///
-  /// V3.70 — THE SURVEY SWAYS: below the fold (1.2) the tilt is
-  /// AMPLIFIED, up to ×1.35 at the survey floor — tilting the phone
-  /// slides the whole sky inside its frame: the strongest mobile cue
-  /// that the void has depth beyond the glass.
-  static double parallaxCalm(double zoom) {
-    if (zoom <= 1.2) {
-      return 1.0 + 0.35 * ((1.2 - zoom) / (1.2 - 0.9)).clamp(0.0, 1.0);
+  /// V3.70 — THE SURVEY SWAYS: below the fold the tilt is AMPLIFIED,
+  /// up to ×1.35 at the survey floor — tilting the phone slides the
+  /// whole sky inside its frame: the strongest mobile cue that the
+  /// void has depth beyond the glass. V3.71: [fold] and [floor] ride
+  /// the camera's aspect-aware pinch floor (defaults keep the square
+  /// law).
+  static double parallaxCalm(double zoom, {double fold = 1.2, double floor = 0.9}) {
+    if (zoom <= fold) {
+      return 1.0 + 0.35 * ((fold - zoom) / (fold - floor)).clamp(0.0, 1.0);
     }
-    return 1.0 - 0.75 * ((zoom - 1.2) / (8.0 - 1.2)).clamp(0.0, 1.0);
+    return 1.0 - 0.75 * ((zoom - fold) / (8.0 - fold)).clamp(0.0, 1.0);
   }
 }

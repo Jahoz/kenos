@@ -12,6 +12,7 @@ import '../../../core/audio/audio_providers.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/constants/app_layout.dart';
+import '../../../core/constants/app_meta.dart';
 import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/utils/motion_preferences.dart';
 import '../../../core/utils/parallax_math.dart';
@@ -128,6 +129,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // eye's field, the sky whispers where to travel.
     final breath = _breathLine;
     if (breath != null) parts.add(breath);
+    // V3.71 — the sky-law stamp: the iteration loop's answer to the
+    // stale service worker (a false regression once cost a full
+    // round). What the eye sees is what law it carries.
+    parts.add(kSkyLawStamp);
     return parts.join(' · ');
   }
 
@@ -236,11 +241,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// [territoriesAnnouncedProvider]); the born territory is ridden,
   /// never announced — the sky does not greet itself.
   void _onEyeTravels() {
-    // V3.70 — the fold's release: diving past the fold zoom lets the
-    // pebble own the survey floor again on the way back out. No
-    // setState here — the gates ride their own ListenableBuilder, and
-    // this listener fires on the same notifyListeners.
-    if (_gatesPinned && _camera.zoom >= _gateFoldZoom) {
+    // V3.71 — the fold's release: a deliberate zoom gesture (±0.02
+    // from the pinned gaze) re-evaluates the fold — the pin never
+    // survives a pinch. No setState here — the gates ride their own
+    // ListenableBuilder, and this listener fires on the same
+    // notifyListeners.
+    final pinnedAt = _gatesPinnedZoom;
+    if (_gatesPinned &&
+        pinnedAt != null &&
+        (_camera.zoom - pinnedAt).abs() > 0.02) {
       _gatesPinned = false;
     }
     final territory = VoidTerritories.territoryAt(_camera.center);
@@ -393,13 +402,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   bool _showingCorpseGuide = false;
 
-  /// V3.70 — THE FOLD: at the survey (zoom below [_gateFoldZoom]) the
+  /// V3.70/71 — THE FOLD: below the survey floor (+ a breath) the
   /// two gates kneel into a single pebble. The survey's whole point is
   /// the sky's window — two stacked doors stole a third of the portrait
   /// frame exactly when immensity had to land. Tapping the pebble pins
-  /// the doors back open; zooming past the fold releases the pin.
-  static const double _gateFoldZoom = 1.2;
+  /// the doors open at THIS gaze; any deliberate zoom gesture (±0.02)
+  /// re-evaluates the fold — the pin never survives a pinch. The
+  /// threshold rides the camera's ASPECT-AWARE floor (V3.71).
   bool _gatesPinned = false;
+  double? _gatesPinnedZoom;
+  double get _foldZoom => _camera.zoomFloor + 0.12;
 
   void _dismissCorpseGuide() {
     setState(() => _showingCorpseGuide = false);
@@ -1836,7 +1848,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   listenable: _camera,
                   builder: (context, _) {
                     final folded =
-                        _camera.zoom < _gateFoldZoom && !_gatesPinned;
+                        _camera.zoom <= _foldZoom && !_gatesPinned;
                     // A soft arrival for whichever side wakes — no
                     // crossfade machinery: the leaving side leaves NOW
                     // (the tree stays honest for the eye and the tests).
@@ -1863,8 +1875,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                 'OUVRIR LES PORTES',
                                 'OPEN THE GATES',
                               ),
-                              onOpen: () =>
-                                  setState(() => _gatesPinned = true),
+                              onOpen: () => setState(() {
+                                _gatesPinned = true;
+                                _gatesPinnedZoom = _camera.zoom;
+                              }),
                             )
                           : LayoutBuilder(
                               // V3.43 — wide windows: the two doors
@@ -2556,12 +2570,23 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
                   z: bucketZ,
                   // V3.58i — the sway calms as the eye approaches:
                   // full at the overview, a quarter at max zoom.
-                  amplitude: 46 * ParallaxMath.parallaxCalm(widget.camera.zoom),
+                  // V3.71 — the fold rides the aspect-aware floor.
+                  amplitude: 46 *
+                      ParallaxMath.parallaxCalm(
+                        widget.camera.zoom,
+                        fold: widget.camera.zoomFloor + 0.12,
+                        floor: widget.camera.zoomFloor,
+                      ),
                 ),
                 ParallaxMath.offsetPixels(
                   tilt: tilt.y * motionScale,
                   z: bucketZ,
-                  amplitude: 32 * ParallaxMath.parallaxCalm(widget.camera.zoom),
+                  amplitude: 32 *
+                      ParallaxMath.parallaxCalm(
+                        widget.camera.zoom,
+                        fold: widget.camera.zoomFloor + 0.12,
+                        floor: widget.camera.zoomFloor,
+                      ),
                 ),
               ),
               child: layer,

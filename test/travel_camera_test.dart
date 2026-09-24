@@ -189,17 +189,57 @@ void main() {
       expect(c.dy, lessThanOrEqualTo(1.2 + 1e-9));
     });
 
-    test('V3.70 — au survey sur écran haut, l\'œil tient le milieu (pas de saut)',
+    test('V3.71 — le survey chevauche le grand axe : le plancher suit l\'aspect',
         () {
-      // À zoom 0.9 sur un 2.167, la bande verticale traversable tient
-      // entière dans la fenêtre : le clamp est dégénéré (borne basse >
-      // borne haute). L'ancien clamp sautait entre les deux bornes
-      // croisées à chaque pan — le spectre du « backward jump ».
-      const tall = Size(400, 867);
+      const tall = Size(400, 867); // 2.167:1 — the S25-class phone
+      // The floor RISES with the aspect: the long side may carry at
+      // most surveyLongSpan worlds at the deepest gaze.
+      final floor = TravelCamera.zoomFloorFor(tall);
+      expect(floor, closeTo(2.1675 / 1.6, 1e-3),
+          reason: 'le grand axe porte 1,6 unités monde, pas 2,4');
+      expect(floor, greaterThan(1.2), reason: 'un vrai relèvement sur écran haut');
+
+      // A gaze below the floor is RAISED at attach (before paint).
       final camera = TravelCamera(zoom: 0.9)..attach(tall);
+      expect(camera.zoom, closeTo(floor, 1e-9));
+      final r = camera.visibleRect;
+      expect(
+        (r.maxY - r.minY) / (r.maxX - r.minX),
+        closeTo(867 / 400, 1e-9),
+        reason: 'le rect reste honnête',
+      );
+      // The long axis carries exactly the budget.
+      expect(
+        (r.maxY - r.minY),
+        closeTo(TravelCamera.surveyLongSpan, 1e-9),
+        reason: 'le budget d\'immensité tient au plancher',
+      );
+
+      // And the vertical walls are REAL there (the old degenerate
+      // snap is unreachable by construction): the eye can travel.
+      camera.panByWorld(const Offset(0, 0.4));
+      expect(camera.center.dy, greaterThan(0.5));
+      camera.panByWorld(const Offset(0, -0.9));
+      expect(camera.center.dy, lessThan(0.5));
+
+      // Squares and 16:10 keep the flat floor — the whole-ether
+      // survey survives where it fits.
+      expect(TravelCamera.zoomFloorFor(const Size(400, 400)),
+          TravelCamera.minZoom);
+      expect(TravelCamera.zoomFloorFor(const Size(1600, 1000)),
+          closeTo(1.0, 1e-9));
+    });
+
+    test('V3.70 — le clamp dégénéré tient le milieu (garde-fou)', () {
+      // V3.71 rend le cas inatteignable via l'aspect seul, mais une
+      // PETITE marge sur écran haut recroise les bornes (lo > hi) :
+      // le garde-fou doit tenir le milieu — jamais de saut entre les
+      // bornes croisées (le spectre du « backward jump »).
+      const tall = Size(400, 867);
+      final camera = TravelCamera(zoom: 1.5, margin: 0.1)..attach(tall);
       camera.panByWorld(const Offset(0, 0.4));
       expect(camera.center.dy, closeTo(0.5, 1e-9),
-          reason: 'la bande entière est déjà au cadre : le milieu tient');
+          reason: 'la bande entière est au cadre : le milieu tient');
       camera.panByWorld(const Offset(0, -0.4));
       expect(camera.center.dy, closeTo(0.5, 1e-9));
       // L'axe libre reste libre : le voyage horizontal vit.

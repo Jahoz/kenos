@@ -43,12 +43,38 @@ class TravelCamera extends ChangeNotifier {
 
   /// Pinch bounds: deep enough to split the tightest clusters (8×
   /// separates stars born a few pixels apart), never a map of pixels.
-  /// V3.68 — the survey floor opens (1.2 → 1.0): the whole known
-  /// ether in one gaze. V3.69 — a hair BELOW the opening gaze
-  /// (0.9): the pinch-out keeps a breath of room, the ether island
-  /// with its rim.
+  /// V3.68 — the survey floor opens (1.2 → 1.0); V3.69 a hair below
+  /// the opening gaze (0.9).
+  ///
+  /// V3.71 — THE SURVEY RIDES THE LONG AXIS: the pull-back floor is
+  /// now ASPECT-AWARE — the long side may carry at most
+  /// [surveyLongSpan] world units at the deepest gaze. The flat 0.9
+  /// let a tall phone's long axis span 2.4 worlds: the WHOLE
+  /// populated ether framed with dust margins — a pendant on velvet,
+  /// never a cosmos (the S25 verdict on V3.70: the space dressed the
+  /// frame, the frame still owned everything that mattered). On a
+  /// 2.16:1 phone the floor rises to ~1.35: the survey CUTS the
+  /// crowd itself, on both axes. Squares and 16:10 keep the flat
+  /// floor (the whole-ether survey survives where it fits).
   static const double minZoom = 0.9;
   static const double maxZoom = 8.0;
+
+  /// World units carried by the LONG side at the deepest gaze — the
+  /// immensity budget: at max pull-back the populated world (crowd to
+  /// ~1.44, wanderers to ~2.1) must OVERFLOW the frame.
+  static const double surveyLongSpan = 1.6;
+
+  /// The aspect-aware pinch floor for a viewport.
+  static double zoomFloorFor(Size viewport) {
+    final aspect = viewport.longestSide / viewport.shortestSide;
+    final bySpan = aspect / surveyLongSpan;
+    return bySpan <= minZoom ? minZoom : bySpan.clamp(minZoom, maxZoom);
+  }
+
+  /// The pinch floor as the attached viewport dictates (flat
+  /// [minZoom] before the first layout).
+  double _zoomFloor = minZoom;
+  double get zoomFloor => _zoomFloor;
 
   /// V3.40 — the traversable void extends WELL past the known ether
   /// (the eye rides [-0.65, 1.65]): the worlds and their rings are
@@ -89,10 +115,14 @@ class TravelCamera extends ChangeNotifier {
   Size? _attached;
 
   /// Tell the camera the aspect it looks through (rect walls depend
-  /// on it). Silent on purpose — layouts fire often.
+  /// on it). Silent on purpose — layouts fire often. V3.71: the
+  /// aspect also sets the pinch FLOOR (the long-span law) — a gaze
+  /// already below it is raised before the first paint.
   void attach(Size viewport) {
     if (_attached == viewport) return;
     _attached = viewport;
+    _zoomFloor = zoomFloorFor(viewport);
+    _zoom = _zoom.clamp(_zoomFloor, maxZoom);
     _center = _clamped(_center); // the walls moved with the aspect
   }
 
@@ -144,7 +174,7 @@ class TravelCamera extends ChangeNotifier {
   /// fingers where it is (the focal point anchors the zoom).
   void zoomBy(double factor, Offset focalWorldPoint) {
     final previousZoom = _zoom;
-    _zoom = (_zoom * factor).clamp(minZoom, maxZoom);
+    _zoom = (_zoom * factor).clamp(_zoomFloor, maxZoom);
     final applied = _zoom / previousZoom;
     if (applied == 1.0) return;
     // Keep the focal world point at the same screen position:
