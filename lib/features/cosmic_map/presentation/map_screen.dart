@@ -1383,14 +1383,56 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                 }
                                                 final v = shard.v;
                                                 final sp = shard.sp;
-                                              // Shards grow with the eye
-                                              // too (V3.17) — the painter
-                                              // sizes itself to its box.
-                                              final shardSide =
-                                                  32 *
-                                                  ParallaxMath.zoomScale(
-                                                    _camera.zoom,
+                                              // V3.72 — CULTURE WHISPERS
+                                              // IN WORLD CURRENCY: the
+                                              // shard was viewport-
+                                              // anchored (32 × zoomScale)
+                                              // — at the survey it rode
+                                              // 20% over its tuned look
+                                              // and, unlike every body
+                                              // (V3.63), NEVER receded:
+                                              // the newborns' rings and
+                                              // the hexagons carpeted
+                                              // the heavens. The carving
+                                              // is world-sized now
+                                              // (0.056 of the sky —
+                                              // wanderer-class), the
+                                              // 32 px box stays the
+                                              // FINGER's courtesy (the
+                                              // eye sees less), and the
+                                              // shard RECEDES with
+                                              // distance like all
+                                              // matter. Kept shards keep
+                                              // their full light —
+                                              // earned importance is not
+                                              // borrowed.
+                                              final worldScale =
+                                                  c.biggest.shortestSide /
+                                                      _camera.viewExtent;
+                                              final paintSide =
+                                                  (0.056 * worldScale)
+                                                      .clamp(24.0, 96.0);
+                                              final shardSide = math.max(
+                                                32.0,
+                                                paintSide,
+                                              );
+                                              final keptShard =
+                                                  _artifacts.isKept(v.id);
+                                              final shardWorld = vestigeAt[
+                                                      v.id] ??
+                                                  Offset(
+                                                    v.offsetX,
+                                                    v.offsetY,
                                                   );
+                                              final recede = keptShard
+                                                  ? 1.0
+                                                  : (1.0 -
+                                                          (shardWorld -
+                                                                  _camera
+                                                                      .center)
+                                                              .distance *
+                                                              0.5)
+                                                      .clamp(0.3, 1.0);
                                               return Positioned(
                                                 left: sp.dx - shardSide / 2,
                                                 top: sp.dy - shardSide / 2,
@@ -1436,6 +1478,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                       kept: _artifacts.isKept(
                                                         v.id,
                                                       ),
+                                                      scale:
+                                                          paintSide / 32.0,
+                                                      recede: recede,
                                                     ),
                                                   ),
                                                 ),
