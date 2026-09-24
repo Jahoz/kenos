@@ -113,11 +113,15 @@ class CelestialMath {
   /// V3.28 — the ring was 0.62-0.74, largely OUTSIDE the [0,1] sky
   /// the camera can reach: bodies you could never actually meet, only
   /// rumours past the frame. Pulled to 0.55-0.65: still the far
-  /// country (clear of Venus's swarm rim at 0.515), now a place the
-  /// traveller's margin genuinely visits.
+  /// country, now a place the margin genuinely visits.
+  /// V3.70 — THE MEDIAN MUST BE POPULATED: at the survey the band
+  /// between the jewel (r~0.5) and the frame's edge read as dead
+  /// black — no witness of scale anywhere. The arcs reopen
+  /// (0.60-1.05): far silhouettes the survey frame CUTS, the dive
+  /// meets one by one. Still clear of Venus's swarm rim (0.515).
   static Offset wandererPosition(int index, DateTime at) {
     final i = index % celestialWanderers.length;
-    final radius = 0.55 + 0.05 * (i % 3);
+    final radius = 0.60 + 0.225 * (i % 3);
     final periodMs = (6 + 2 * i) * 3600000.0;
     final base = i * math.pi / 2;
     final angle =

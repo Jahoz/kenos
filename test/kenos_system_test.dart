@@ -124,9 +124,10 @@ void main() {
       expect(KenosSystem.isErrantThought(errantAt), isTrue);
       expect(KenosSystem.isErrantThought(boundAt), isFalse);
 
-      // An errant launch lands on its wide ring (0.28–0.92 of the
-      // sky, clear of the system's retinue), never in a gravity band
-      // by design.
+      // An errant launch lands in the MEDIAN crowd (V3.70: crowded
+      // toward the system's skirts, thinning into the deep field,
+      // capped by the square's true edge — the ring breathes to the
+      // corners), never in a gravity band by design.
       final rng = Random(11);
       for (var i = 0; i < 30; i++) {
         final p = KenosSystem.launchCoordsFor(
@@ -135,9 +136,10 @@ void main() {
           rng,
         );
         final fromCenter = (p - KenosSystem.blackHole).distance;
-        expect(fromCenter, greaterThanOrEqualTo(0.27),
+        expect(fromCenter, greaterThanOrEqualTo(0.33),
             reason: 'jamais dans l\'escorte du système');
-        expect(fromCenter, lessThanOrEqualTo(0.93));
+        expect(fromCenter, lessThanOrEqualTo(0.70),
+            reason: 'la foule vit au médian, pas sur les murs');
       }
 
       // A bound launch still falls inside its planet's gravity band.

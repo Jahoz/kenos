@@ -36,13 +36,13 @@ void main() {
       for (var i = 0; i < celestialWanderers.length; i++) {
         final p = CelestialMath.wandererPosition(i, at);
         final dist = Offset(p.dx - 0.5, p.dy - 0.5).distance;
-        // V3.28: the ring is pulled inside the navigable sky (was
-        // 0.62-0.74, past the frame) — still the far country, clear
-        // of Venus's swarm rim (0.515), now genuinely reachable.
-        expect(dist, greaterThanOrEqualTo(0.55 - 1e-9),
+        // V3.70: the arcs reopen (0.60-1.05) — the median must be
+        // POPULATED, far silhouettes the survey frame cuts. Still
+        // clear of Venus's swarm rim (0.515), still reachable.
+        expect(dist, greaterThanOrEqualTo(0.60 - 1e-9),
             reason: 'les errants restent le lointain');
-        expect(dist, lessThanOrEqualTo(0.65 + 1e-9),
-            reason: '…mais un lointain que la marge visite vraiment');
+        expect(dist, lessThanOrEqualTo(1.05 + 1e-9),
+            reason: '…mais un lointain que la fenêtre du survey coupe');
       }
     });
 

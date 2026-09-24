@@ -92,10 +92,21 @@ class Heavens {
   ]) {
     final random = rng ?? math.Random();
     if (isErrantThought(at)) {
-      // Birth on the wide ring: 0.28–0.92 of the sky — the deep
-      // field between the worlds, out to the known rim's corners.
-      final r = 0.28 + random.nextDouble() * 0.64;
+      // V3.70 — THE CROWD LIVES IN THE MEDIAN: births crowd toward
+      // the system's skirts (0.34) and thin into the deep field
+      // (0.72), sqrt-biased so the swarm reads as a retinue thinning
+      // into distance — never a uniform sheet. The radius is capped
+      // by the square's TRUE edge along the angle: the ring breathes
+      // to the corners, nothing piles on the walls.
       final a = random.nextDouble() * 2 * math.pi;
+      final edge = math.min(
+        0.48 / math.max(math.cos(a).abs(), 1e-9),
+        0.48 / math.max(math.sin(a).abs(), 1e-9),
+      );
+      final r = math.min(
+        0.34 + 0.38 * math.sqrt(random.nextDouble()),
+        edge,
+      );
       return Offset(
         (blackHole.dx + r * math.cos(a)).clamp(0.02, 0.98),
         (blackHole.dy + r * math.sin(a)).clamp(0.02, 0.98),
