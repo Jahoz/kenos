@@ -92,16 +92,18 @@ void main() {
   });
 
   group('V3.40 — le vide traversable : tout corps nommé s\'atteint', () {
-    test('chaque monde, chaque errant : l\'œil au repos PEUT le centrer',
+    test('chaque monde, chaque errant : un regard légal PEUT le centrer',
         () {
-      // The rings are CIRCLES in a SQUARE ether: the wanderers (r up
-      // to 0.65) step past the rim along the axes, and at the old
-      // +0.1 margin they were sometimes UNREACHABLE (the eye saw at
-      // most to 1.1; Europe rides to 1.15). The traversable void now
-      // extends to ±0.5: a fresh eye at its resting zoom can centre
-      // on every named body, at any moment of their arcs — sampled
+      // The rings are CIRCLES in a SQUARE ether: the wanderers step
+      // past the rim along the axes, and at the old +0.1 margin they
+      // were sometimes UNREACHABLE. The traversable void extends to
+      // ±0.7: no named body is a rumour past the walls — sampled
       // across a day and a half to catch the axis crossings.
+      // V3.70 — the far arcs (to 1.05) are met by DIVING: the survey
+      // frame CUTS them, the reading gaze centres them. Every body is
+      // centerable at the resting eye or a modest dive (zoom ≤ 4).
       final t0 = DateTime(2026, 9, 14);
+      const gazes = [1.0, 1.5, 2.0, 3.0, 4.0];
       for (var s = 0; s < 32; s++) {
         final at = t0.add(Duration(hours: s));
         final bodies = <String, Offset>{
@@ -112,14 +114,18 @@ void main() {
                 CelestialMath.wandererPosition(i, at),
         };
         for (final entry in bodies.entries) {
-          final camera = TravelCamera(); // the resting eye, default void
-          camera.panByWorld(entry.value - camera.center);
-          expect(
-            (camera.center - entry.value).distance,
-            lessThan(1e-9),
-            reason:
-                '${entry.key} doit être centrable à $at (position ${entry.value})',
-          );
+          var centered = false;
+          for (final gaze in gazes) {
+            final camera = TravelCamera(zoom: gaze);
+            camera.panByWorld(entry.value - camera.center);
+            if ((camera.center - entry.value).distance < 1e-9) {
+              centered = true;
+              break;
+            }
+          }
+          expect(centered, isTrue,
+              reason:
+                  '${entry.key} doit être centrable à $at (position ${entry.value})');
         }
       }
     });
