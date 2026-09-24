@@ -236,6 +236,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// [territoriesAnnouncedProvider]); the born territory is ridden,
   /// never announced — the sky does not greet itself.
   void _onEyeTravels() {
+    // V3.70 — the fold's release: diving past the fold zoom lets the
+    // pebble own the survey floor again on the way back out. No
+    // setState here — the gates ride their own ListenableBuilder, and
+    // this listener fires on the same notifyListeners.
+    if (_gatesPinned && _camera.zoom >= _gateFoldZoom) {
+      _gatesPinned = false;
+    }
     final territory = VoidTerritories.territoryAt(_camera.center);
     if (territory != _territory) {
       final wasBorn = _territory == null;
@@ -385,6 +392,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   bool _showingCorpseGuide = false;
+
+  /// V3.70 — THE FOLD: at the survey (zoom below [_gateFoldZoom]) the
+  /// two gates kneel into a single pebble. The survey's whole point is
+  /// the sky's window — two stacked doors stole a third of the portrait
+  /// frame exactly when immensity had to land. Tapping the pebble pins
+  /// the doors back open; zooming past the fold releases the pin.
+  static const double _gateFoldZoom = 1.2;
+  bool _gatesPinned = false;
 
   void _dismissCorpseGuide() {
     setState(() => _showingCorpseGuide = false);
@@ -1812,45 +1827,94 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 minimum: const EdgeInsets.only(
                   bottom: AppLayout.mirrorGateBottomInset,
                 ),
-                // V3.43 — wide windows: the two doors stand SIDE BY
-                // SIDE (two doors, côte à côte); phones keep the
-                // stack, where the thumb lives.
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final wide =
-                        constraints.maxWidth >= AppLayout.gatesSideBySide;
-                    return Flex(
-                      direction: wide ? Axis.horizontal : Axis.vertical,
-                      mainAxisSize: MainAxisSize.min,
-                      // Both doors stand on the same floor (the first
-                      // is a breath taller — the hierarchy, again).
-                      crossAxisAlignment: wide
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.center,
-                      children: [
-                        _GateDoor(
-                          key: const ValueKey('gate-constellation'),
-                          label: ref.watch(voiceProvider).pick(
-                            'SEMER UNE CONSTELLATION',
-                            'SOW A CONSTELLATION',
-                          ),
-                          onPressed: () async {
-                            final seeded = await context.push('/cadavre');
-                            if (seeded is SeededConstellation) {
-                              await _corpseSeeded(seeded);
-                            }
-                          },
+                // V3.70 — THE FOLD: below the survey fold the two
+                // doors kneel into one quiet pebble (the sky's window
+                // is the point of the survey gaze). The pebble pins
+                // them open; the dive past the fold releases the pin
+                // (see [_gatesPinned]).
+                child: ListenableBuilder(
+                  listenable: _camera,
+                  builder: (context, _) {
+                    final folded =
+                        _camera.zoom < _gateFoldZoom && !_gatesPinned;
+                    // A soft arrival for whichever side wakes — no
+                    // crossfade machinery: the leaving side leaves NOW
+                    // (the tree stays honest for the eye and the tests).
+                    return TweenAnimationBuilder<double>(
+                      key: ValueKey(folded ? 'gate-folded' : 'gate-raised'),
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 320),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, t, child) => Opacity(
+                        opacity: t,
+                        child: ScaleTransition(
+                          scale: Tween(begin: 0.94, end: 1.0)
+                              .animate(CurvedAnimation(
+                            parent: AlwaysStoppedAnimation(t),
+                            curve: Curves.easeOutCubic,
+                          )),
+                          child: child,
                         ),
-                        SizedBox(width: wide ? 14 : 0, height: wide ? 0 : 10),
-                        _GateDoor.first(
-                          key: const ValueKey('gate-echo'),
-                          label: ref.watch(voiceProvider).pick(
-                            'FORMULER UN ÉCHO',
-                            'FORMULATE AN ECHO',
-                          ),
-                          onPressed: () => context.push('/mirror'),
-                        ),
-                      ],
+                      ),
+                      child: folded
+                          ? _GatePebble(
+                              key: const ValueKey('gate-pebble'),
+                              label: ref.watch(voiceProvider).pick(
+                                'OUVRIR LES PORTES',
+                                'OPEN THE GATES',
+                              ),
+                              onOpen: () =>
+                                  setState(() => _gatesPinned = true),
+                            )
+                          : LayoutBuilder(
+                              // V3.43 — wide windows: the two doors
+                              // stand SIDE BY SIDE (two doors, côte à
+                              // côte); phones keep the stack, where
+                              // the thumb lives.
+                              builder: (context, constraints) {
+                                final wide = constraints.maxWidth >=
+                                    AppLayout.gatesSideBySide;
+                                return Flex(
+                                  direction: wide
+                                      ? Axis.horizontal
+                                      : Axis.vertical,
+                                  mainAxisSize: MainAxisSize.min,
+                                  // Both doors stand on the same floor
+                                  // (the first is a breath taller —
+                                  // the hierarchy, again).
+                                  crossAxisAlignment: wide
+                                      ? CrossAxisAlignment.end
+                                      : CrossAxisAlignment.center,
+                                  children: [
+                                    _GateDoor(
+                                      key: const ValueKey('gate-constellation'),
+                                      label: ref.watch(voiceProvider).pick(
+                                        'SEMER UNE CONSTELLATION',
+                                        'SOW A CONSTELLATION',
+                                      ),
+                                      onPressed: () async {
+                                        final seeded =
+                                            await context.push('/cadavre');
+                                        if (seeded is SeededConstellation) {
+                                          await _corpseSeeded(seeded);
+                                        }
+                                      },
+                                    ),
+                                    SizedBox(
+                                        width: wide ? 14 : 0,
+                                        height: wide ? 0 : 10),
+                                    _GateDoor.first(
+                                      key: const ValueKey('gate-echo'),
+                                      label: ref.watch(voiceProvider).pick(
+                                        'FORMULER UN ÉCHO',
+                                        'FORMULATE AN ECHO',
+                                      ),
+                                      onPressed: () => context.push('/mirror'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
                     );
                   },
                 ),
@@ -2848,6 +2912,87 @@ class _Centered extends StatelessWidget {
 /// the space between the words stays stable and readable. The
 /// corpse's indigo stays on the map (rings, closed artifacts), where
 /// it has contrast — on the void floor it read as mud.
+/// V3.70 — the gates folded: one quiet pebble where the two doors
+/// stood. A hairline ring, a mote of light — the survey keeps its
+/// window, the acts stay one tap away.
+class _GatePebble extends StatefulWidget {
+  const _GatePebble({
+    super.key,
+    required this.label,
+    required this.onOpen,
+  });
+
+  final String label;
+  final VoidCallback onOpen;
+
+  @override
+  State<_GatePebble> createState() => _GatePebbleState();
+}
+
+class _GatePebbleState extends State<_GatePebble> {
+  bool _pressed = false;
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final dim = _pressed ? 0.72 : 1.0;
+    final hover = _hovered && !_pressed ? 1.0 : 0.0;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTap: widget.onOpen,
+        child: Semantics(
+          button: true,
+          label: widget.label,
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              // Translucent by design — the pebble sits ON the sky, it
+              // is not a surface like the doors: the survey's void
+              // prints through.
+              color: AppColors.voidBlack.withValues(alpha: 0.55 * dim),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.fade(
+                  AppColors.cyan,
+                  (0.30 + 0.25 * hover) * dim,
+                ),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.fade(
+                    AppColors.cyan,
+                    (0.06 + 0.10 * hover) * dim,
+                  ),
+                  blurRadius: 14,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Center(
+              child: Container(
+                width: 3.5,
+                height: 3.5,
+                decoration: BoxDecoration(
+                  color: AppColors.fade(AppColors.pureLight, 0.85 * dim),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _GateDoor extends StatefulWidget {
   const _GateDoor({super.key, required this.label, required this.onPressed})
     : first = false;

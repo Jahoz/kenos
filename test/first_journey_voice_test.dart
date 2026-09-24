@@ -179,5 +179,12 @@ Future<void> _crossAube(WidgetTester tester) async {
       await tester.pump(const Duration(milliseconds: 2100));
     }
   }
+  // V3.70 — the doors kneel into a pebble at the survey gaze: raise
+  // them through the pebble.
+  final pebble = find.byKey(const ValueKey('gate-pebble'));
+  if (pebble.evaluate().isNotEmpty) {
+    await tester.tap(pebble);
+    await tester.pump(const Duration(milliseconds: 500));
+  }
   await tester.pump(const Duration(seconds: 1));
 }
