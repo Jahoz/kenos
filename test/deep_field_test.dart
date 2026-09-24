@@ -154,8 +154,19 @@ void main() {
   });
 
   group('viewport coverage', () {
+    // V3.70 — the honest gaze: the painter's own uniform projection
+    // (short side carries ve, long side ve × aspect) is what the
+    // plane must cover — at EVERY zoom from the survey floor to the
+    // deep watch, on real aspects from square to the tall phone.
+    const viewports = [
+      Size(400, 400), // square
+      Size(400, 640), // 16:10 portrait
+      Size(400, 867), // the tall phone (S25-class, 2.167)
+      Size(640, 400), // landscape
+    ];
+
     test('every legal camera sees dust to the edges of its screen', () {
-      const zooms = [1.2, 1.75, 3.0, 8.0];
+      const zooms = [0.9, 1.0, 1.2, 1.75, 3.0, 8.0];
       const pans = [
         Offset(-10, -10),
         Offset(10, 10),
@@ -163,35 +174,61 @@ void main() {
         Offset(10, -10),
         Offset(0, 0),
       ];
-      for (final pan in pans) {
-        for (final zoom in zooms) {
-          final camera = TravelCamera(zoom: zoom);
-          camera.panByWorld(pan);
-          for (final layer in deepFieldLayers) {
-            final ve = 1.0 /
-                DeepFieldMath.effectiveZoom(camera.zoom, layer.factor);
-            final c = DeepFieldMath.effectiveCenter(
-              camera.center,
-              layer.factor,
-            );
-            // What the screen asks of the decor plane, per axis.
-            expect(
-              c.dx - ve / 2,
-              greaterThanOrEqualTo(DeepFieldMath.planeMin),
-              reason:
-                  'left edge bare at zoom ${camera.zoom}, pan $pan, f ${layer.factor}',
-            );
-            expect(
-              c.dx + ve / 2,
-              lessThanOrEqualTo(DeepFieldMath.planeMax),
-              reason:
-                  'right edge bare at zoom ${camera.zoom}, pan $pan, f ${layer.factor}',
-            );
-            expect(c.dy - ve / 2, greaterThanOrEqualTo(DeepFieldMath.planeMin));
-            expect(c.dy + ve / 2, lessThanOrEqualTo(DeepFieldMath.planeMax));
+      for (final v in viewports) {
+        for (final pan in pans) {
+          for (final zoom in zooms) {
+            final camera = TravelCamera(zoom: zoom);
+            camera.attach(v);
+            camera.panByWorld(pan);
+            for (final layer in deepFieldLayers) {
+              final ve = 1.0 /
+                  DeepFieldMath.effectiveZoom(camera.zoom, layer.factor);
+              final c = DeepFieldMath.effectiveCenter(
+                camera.center,
+                layer.factor,
+              );
+              final halfW = ve / 2 * (v.width / v.shortestSide);
+              final halfH = ve / 2 * (v.height / v.shortestSide);
+              // What the screen asks of the decor plane, per axis.
+              expect(
+                c.dx - halfW,
+                greaterThanOrEqualTo(DeepFieldMath.planeMin),
+                reason:
+                    'left edge bare at zoom ${camera.zoom}, pan $pan, '
+                    'f ${layer.factor}, viewport $v',
+              );
+              expect(
+                c.dx + halfW,
+                lessThanOrEqualTo(DeepFieldMath.planeMax),
+                reason:
+                    'right edge bare at zoom ${camera.zoom}, pan $pan, '
+                    'f ${layer.factor}, viewport $v',
+              );
+              expect(
+                c.dy - halfH,
+                greaterThanOrEqualTo(DeepFieldMath.planeMin),
+                reason:
+                    'top edge bare at zoom ${camera.zoom}, pan $pan, '
+                    'f ${layer.factor}, viewport $v',
+              );
+              expect(
+                c.dy + halfH,
+                lessThanOrEqualTo(DeepFieldMath.planeMax),
+                reason:
+                    'bottom edge bare at zoom ${camera.zoom}, pan $pan, '
+                    'f ${layer.factor}, viewport $v',
+              );
+            }
           }
         }
       }
+    });
+
+    test('V3.70 — the tall survey keeps its far dust (density DoD)', () {
+      // The plane's covered corners are not enough: the survey's tall
+      // bands must stay POPULATED. Pin the count that keeps the
+      // widened plane dense at the opening gaze.
+      expect(deepFieldLayers[0].dustCount, greaterThanOrEqualTo(170));
     });
   });
 

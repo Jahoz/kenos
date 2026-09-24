@@ -97,18 +97,27 @@ class ParallaxMath {
   /// traversable void extends far past the last light (V3.40), but it
   /// wore the same dust and veils as the heart: travel read as a
   /// texture sliding, not a distance crossed. Presence is geography
-  /// now — full within the lit ether, dying to nothing in the far
-  /// country. Leaving IS watching the sky empty itself; and the
-  /// traveller gone far sees the ether glow at their back (the
-  /// hearth). V3.68/69 — the lit band rides the survey gaze
-  /// (0.8–1.25): the whole opening map stays dressed, only the true
-  /// rim empties.
+  /// now — full within the lit ether, dying into the far country.
+  /// Leaving IS watching the sky empty itself; and the traveller
+  /// gone far sees the ether glow at their back (the hearth).
+  /// V3.68/69 — the lit band rides the survey gaze (0.8–1.25): the
+  /// whole opening map stays dressed, only the true rim empties.
+  ///
+  /// V3.70 — THE FRAME MUST CUT A DRESSED SKY. On a tall phone the
+  /// survey's long axis spans ~2.4 world units while the dressed disc
+  /// was 2.5: the frame landed exactly where the ether DIED — a
+  /// pendant on velvet, never a cosmos (the S25 report). The fade now
+  /// dies far past the deepest frame (0.8 → 1.55) and the far country
+  /// keeps a FLOOR forever: emptiness with relief, never flat black.
+  static const double presenceFloor = 0.06;
+
   static double etherPresence(Offset eye) {
     final d = (eye - const Offset(0.5, 0.5)).distance;
     if (d <= 0.8) return 1.0;
-    if (d >= 1.25) return 0.0;
-    final t = (d - 0.8) / (1.25 - 0.8);
-    return 1.0 - t * t * (3 - 2 * t);
+    if (d >= 1.55) return presenceFloor;
+    final t = (d - 0.8) / (1.55 - 0.8);
+    final fade = t * t * (3 - 2 * t);
+    return 1.0 - fade * (1.0 - presenceFloor);
   }
 
   /// V3.37 — the zoom where far lights move fast enough that a 30 fps

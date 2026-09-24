@@ -53,7 +53,9 @@ class DeepFieldLayer {
 const List<DeepFieldLayer> deepFieldLayers = [
   DeepFieldLayer(
     factor: 0.30,
-    dustCount: 110,
+    // V3.70 — 110 -> 170: the widened plane must stay DENSE at the
+    // survey — sparse dust reads as dirt on a lens, not as depth.
+    dustCount: 170,
     radiusMin: 0.35,
     radiusMax: 0.9,
     alphaMin: 0.04,
@@ -95,10 +97,15 @@ class DeepFieldMath {
 
   /// The decor plane: dust lives beyond the known ether — and beyond
   /// the EYE's own reach (V3.40: the traversable void extends to
-  /// ±0.5 past the ether) — so the traveller never reaches past it.
+  /// ±0.65 past the ether) — so the traveller never reaches past it.
   /// Coverage is pinned by test across every legal camera state.
-  static const double planeMin = -0.4;
-  static const double planeMax = 1.4;
+  ///
+  /// V3.70 — THE FRAME MUST CUT A DRESSED SKY: the old plane
+  /// ([-0.4, 1.4]) left the survey's tall bands bare — the frame's
+  /// far edge showed literal nothing, a letterbox, not a void. The
+  /// plane now covers every legal gaze with margin to spare.
+  static const double planeMin = -0.7;
+  static const double planeMax = 2.0;
 
   /// The layer's eye: the camera's displacement from home, damped by
   /// the layer factor. A pan of δ moves the world by δ and the layer

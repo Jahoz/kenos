@@ -185,9 +185,21 @@ class TravelCamera extends ChangeNotifier {
   }
 
   Offset _clamped(Offset c) => Offset(
-        c.dx.clamp(-margin + _halfW, 1.0 + margin - _halfW),
-        c.dy.clamp(-margin + _halfH, 1 + margin - _halfH),
+        _clampAxis(c.dx, _halfW),
+        _clampAxis(c.dy, _halfH),
       );
+
+  /// V3.70 — past the survey, a tall window swallows the whole
+  /// traversable band (lo > hi): a raw clamp there snaps between the
+  /// two crossed bounds — a vertical JUMP at every pan, the survey
+  /// floor's own ghost. The eye holds the MIDDLE instead: the whole
+  /// band is already in view, travel rides the free axis.
+  double _clampAxis(double v, double half) {
+    final lo = -margin + half;
+    final hi = 1.0 + margin - half;
+    if (lo > hi) return (lo + hi) / 2;
+    return v.clamp(lo, hi);
+  }
 
   /// Poetic drift label: "0.42 A.L." (two decimals, French dot kept
   /// machine-voiced as HUD).

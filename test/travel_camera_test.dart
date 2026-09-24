@@ -183,6 +183,24 @@ void main() {
       expect(c.dy, lessThanOrEqualTo(1.2 + 1e-9));
     });
 
+    test('V3.70 — au survey sur écran haut, l\'œil tient le milieu (pas de saut)',
+        () {
+      // À zoom 0.9 sur un 2.167, la bande verticale traversable tient
+      // entière dans la fenêtre : le clamp est dégénéré (borne basse >
+      // borne haute). L'ancien clamp sautait entre les deux bornes
+      // croisées à chaque pan — le spectre du « backward jump ».
+      const tall = Size(400, 867);
+      final camera = TravelCamera(zoom: 0.9)..attach(tall);
+      camera.panByWorld(const Offset(0, 0.4));
+      expect(camera.center.dy, closeTo(0.5, 1e-9),
+          reason: 'la bande entière est déjà au cadre : le milieu tient');
+      camera.panByWorld(const Offset(0, -0.4));
+      expect(camera.center.dy, closeTo(0.5, 1e-9));
+      // L'axe libre reste libre : le voyage horizontal vit.
+      camera.panByWorld(const Offset(0.2, 0));
+      expect(camera.center.dx, greaterThan(0.5));
+    });
+
     test('sans attach (téléphone, premiers tests) : le regard carré d\'avant', () {
       final camera = TravelCamera(zoom: 1.75);
       final r = camera.visibleRect;
