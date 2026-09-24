@@ -26,24 +26,20 @@ void main() {
       }
     });
 
-    test('la rotation des éclats est déterministe (même ciel partout)', () {
-      final at = DateTime(2026, 9, 1, 14, 30); // a moment mid-tumble
-      final a = VestigeMath.rotationAt('v001', at);
-      final b = VestigeMath.rotationAt('v001', at);
-      expect(a, b);
-      // Ids hash to different phases — verify at a few moments that
-      // they differ at least somewhere in the tumble.
-      var differSomewhere = false;
-      for (final m in [0, 7, 13, 29, 41]) {
-        final t = at.add(Duration(minutes: m));
-        if (VestigeMath.rotationAt('v001', t) !=
-            VestigeMath.rotationAt('v002', t)) {
-          differSomewhere = true;
-          break;
-        }
-      }
-      expect(differSomewhere, isTrue,
-          reason: 'les éclats ne tournent pas en chœur');
+    test('la taille des éclats est statique et déterministe (V3.73)', () {
+      // Static carving: the id alone decides the angle, forever — no
+      // clock, no tumble. Culture rests; the rest of the sky lives.
+      final a = VestigeMath.rotationOf('v001');
+      final b = VestigeMath.rotationOf('v001');
+      expect(a, b, reason: 'même id, même angle, toujours');
+      // Different ids may point different ways (no choir) — and since
+      // the angle is a hash phase, at least one of a few ids differs.
+      final angles = {
+        for (final id in ['v001', 'v002', 'v003', 'v004', 'v005'])
+          id: VestigeMath.rotationOf(id),
+      };
+      expect(angles.values.toSet().length, greaterThan(1),
+          reason: 'les éclats ne pointent pas tous du même côté');
     });
 
     testWidgets('le panneau vestige rend le texte et la source, re-lisible',

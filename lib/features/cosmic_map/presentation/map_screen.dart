@@ -1185,14 +1185,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     // The eye moves → only what looks through it
                     // rebuilds: heavens, vestiges, corpses, stars. The
                     // HUD, the gates and the scenery keep their frames.
-                    child: ListenableBuilder(
+                      child: ListenableBuilder(
                       listenable: _camera,
-                      // epoch lives HERE, inside the camera builder: a
-                      // stale captured epoch made shouldRepaint see two
-                      // identical clocks — the heavens froze mid-gesture
-                      // and jumped at the next screen rebuild.
+                      // This builder recomputes on every camera pulse:
+                      // stale captured instants once made shouldRepaint
+                      // see two identical clocks — the heavens froze
+                      // mid-gesture and jumped at the next screen
+                      // rebuild (V3.12c; the vestiges' own clock left
+                      // with their tumble, V3.73).
                       builder: (context, _) {
-                        final epoch = DateTime.now();
                         // V3.12c — serene real estate: every resting
                         // body (vestige, corpse) is resolved against
                         // the throat, the lanes, the beacon and every
@@ -1297,20 +1298,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                 ),
                               ),
                             ),
-                            // The Vestiges: carved shards of culture, static
-                            // in the void, tappable for a re-readable reveal.
-                            // Their tumble rides their own CALM clock
-                            // (V3.17c: 64 shards repainting at the heavens'
-                            // 12.5 Hz beat was a third of the wide view's
-                            // paint bill) and the whole stack owns ONE
-                            // RepaintBoundary — culture drifts even when
-                            // the eye rests, cheaply.
+                            // The Vestiges: carved shards of culture,
+                            // STATIC in the void, tappable for a
+                            // re-readable reveal. V3.73 — fully static:
+                            // the carving angle is id-locked, the 250 ms
+                            // tumble clock is GONE (a battery breath
+                            // with it); the layer rebuilds only when
+                            // the eye or the library moves it.
                             if (vestigesShown.isNotEmpty)
                               RepaintBoundary(
-                                child: _HeavensClock(
-                                  period: const Duration(milliseconds: 250),
-                                  builder: (context, vestigeBeat) => LayoutBuilder(
-                                    builder: (context, c) {
+                                child: LayoutBuilder(
+                                  builder: (context, c) {
                                       // V3.62 — the shard budget: the
                                       // sky carries the shards NEAREST
                                       // the eye (fresh and kept ones are
@@ -1383,35 +1381,26 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                 }
                                                 final v = shard.v;
                                                 final sp = shard.sp;
-                                              // V3.72 — CULTURE WHISPERS
-                                              // IN WORLD CURRENCY: the
-                                              // shard was viewport-
-                                              // anchored (32 × zoomScale)
-                                              // — at the survey it rode
-                                              // 20% over its tuned look
-                                              // and, unlike every body
-                                              // (V3.63), NEVER receded:
-                                              // the newborns' rings and
-                                              // the hexagons carpeted
-                                              // the heavens. The carving
-                                              // is world-sized now
-                                              // (0.056 of the sky —
-                                              // wanderer-class), the
-                                              // 32 px box stays the
-                                              // FINGER's courtesy (the
-                                              // eye sees less), and the
-                                              // shard RECEDES with
-                                              // distance like all
-                                              // matter. Kept shards keep
-                                              // their full light —
-                                              // earned importance is not
-                                              // borrowed.
+                                              // V3.72/73 — CULTURE WHISPERS
+                                              // IN WORLD CURRENCY AND IT
+                                              // RESTS: world-sized carving
+                                              // (0.048 of the sky — below
+                                              // wanderer-class), the 32 px
+                                              // box stays the FINGER's
+                                              // courtesy, the shard
+                                              // RECEDES with distance
+                                              // like all matter, and the
+                                              // carving angle is locked
+                                              // to its id — static. Kept
+                                              // shards keep their full
+                                              // light — earned importance
+                                              // is not borrowed.
                                               final worldScale =
                                                   c.biggest.shortestSide /
                                                       _camera.viewExtent;
                                               final paintSide =
-                                                  (0.056 * worldScale)
-                                                      .clamp(24.0, 96.0);
+                                                  (0.048 * worldScale)
+                                                      .clamp(22.0, 96.0);
                                               final shardSide = math.max(
                                                 32.0,
                                                 paintSide,
@@ -1453,12 +1442,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                   },
                                                   child: CustomPaint(
                                                     painter: VestigePainter(
+                                                      // V3.73 — static
+                                                      // carving: the id
+                                                      // alone decides the
+                                                      // angle, forever.
                                                       rotation:
-                                                          VestigeMath.rotationAt(
+                                                          VestigeMath.rotationOf(
                                                             v.id,
-                                                            context.wantsReducedMotion
-                                                                ? epoch
-                                                                : DateTime.now(),
                                                           ),
                                                       fresh: v.isFresh,
                                                       color:
@@ -1491,7 +1481,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                       );
                                     },
                                   ),
-                                ),
                               ),
                             // The Constellations: exquisite corpses. OPEN =
                             //    contribute a blind line; CLOSED = read it
@@ -2290,10 +2279,12 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
   int _orbitTickCount = 0;
 
   void _onOrbitTick(Duration elapsed) {
-    if (!mounted || _reduced) return;
-    // 120 Hz displays double the work for nothing the eye can name:
-    // the drift rides at most ~60 fps (V3.25).
-    if (elapsed - _lastOrbitAt < const Duration(milliseconds: 12)) return;
+    if (!mounted) return;
+    // V3.73 — reduced motion CALMS the drift, it never stills it: the
+    // echoes and glimmers keep gliding at a calmer stride (a frozen
+    // ether reads as a broken sky — the S25 report).
+    final stride = _reduced ? 48 : 12;
+    if (elapsed - _lastOrbitAt < Duration(milliseconds: stride)) return;
     _lastOrbitAt = elapsed;
     final now = DateTime.now();
     _driftSkies(now);
@@ -3422,18 +3413,9 @@ class _GlimmerFieldPainter extends CustomPainter {
 }
 
 class _HeavensClock extends StatefulWidget {
-  const _HeavensClock({
-    required this.builder,
-    this.period = const Duration(milliseconds: 80),
-  });
+  const _HeavensClock({required this.builder});
 
   final Widget Function(BuildContext, DateTime) builder;
-
-  /// The beat. The heavens themselves need their 80 ms (orbits must
-  /// glide); slow-decorating riders (the vestiges' tumble) pass a
-  /// calmer one — a shard rotating at 4 Hz reads exactly like 12.5 Hz,
-  /// at a third of the repaint price.
-  final Duration period;
 
   @override
   State<_HeavensClock> createState() => _HeavensClockState();
@@ -3446,11 +3428,19 @@ class _HeavensClockState extends State<_HeavensClock> {
   @override
   void initState() {
     super.initState();
-    if (!platformDisablesAnimations()) {
-      _beat = Timer.periodic(widget.period, (_) {
+    // V3.73 — REDUCED MOTION CALMS THE HEAVENS, IT NEVER STILLS THEM.
+    // A frozen sky reads as a broken app: orbits, breath and drift
+    // dying together is over-compliance with the flag ("tout est
+    // statique, les astres ne bougent plus", the S25 report — One UI
+    // reports remove-animations and every clock obeyed to death).
+    // The beat slows 5× under the flag — a calmer sky, a LIVING sky.
+    const base = Duration(milliseconds: 80);
+    _beat = Timer.periodic(
+      platformDisablesAnimations() ? base * 5 : base,
+      (_) {
         if (mounted) setState(() => _now = DateTime.now());
-      });
-    }
+      },
+    );
   }
 
   @override

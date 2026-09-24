@@ -66,15 +66,18 @@ class VestigePainter extends CustomPainter {
     // extinction ("il s'éteint après lecture", the live report).
     //
     // V3.62 — demoted another step: the shard flood had inverted the
-    // sky's hierarchy (culture covered the heavens). The unread
-    // whisper breathes at 0.30, its fill barely there — a trace to
-    // drift near, never a body. Kept shards (the reliquaire) keep
-    // their ember light: EARNED importance is not borrowed.
+    // sky's hierarchy (culture covered the heavens). Kept shards
+    // (the reliquaire) keep their ember light: EARNED importance is
+    // not borrowed.
     //
     // V3.72 — world-sized × receding: at the survey the carving is a
     // wanderer-class mote, and it fades with distance like all
     // matter. The newborn's ring dies twice as fast — a birth is
     // told NEAR, it is not a lighthouse.
+    //
+    // V3.73 — quieter still ("moins visibles") and fully static: the
+    // unread whisper breathes at 0.20, the read ghost at 0.15, the
+    // fill barely a stain. Culture is found, not announced.
     final r = (size.shortestSide / 2 - 8) * 0.75 * scale;
     if (r < 0.8) return; // beyond the whisper: nothing to draw
     // The newborn's mark (V3.58e): a thin HOLLOW ring, the sky's own
@@ -87,11 +90,11 @@ class VestigePainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 0.8
-          ..color = AppColors.fade(color, 0.34 * recede * recede),
+          ..color = AppColors.fade(color, 0.22 * recede * recede),
       );
     }
     final baseAlpha =
-        (kept ? 0.58 : (read ? 0.22 : 0.30)) * recede;
+        (kept ? 0.58 : (read ? 0.15 : 0.20)) * recede;
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8
@@ -118,7 +121,7 @@ class VestigePainter extends CustomPainter {
       Paint()
         ..color = AppColors.fade(
           kept ? AppColors.ember : color,
-          (read ? 0.02 : 0.05) * recede,
+          (read ? 0.015 : 0.03) * recede,
         ),
     );
     canvas.drawPath(path, paint);

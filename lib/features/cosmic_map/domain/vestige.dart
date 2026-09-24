@@ -80,16 +80,18 @@ List<Vestige> dailyRotation(List<Vestige> all, DateTime now) {
 }
 
 /// A Vestige's sky position: STATIC (culture doesn't orbit — it rests
-/// where it drifted ashore), with the faintest breathing rotation.
+/// where it drifted ashore), and so is its carving.
 class VestigeMath {
   VestigeMath._();
 
-  /// The shard's rotation at a moment (very slow tumble, id-hashed).
-  static double rotationAt(String id, DateTime at) {
+  /// V3.73 — the shard's carving angle, STATIC: deterministic from its
+  /// id (every hexagon points its own way — no two in choir), and it
+  /// never turns. Culture RESTS: it does not tumble, it does not
+  /// breathe, it waits ("les vestiges doivent être… statiques, le
+  /// reste doit vivre", the owner's word). The old 47 s tumble died
+  /// with its 250 ms clock — a battery breath with it.
+  static double rotationOf(String id) {
     final h = (id.hashCode & 0x7fffffff);
-    // Continuous spread (not bucketed): every shard tumbles on its own
-    // precise phase — no two in choir.
-    final phase = (at.millisecondsSinceEpoch / 47000 + (h % 9973) / 9973) % 1.0;
-    return phase * 2 * math.pi;
+    return (h % 9973) / 9973 * 2 * math.pi;
   }
 }
