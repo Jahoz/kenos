@@ -46,10 +46,10 @@ class ParallaxMath {
   /// The eye's resting zoom — the anchor of [zoomScale]. The launched
   /// look (TravelCamera's default) must stay scale 1.0: the tuned sky
   /// and its tests are calibrated to it (V3.61 moved it 1.75 → 2.4 to
-  /// de-clutter; V3.64 walked it back to 1.7; V3.68 pulls it to 1.25 —
-  /// the wider gaze is the point: the system must sit in the middle
-  /// distance, the sky must carry it).
-  static const double eyeBaseZoom = 1.25;
+  /// de-clutter; V3.64 walked it back to 1.7; V3.68 pulled to 1.25;
+  /// V3.69 opens at the SURVEY itself, 1.0 — the whole-ether map is
+  /// the opening stance, the dive is the journey).
+  static const double eyeBaseZoom = 1.0;
 
   /// How much celestial BODIES grow as the eye zooms. Zoom moves the
   /// window (viewExtent) — but a zoom nothing grows through is a zoom
@@ -100,14 +100,14 @@ class ParallaxMath {
   /// now — full within the lit ether, dying to nothing in the far
   /// country. Leaving IS watching the sky empty itself; and the
   /// traveller gone far sees the ether glow at their back (the
-  /// hearth). V3.68 — the lit band widens (0.35–1.1 → 0.55–1.25):
-  /// the resting gaze now SEES the whole populated ether, and only
-  /// the true rim empties.
+  /// hearth). V3.68/69 — the lit band rides the survey gaze
+  /// (0.8–1.25): the whole opening map stays dressed, only the true
+  /// rim empties.
   static double etherPresence(Offset eye) {
     final d = (eye - const Offset(0.5, 0.5)).distance;
-    if (d <= 0.55) return 1.0;
+    if (d <= 0.8) return 1.0;
     if (d >= 1.25) return 0.0;
-    final t = (d - 0.55) / (1.25 - 0.55);
+    final t = (d - 0.8) / (1.25 - 0.8);
     return 1.0 - t * t * (3 - 2 * t);
   }
 

@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/utils/parallax_math.dart';
 import '../../../echo/domain/echo.dart';
 import '../../application/celestial_bodies.dart';
 import '../../application/kenos_system.dart';
@@ -47,10 +46,18 @@ class SystemPainter extends CustomPainter {
 
     Offset world(Offset w) => camera.worldToScreen(w, viewport);
 
-    // Bodies grow with the eye (V3.17): a zoom nothing grows through
-    // is a zoom the eye cannot see — the lanes already scaled, the
-    // bodies did not, and the wheel felt dead.
-    final bodyScale = ParallaxMath.zoomScale(_zoom);
+    // V3.69 — the heavens are WORLD-sized: the heart's radius is
+    // 0.10 of the sky, the worlds 0.028, the wanderers 0.010, all
+    // through [worldScale] (px-per-world). The viewport-anchored
+    // bodies never receded — the wheel slid a texture and the heart
+    // stayed 18% of the frame at ANY gaze ("c'est pas flagrant");
+    // now zooming out is RECEDING, the system a jewel that dwindles
+    // into its sky, and hierarchy is world law: hole > worlds >
+    // wanderers > shards.
+    final worldScale = viewport.shortestSide / camera.viewExtent;
+    const holeRadius = 0.10;
+    const planetRadius = 0.028;
+    const wandererRadius = 0.010;
 
     // V3.63 — bodies RECEDE with distance (a screen-proportional heart
     // once stayed flagship-huge seen from the far country, floating in
@@ -80,11 +87,11 @@ class SystemPainter extends CustomPainter {
         c.dy - r <= size.height + 40;
 
     // ── The black hole: darker than the void itself ────────────────────
-    // V3.62 — the heart is the sky's flagship: diameter ~36% of the
-    // short side (it was ~17% and read as a pebble among shards).
-    // The hierarchy is now loud: hole > worlds > moons > shards.
+    // V3.62 — the heart is the sky's flagship (it once read as a
+    // pebble among shards). V3.69 — flagship IN THE SYSTEM, jewel in
+    // the sky: 0.10 of the ether's width, receding with the gaze.
     final bh = world(KenosSystem.blackHole);
-    final bhRadius = viewport.shortestSide / 5.5 * bodyScale * far(KenosSystem.blackHole);
+    final bhRadius = holeRadius * worldScale * far(KenosSystem.blackHole);
     final bhVisible = onScreen(bh, bhRadius * 1.6);
     if (bhVisible) {
 
@@ -136,7 +143,6 @@ class SystemPainter extends CustomPainter {
     // cratered crescent Moon on the inner track, a doubly ringed
     // Venus on the outer, the fixed beacon Polaris above. Worlds are
     // bodies with structure, stars are lights — never confused.
-    final worldScale = viewport.shortestSide / camera.viewExtent;
     for (var i = 0; i < KenosSystem.planets.length; i++) {
       final theme = KenosSystem.planets[i];
       final p = world(KenosSystem.planetPosition(i, epoch));
@@ -144,8 +150,8 @@ class SystemPainter extends CustomPainter {
       // reads wide through her rings, Polaris stays a pointed beacon).
       // Clearly beneath the heart, clearly above the moons and shards.
       final variant = switch (i) { 0 => 1.0, 1 => 1.12, _ => 0.8 };
-      final bodyR =
-          viewport.shortestSide / 26 * bodyScale * variant * far(KenosSystem.planetPosition(i, epoch));
+      final bodyR = planetRadius * worldScale * variant *
+          far(KenosSystem.planetPosition(i, epoch));
       final ringR = bodyR * 1.75;
       final bodyVisible = onScreen(p, bodyR * 2.5);
       if (!bodyVisible) continue;
@@ -317,8 +323,8 @@ class SystemPainter extends CustomPainter {
     // still a clear rank below the worlds.
     for (var i = 0; i < celestialWanderers.length; i++) {
       final w = world(CelestialMath.wandererPosition(i, now));
-      final wandererR =
-          viewport.shortestSide / 56 * bodyScale * far(CelestialMath.wandererPosition(i, now));
+      final wandererR = wandererRadius * worldScale *
+          far(CelestialMath.wandererPosition(i, now));
       if (!onScreen(w, wandererR * 2.5)) continue;
       final body = Paint()..color = AppColors.fade(AppColors.pureLight, 0.4);
       final limb = Paint()
@@ -417,10 +423,10 @@ Rect planetTapRect({
     KenosSystem.planetPosition(index, now),
     viewport,
   );
-  // The finger's courtesy stays generous — bigger than the painted
-  // body, riding the same V3.62 base.
-  final r =
-      viewport.shortestSide / 26 * ParallaxMath.zoomScale(camera.zoom);
+  // V3.69 — the target rides the world-sized body (the painted body
+  // recedes with the gaze), with the finger's courtesy floor.
+  final worldScale = viewport.shortestSide / camera.viewExtent;
+  final r = math.max(0.028 * worldScale * 1.4, 44.0);
   return Rect.fromCircle(center: p, radius: r);
 }
 
@@ -435,9 +441,11 @@ Rect wandererTapRect({
     CelestialMath.wandererPosition(index, now),
     viewport,
   );
+  // V3.69 — world-sized wanderer, courtesy floor for the far dots.
+  final worldScale = viewport.shortestSide / camera.viewExtent;
   return Rect.fromCircle(
     center: p,
-    radius: viewport.shortestSide / 28 * ParallaxMath.zoomScale(camera.zoom),
+    radius: math.max(0.010 * worldScale * 2.2, 40.0),
   );
 }
 

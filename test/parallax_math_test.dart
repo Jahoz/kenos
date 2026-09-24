@@ -119,10 +119,11 @@ void main() {
     test('zoomer approfondit, dézoomer recule — jamais de renversement', () {
       final s = ParallaxMath.zoomScale;
       expect(s(2.5), greaterThan(1.0));
-      expect(s(1.2), lessThan(1.0));
+      // L'ancre vit au survey (V3.69) : sous 1,0 l'étoile rétrécit.
+      expect(s(0.9), lessThan(1.0));
       // Monotone sur toute la plage de l'œil.
-      var previous = s(1.2);
-      for (var z = 1.3; z <= 8.0; z += 0.1) {
+      var previous = s(0.9);
+      for (var z = 1.0; z <= 8.0; z += 0.1) {
         final v = s(double.parse(z.toStringAsFixed(1)));
         expect(v, greaterThan(previous));
         previous = v;
@@ -130,11 +131,13 @@ void main() {
     });
 
     test('subtil par construction : jamais des ballons', () {
-      // Au zoom maximal (8), un corps ne grossit que ~3×.
-      expect(ParallaxMath.zoomScale(8.0), closeTo(3.05, 0.05));
-      // Au zoom minimal (1,0), il rétrécit à peine (~0,88×) —
-      // V3.68 : l'ancre a suivi le regard, 1,7 → 1,25.
-      expect(ParallaxMath.zoomScale(1.0), closeTo(0.875, 0.02));
+      // Au zoom maximal (8), une ÉTOILE ne grossit que ~3,5× (les
+      // corps du système sont world-sized depuis V3.69 — eux
+      // reculent et grandissent avec le monde).
+      expect(ParallaxMath.zoomScale(8.0), closeTo(3.48, 0.05));
+      // Au plancher du survey (0,9), à peine plus petit (~0,94×) —
+      // V3.69 : l'ancre vit au survey, 1,0.
+      expect(ParallaxMath.zoomScale(0.9), closeTo(0.94, 0.02));
     });
   });
 

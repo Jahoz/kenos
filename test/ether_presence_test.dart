@@ -13,14 +13,14 @@ void main() {
 
     test('pleine présence au cœur de l\'éther', () {
       expect(ParallaxMath.etherPresence(heart), 1.0);
-      expect(ParallaxMath.etherPresence(const Offset(0.95, 0.5)), 1.0);
+      expect(ParallaxMath.etherPresence(const Offset(1.2, 0.5)), 1.0);
     });
 
     test('le monde connu garde son habit jusqu\'au bord', () {
-      // d = 0.55 : encore plein — la bande habitée va jusqu'au rim
-      // (V3.68 : la bande s'élargit avec le regard reculé).
+      // d = 0.8 : encore plein — la bande habitée couvre le survey
+      // (V3.69 : le regard d'ouverture voit l'éther habillé).
       expect(
-        ParallaxMath.etherPresence(const Offset(1.05, 0.5)),
+        ParallaxMath.etherPresence(const Offset(1.3, 0.5)),
         1.0,
       );
     });
@@ -28,7 +28,7 @@ void main() {
     test('perte douce, jamais de couture', () {
       Offset ray(double d) => heart + Offset(d, 0);
       var prev = 1.0;
-      for (var d = 0.55; d <= 1.25; d += 0.05) {
+      for (var d = 0.8; d <= 1.25; d += 0.05) {
         final p = ParallaxMath.etherPresence(ray(d));
         expect(p, lessThanOrEqualTo(prev + 1e-9),
             reason: 'la présence décroît (d=$d)');
@@ -37,7 +37,7 @@ void main() {
         prev = p;
       }
       // Milieu de course : à mi-chemin du fade, la smoothstep ≈ 0.5.
-      expect(ParallaxMath.etherPresence(ray(0.9)), closeTo(0.5, 0.02));
+      expect(ParallaxMath.etherPresence(ray(1.025)), closeTo(0.5, 0.02));
     });
 
     test('le grand vide est vide : présence nulle au loin', () {

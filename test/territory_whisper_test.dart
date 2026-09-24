@@ -82,8 +82,10 @@ void main() {
 
     // Out of the throat, into the gardens: the crossing speaks.
     // (Whispers are asserted on their serif line — the throat's title
-    // shares its string with the HUD's own label for it.)
-    await dragVoid(tester, const Offset(-260, -40));
+    // shares its string with the HUD's own label for it. V3.69: the
+    // survey gaze travels ~0.9 world per 390 px — the drag is halved
+    // to LAND in the gardens, not overshoot into the far country.)
+    await dragVoid(tester, const Offset(-140, -20));
     expect(
       find.text(VoidTerritories.whisperLine(VoidTerritory.gardens)),
       findsOneWidget,
@@ -97,7 +99,7 @@ void main() {
     );
 
     // Home again: the throat, never greeted at birth, is told now.
-    await dragVoid(tester, const Offset(260, 40));
+    await dragVoid(tester, const Offset(140, 20));
     expect(
       find.text(VoidTerritories.whisperLine(VoidTerritory.throat)),
       findsOneWidget,
@@ -105,7 +107,7 @@ void main() {
     await tester.pump(const Duration(seconds: 8));
 
     // Back out: the gardens were already spoken — the sky stays quiet.
-    await dragVoid(tester, const Offset(-260, -40));
+    await dragVoid(tester, const Offset(-140, -20));
     await tester.pump(const Duration(milliseconds: 300));
     expect(
       find.text(VoidTerritories.whisperLine(VoidTerritory.gardens)),
@@ -124,7 +126,7 @@ void main() {
     final hud = tester.widgetList<Text>(find.textContaining('LE GOUFFRE'));
     expect(hud, isNotEmpty);
 
-    await dragVoid(tester, const Offset(-260, -40));
+    await dragVoid(tester, const Offset(-140, -20));
     expect(find.textContaining('LES JARDINS'), findsWidgets);
   });
 }

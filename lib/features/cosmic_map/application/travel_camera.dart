@@ -25,26 +25,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// never spend a frame on a pan.
 class TravelCamera extends ChangeNotifier {
   TravelCamera({
-    double zoom = 1.25,
-    this.margin = 0.65,
+    double zoom = 1.0,
+    this.margin = 0.7,
     Offset center = const Offset(0.5, 0.5),
   })  : _zoom = zoom.clamp(minZoom, maxZoom),
         _center = center;
 
-  /// How much of the world fills the screen at once (1.25 → ~80% of
-  /// the short side). V3.68 — the gaze pulls back: the system (V3.67's
-  /// lanes and halos) was WIDER than the old 1.7 window — the eye
-  /// lived INSIDE the retinue, and no rearrangement of matter could
-  /// read as immensity from within. At 1.25 the system is a JEWEL in
-  /// the middle distance and the sky carries it.
+  /// How much of the world fills the screen at once (1.0 → the whole
+  /// ether's width). V3.69 — SURVEY IS THE OPENING GAZE: the system
+  /// being world-sized now, the whole-sky view is the map that says
+  /// "immense" — the jewel and its field at once — and the dive to
+  /// reading depth is the journey. V3.68's 1.25 pulled back halfway;
+  /// the frame-anchored heart stayed 18% of the screen whatever the
+  /// gaze, and the immensity never flagged ("c'est pas flagrant").
   double _zoom;
   double get zoom => _zoom;
 
   /// Pinch bounds: deep enough to split the tightest clusters (8×
   /// separates stars born a few pixels apart), never a map of pixels.
-  /// V3.64 — the survey floor opens (1.2 → 1.0): the whole known
-  /// ether in one gaze, a majestic map — far lights, nothing at hand.
-  static const double minZoom = 1.0;
+  /// V3.68 — the survey floor opens (1.2 → 1.0): the whole known
+  /// ether in one gaze. V3.69 — a hair BELOW the opening gaze
+  /// (0.9): the pinch-out keeps a breath of room, the ether island
+  /// with its rim.
+  static const double minZoom = 0.9;
   static const double maxZoom = 8.0;
 
   /// V3.40 — the traversable void extends WELL past the known ether
