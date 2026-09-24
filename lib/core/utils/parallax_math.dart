@@ -162,7 +162,15 @@ class ParallaxMath {
   /// régulier", the live report). Full amplitude at the resting eye,
   /// a quarter at max zoom — the feature survives, the distraction
   /// dies.
-  static double parallaxCalm(double zoom) =>
-      1.0 - 0.75 * (((zoom - eyeBaseZoom) / (8.0 - eyeBaseZoom))
-              .clamp(0.0, 1.0));
+  ///
+  /// V3.70 — THE SURVEY SWAYS: below the fold (1.2) the tilt is
+  /// AMPLIFIED, up to ×1.35 at the survey floor — tilting the phone
+  /// slides the whole sky inside its frame: the strongest mobile cue
+  /// that the void has depth beyond the glass.
+  static double parallaxCalm(double zoom) {
+    if (zoom <= 1.2) {
+      return 1.0 + 0.35 * ((1.2 - zoom) / (1.2 - 0.9)).clamp(0.0, 1.0);
+    }
+    return 1.0 - 0.75 * ((zoom - 1.2) / (8.0 - 1.2)).clamp(0.0, 1.0);
+  }
 }
