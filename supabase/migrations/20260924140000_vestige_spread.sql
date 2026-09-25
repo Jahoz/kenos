@@ -67,9 +67,11 @@ begin
 
     if p_approve then
         -- A resting place for the shard, deterministic from its own
-        -- id (V3.72: the spread law — one home, above).
+        -- id (V3.72: the spread law — one home, above). NB: ids are
+        -- TEXT and the legacy corpus carries non-uuid ids ('v…') —
+        -- md5 feeds the bit-cast hex that raw ids cannot.
         v_seed := abs(
-            (('x' || substr(p.id::text, 1, 8))::bit(32)::bigint % 2147483647)
+            (('x' || substr(md5(p.id::text), 1, 8))::bit(32)::bigint % 2147483647)
         )::double precision / 2147483647;
         place := public.vestige_resting_place(v_seed);
         insert into public.kenos_vestiges (id, kind, text, source, pos_x, pos_y, locale)
@@ -98,7 +100,7 @@ update public.kenos_vestiges v
   from (
     select id,
            abs(
-             (('x' || substr(id::text, 1, 8))::bit(32)::bigint % 2147483647)
+             (('x' || substr(md5(id::text), 1, 8))::bit(32)::bigint % 2147483647)
            )::double precision / 2147483647 as s
       from public.kenos_vestiges
   ) z
