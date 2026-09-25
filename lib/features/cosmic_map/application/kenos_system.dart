@@ -289,12 +289,16 @@ class KenosSystem {
     // A free thought rides its own wide slow ring around the VOID:
     // radius inherited from where it was born, tempo from its id —
     // a sky of drifting strangers, desynchronized by construction.
+    // V3.74 — THE SKY MUST BE SEEN TO TURN: the strangers' half-day
+    // rings (3-10 h) read as frozen at the survey ("tout est figé").
+    // Their circles now take ~14-34 MINUTES — a drift the eye
+    // catches, still strangers, never a carousel.
     if (isErrantThought(echo.createdAt)) {
       final birth = Offset(echo.coordX, echo.coordY);
       final r = (birth - blackHole).distance.clamp(0.25, 0.95);
       final h = echo.id.hashCode & 0x7fffffff;
       final period = Duration(
-        hours: 3 + (h % 7),
+        minutes: 14 + 4 * (h % 6),
       );
       final phase =
           (at.millisecondsSinceEpoch + h % 9973) / period.inMilliseconds;

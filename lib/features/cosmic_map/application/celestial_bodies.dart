@@ -122,7 +122,11 @@ class CelestialMath {
   static Offset wandererPosition(int index, DateTime at) {
     final i = index % celestialWanderers.length;
     final radius = 0.60 + 0.225 * (i % 3);
-    final periodMs = (6 + 2 * i) * 3600000.0;
+    // V3.74 — THE SKY MUST BE SEEN TO TURN: the half-day arcs
+    // (6-14 h) read as frozen. The wanderers now pace their circles
+    // in ~50-110 min — a slow drift the eye catches at the survey,
+    // still far, still unhurried.
+    final periodMs = (50 + 20 * i) * 60000.0;
     final base = i * math.pi / 2;
     final angle =
         base + 2 * math.pi * at.millisecondsSinceEpoch / periodMs;

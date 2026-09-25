@@ -65,18 +65,20 @@ void main() {
       }
     });
 
-    test('les planètes bougent — visiblement (une révolution ~40 min)', () {
+    test('les planètes bougent — visiblement (V3.74 : ~10/16 min le tour)',
+        () {
       final before = KenosSystem.planetPosition(0, t0);
       final after = KenosSystem.planetPosition(
         0,
         t0.add(const Duration(minutes: 1)),
       );
       expect(after, isNot(before));
-      // In one minute: ~9° of arc — the drift is perceptible if you
-      // linger (eternal is not motionless).
+      // In one minute: ~36° of arc — the drift reads ALIVE at the
+      // survey ("tout est figé" was the complaint), still no carousel:
+      // a full sweep takes ten contemplative minutes.
       final moved = (after - before).distance;
-      expect(moved, greaterThan(0.03), reason: 'le ciel doit vivre');
-      expect(moved, lessThan(0.12), reason: 'sans tourner la tête');
+      expect(moved, greaterThan(0.06), reason: 'le ciel doit vivre, VISIBLE');
+      expect(moved, lessThan(0.18), reason: 'sans devenir un manège');
     });
 
     test('un écho lié orbit SA planète dans sa bande élargie (ellipse propre)', () {

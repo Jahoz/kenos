@@ -36,10 +36,15 @@ class Heavens {
   static double orbitRadiusOf(int index) =>
       switch (index) { 0 => 0.24, _ => 0.38 };
 
-  /// Each lane has its own tempo.
+  /// Each lane has its own tempo. V3.74 — THE SKY MUST BE SEEN TO
+  /// TURN: the contemplative half-hours (30/55 min) read as frozen at
+  /// the survey ("tout est figé, les astres doivent subir des
+  /// rotations", the live report). The lanes now sweep in ~10/16 min
+  /// — a drift the eye catches in ten seconds, still a contemplative
+  /// sky, never a carousel (V3.22's law holds).
   static Duration _periodOf(int index) => switch (index) {
-        0 => const Duration(minutes: 30),
-        _ => const Duration(minutes: 55),
+        0 => const Duration(minutes: 10),
+        _ => const Duration(minutes: 16),
       };
 
   /// World position of a planet at a given moment. Polaris (index 2)
