@@ -1,0 +1,25 @@
+# KENOS
+
+> L'anti-réseau social — the anti-social network. A digital sanctuary for
+> cognitive offloading: cast an intimate thought into a cosmic anonymous
+> ether, sealed AES-256-GCM on your device. Exactly one stranger will ever
+> read it, through a single 10-second window; then it destroys itself.
+> No accounts, no likes, no comments, no feed.
+
+Key facts:
+
+- French-first PWA (works offline once installed, no account, no install gate)
+- Single-read atomic consumption server-side; the server never sees plaintext
+- Public-domain poem artifacts (Verlaine, Hugo, Rimbaud, Baudelaire, Shelley…)
+  readable by all for one 30-day moon; a new poem is born every Monday
+- Anonymity is architectural, not a promise: zero personal data, encryption
+  on-device, invite links stored only as SHA-256 hashes
+- Free, no ads, no trackers; funded exclusively via GitHub Sponsors
+
+Urls:
+
+- [Application (enter the ether)](https://kenos-lemon.vercel.app/): the app itself
+- [Landing page (French, canonical)](https://kenos-site.vercel.app/): full presentation
+- [Landing page (English)](https://kenos-site.vercel.app/index_en.html)
+- [Source code](https://github.com/Jahoz/kenos): Flutter + Supabase, Polyform license
+- [Support the sanctuary](https://github.com/sponsors/Jahoz)

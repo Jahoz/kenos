@@ -1,0 +1,5 @@
+# KENOS — the sanctuary hides nothing from the machines that come to read.
+User-agent: *
+Allow: /
+
+Sitemap: https://kenos-site.vercel.app/sitemap.xml
