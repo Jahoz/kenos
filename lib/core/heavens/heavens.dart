@@ -112,9 +112,11 @@ class Heavens {
     // lift the orbit as the thought ages — near is young).
     final radius = 0.015 + random.nextDouble() * 0.035;
     final angle = random.nextDouble() * 2 * math.pi;
+    // V3.77 — beyond the square: the storable sky widens to
+    // [-0.55, 1.55] (a hair inside the server's new bound).
     return Offset(
-      (body.dx + radius * math.cos(angle)).clamp(0.02, 0.98),
-      (body.dy + radius * math.sin(angle)).clamp(0.02, 0.98),
+      (body.dx + radius * math.cos(angle)).clamp(-0.55, 1.55),
+      (body.dy + radius * math.sin(angle)).clamp(-0.55, 1.55),
     );
   }
 

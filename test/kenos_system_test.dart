@@ -175,9 +175,10 @@ void main() {
             at,
             Random(7 + i),
           );
-          // Inside the known ether, always.
-          expect(p.dx, inInclusiveRange(0.02, 0.98));
-          expect(p.dy, inInclusiveRange(0.02, 0.98));
+          // Inside the STORABLE sky, always (V3.77: beyond the
+          // square — the widened [-0.55, 1.55] birth clamp).
+          expect(p.dx, inInclusiveRange(-0.55, 1.55));
+          expect(p.dy, inInclusiveRange(-0.55, 1.55));
           if (!moon) {
             // ...beside its intent planet — the newborn band is tight.
             final dist = (p - planet).distance;
@@ -188,22 +189,17 @@ void main() {
             );
           } else {
             // ...or beside its moon: the companion is born in court.
-            // NB: a lune on her wide arc (r up to 1.05) may stand
-            // OUTSIDE the storable square — the birth anchors on her
-            // clamped projection (the stored truth), while the render
-            // follows her true position (within the fetch's slack).
+            // NB: a lune on her wide arc (r up to 1.12) may stand
+            // OUTSIDE the old square — V3.77 stores her true
+            // position (the widened bound holds it).
             final h2 = at.millisecondsSinceEpoch;
             final moon = Heavens.wandererPosition(
               (h2 >> 3) % 4,
               at,
             );
-            final anchor = Offset(
-              moon.dx.clamp(0.02, 0.98),
-              moon.dy.clamp(0.02, 0.98),
-            );
-            final dist = (p - anchor).distance;
+            final dist = (p - moon).distance;
             expect(dist, lessThanOrEqualTo(0.06),
-                reason: 'née au bord de sa lune (ancrage stockable)');
+                reason: 'née au bord de sa lune (position vraie)');
           }
         }
       }

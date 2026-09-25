@@ -118,8 +118,8 @@ class KenosSystem {
       );
     }
     q = outsideTheHole(q);
-    // The known ether's bounds.
-    return Offset(q.dx.clamp(0.02, 0.98), q.dy.clamp(0.02, 0.98));
+    // V3.77 — the storable sky's widened bounds (beyond the square).
+    return Offset(q.dx.clamp(-0.55, 1.55), q.dy.clamp(-0.55, 1.55));
   }
 
   /// V3.62 — the lanes tightened (0.26/0.37 → 0.19/0.28): at the

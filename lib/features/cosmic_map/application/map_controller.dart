@@ -204,16 +204,19 @@ class MapController extends AsyncNotifier<List<Echo>> {
   DateTime? _lastSyncedAt;
 
   /// Slacks a raw viewport rect to the fetch rect: clamped to the
-  /// server's [0,1]², padded by [_travelSlack]. One single formula so
-  /// the first gaze and every travel sync speak the same geometry.
+  /// sky's STORABLE extent — V3.77: beyond the square, the widened
+  /// [-0.6, 1.6] bound (the walls of the old [0,1]² made a visible
+  /// rectangle past which only void remained). Padded by
+  /// [_travelSlack]. One single formula so the first gaze and every
+  /// travel sync speak the same geometry.
   ({double loX, double loY, double hiX, double hiY}) _slackRect(
     ({double minX, double minY, double maxX, double maxY}) r,
   ) =>
       (
-        loX: (r.minX - _travelSlack).clamp(0.0, 1.0),
-        loY: (r.minY - _travelSlack).clamp(0.0, 1.0),
-        hiX: (r.maxX + _travelSlack).clamp(0.0, 1.0),
-        hiY: (r.maxY + _travelSlack).clamp(0.0, 1.0),
+        loX: (r.minX - _travelSlack).clamp(-0.6, 1.6),
+        loY: (r.minY - _travelSlack).clamp(-0.6, 1.6),
+        hiX: (r.maxX + _travelSlack).clamp(-0.6, 1.6),
+        hiY: (r.maxY + _travelSlack).clamp(-0.6, 1.6),
       );
 
   Future<void> refreshViewport({
