@@ -42,7 +42,9 @@ void main() {
         // V3.21: the beacon holds the north corner, clear of every
         // orbiting lane (no more conjunctions through her sky).
         if (i == 2) {
-          expect(dist, closeTo(0.523259, 1e-5), reason: 'Polaris ne bouge pas');
+          // V3.76: the beacon holds the far corner (r ≈ 0.6364),
+          // clear of every widened lane.
+          expect(dist, closeTo(0.636396, 1e-5), reason: 'Polaris ne bouge pas');
           // V3.67: Venus's lane widened to 0.44 — the beacon keeps a
           // clear (if closer) sky: no conjunction touches her.
           expect(dist - KenosSystem.orbitRadiusOf(1),
@@ -78,8 +80,8 @@ void main() {
       // survey ("tout est figé" was the complaint), still no carousel:
       // a full sweep takes ten contemplative minutes.
       final moved = (after - before).distance;
-      expect(moved, greaterThan(0.06), reason: 'le ciel doit vivre, VISIBLE');
-      expect(moved, lessThan(0.18), reason: 'sans devenir un manège');
+      expect(moved, greaterThan(0.10), reason: 'le ciel doit vivre, VISIBLE');
+      expect(moved, lessThan(0.24), reason: 'sans devenir un manège');
     });
 
     test('V3.75 — l\'âge est une distance : l\'orbite s\'élargit en pâlissant',

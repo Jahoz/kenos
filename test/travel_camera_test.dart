@@ -103,7 +103,7 @@ void main() {
       // frame CUTS them, the reading gaze centres them. Every body is
       // centerable at the resting eye or a modest dive (zoom ≤ 4).
       final t0 = DateTime(2026, 9, 14);
-      const gazes = [1.0, 1.5, 2.0, 3.0, 4.0];
+      const gazes = [1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0];
       for (var s = 0; s < 32; s++) {
         final at = t0.add(Duration(hours: s));
         final bodies = <String, Offset>{

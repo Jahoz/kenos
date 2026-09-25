@@ -17,10 +17,12 @@ class Heavens {
   /// The black hole sits at the heart of the known ether.
   static const Offset blackHole = Offset(0.5, 0.5);
 
-  /// Polaris does not orbit: the fixed point, beacon of the north
-  /// corner (V3.21 — the corner clears every lane; see
-  /// CelestialMath for the full story).
-  static const Offset polaris = Offset(0.13, 0.13);
+  /// Polaris does not orbit: the fixed point, beacon of the far
+  /// corner (V3.21 — the corner clears every lane; V3.76 — pushed to
+  /// the corner itself, r ≈ 0.64: the widened lanes (0.32/0.45) would
+  /// graze the old north-corner post — the beacon watches the system
+  /// from farther out, clear of all traffic).
+  static const Offset polaris = Offset(0.05, 0.05);
 
   /// The three intentions' anchors: the worlds thoughts gravitate
   /// around. Anchor order is law (teal/La Lune 0, indigo/Vénus 1,
@@ -31,10 +33,15 @@ class Heavens {
   /// (A literal: Duration members are not const-evaluable here.)
   static const double _epoch = 72 * 3600000.0;
 
-  /// V3.62/V3.66/V3.68 — the lanes' radii (the JEWEL retinue: see
-  /// KenosSystem.orbitRadiusOf for the history).
+  /// V3.62/V3.66/V3.68/V3.76 — the lanes' radii. V3.76 — THE SYSTEM
+  /// OPENS: the retinue hugged the hole (0.24/0.38 — everything
+  /// alive inside a disc of radius 0.64, one third of the sky's
+  /// surface, "on reste toujours aussi proche du trou noir"). The
+  /// lanes widen to 0.32/0.45 with the far band at 0.38: the crowd's
+  /// envelope reaches 0.83 and the survey frame cuts it on every
+  /// screen — distance between the worlds at last.
   static double orbitRadiusOf(int index) =>
-      switch (index) { 0 => 0.24, _ => 0.38 };
+      switch (index) { 0 => 0.32, _ => 0.45 };
 
   /// Each lane has its own tempo. V3.74 — THE SKY MUST BE SEEN TO
   /// TURN: the contemplative half-hours (30/55 min) read as frozen at
@@ -120,12 +127,13 @@ class Heavens {
   /// How many lunes ride the sky.
   static const int wandererCount = 4;
 
-  /// A lune's world position: arcs 0.60–1.05 of the sky, pacing
+  /// A lune's world position: arcs 0.72–1.12 of the sky, pacing
   /// their circles in ~50–110 min (V3.74 — the sky must be SEEN to
-  /// turn). Still the far country, clear of Venus's swarm rim.
+  /// turn). V3.76 — pushed out with the widened system; the far
+  /// limit keeps every lune centerable (the eye at max zoom).
   static Offset wandererPosition(int index, DateTime at) {
     final i = index % wandererCount;
-    final radius = 0.60 + 0.225 * (i % 3);
+    final radius = 0.72 + 0.20 * (i % 3);
     final periodMs = (50 + 20 * i) * 60000.0;
     final base = i * math.pi / 2;
     final angle =

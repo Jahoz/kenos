@@ -74,11 +74,14 @@ class KenosSystem {
         q = blackHole + (q - blackHole) / d * target;
       }
     }
-    // The beacon: Polaris keeps a clear sky.
+    // The beacon: Polaris keeps a clear sky. V3.76 — she holds the
+    // far corner: the outward push has nowhere to go (the square's
+    // wall), so the degenerate on-beacon case dodges TOWARD the
+    // heart instead of into the clamp.
     final toBeacon = q - CelestialMath.polaris;
     if (toBeacon.distance < clearance + 0.02 && toBeacon.distance >= 0) {
       final away = toBeacon.distance < 1e-9
-          ? const Offset(0, -1)
+          ? ((blackHole - CelestialMath.polaris) / (blackHole - CelestialMath.polaris).distance)
           : toBeacon / toBeacon.distance;
       q = CelestialMath.polaris + away * (clearance + 0.02);
     }
@@ -86,8 +89,14 @@ class KenosSystem {
     // squeezes clusters; instead, a stacked body takes the next
     // golden-angle station on a ring around its first collision —
     // clusters bloom apart, never through each other.
+    // V3.76 — the bloom's PHASE is the body's own: with one shared
+    // phase every collision in the sky hopped the SAME way, and the
+    // library smeared east ("toujours concentrés à droite"). Each
+    // body now blooms from its own bearing — collisions scatter in
+    // every direction.
     final base = q;
     const golden = 2.399963229728653; // radians, the golden angle
+    final basePhase = (base.dx * 917.0 + base.dy * 613.0) % (2 * math.pi);
     for (var n = 0; n < 24; n++) {
       var clear = true;
       for (final o in occupied) {
@@ -101,7 +110,7 @@ class KenosSystem {
       // n·φ on a spiral of radius c·√(n+1) — the layout that keeps
       // every pair at least ~c apart, for any cluster size (c rides
       // the clearance, V3.61).
-      final angle = n * golden;
+      final angle = n * golden + basePhase;
       final r = 0.09 * math.sqrt(n + 1);
       q = Offset(
         base.dx + r * math.cos(angle),
@@ -161,12 +170,13 @@ class KenosSystem {
 
   // ── Echo orbits ────────────────────────────────────────────────────────
 
-  /// V3.75 — THE FAR BAND: where an aged thought rides at its moon's
-  /// end (0.26 from its world), drawn as the one whisper ring around
-  /// each planet. The three-shell diagram is retired with the void-
-  /// ring errants: the swarm is a CROWD of own ellipses, aged by
-  /// distance (see [orbitAphelion]).
-  static const double echoFarBand = 0.26;
+  /// V3.75/76 — THE FAR BAND: where an aged thought rides at its
+  /// moon's end (0.38 from its world — the system opened with the
+  /// lanes), drawn as the one whisper ring around each planet. The
+  /// three-shell diagram is retired with the void-ring errants: the
+  /// swarm is a CROWD of own ellipses, aged by distance (see
+  /// [orbitAphelion]).
+  static const double echoFarBand = 0.38;
 
   /// Per-echo orbital eccentricity range. Aphelion is bounded, so the
   /// radius always stays within [aphelion × (1 - e), aphelion].
@@ -207,7 +217,7 @@ class KenosSystem {
     final jitter = ((h >> 3) % 100) / 100 * 0.04; // identity's own span
     final moonCourt = Heavens.ridesAMoon(echo.createdAt);
     final near = moonCourt ? 0.025 : 0.030;
-    final far = moonCourt ? 0.10 : 0.26;
+    final far = moonCourt ? 0.10 : echoFarBand;
     return near + (far - near) * t + jitter;
   }
 

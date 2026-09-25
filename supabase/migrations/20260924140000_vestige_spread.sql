@@ -19,11 +19,17 @@ returns double precision[]
 language sql
 immutable
 as $$
+    -- V3.76 FIX: theta = 2pi * fract(s*e). Two traps died here: (1)
+    -- V3.72 used the GOLDEN ANGLE as the multiplier — theta never
+    -- exceeded 85 degrees (the whole library in the north-east
+    -- quadrant); (2) even x 2pi, fract(s*phi) stays under 0.618 for
+    -- every s in [0,1) — the south stayed empty. e (~2.718) wraps
+    -- the seed twice: the angle truly spans the full circle.
     with t as (
         select greatest(p_seed, 0)::double precision as u,
-               (2.399963229728653 *
-                (p_seed * 0.6180339887498949
-                 - floor(p_seed * 0.6180339887498949)))::double precision as theta
+               (6.283185307179586 *
+                (p_seed * 2.718281828459045
+                 - floor(p_seed * 2.718281828459045)))::double precision as theta
     )
     select array[
         -- r = least(the median's span, the square's edge on each axis)
