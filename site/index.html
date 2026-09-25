@@ -118,6 +118,37 @@
       background: rgba(244,244,246,.75); margin-top: 5px;
     }
 
+    /* ── The dream (sky V2) ── */
+    /* cinematic vignette — the edges fall back into the void */
+    .sky::after {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(3,5,8,.55) 100%);
+    }
+    /* the hero rises as the sky lights up behind it */
+    .hero > * { opacity: 0; transform: translateY(16px); animation: heroIn 1.2s cubic-bezier(.2,.7,.3,1) forwards; }
+    .hero > :nth-child(1) { animation-delay: .2s }
+    .hero > :nth-child(2) { animation-delay: .4s }
+    .hero > :nth-child(3) { animation-delay: .65s }
+    .hero > :nth-child(4) { animation-delay: .85s }
+    .hero > :nth-child(5) { animation-delay: 1.05s }
+    @keyframes heroIn { to { opacity: 1; transform: none; } }
+    /* the title's gradient breathes */
+    .hero h1 em { background-size: 220% 100%; animation: shimmer 8s ease-in-out infinite alternate; }
+    @keyframes shimmer { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+    /* the sound door — off by default, a whisper when open */
+    .sky-sound {
+      position: fixed; bottom: 18px; right: 18px; z-index: 30;
+      font-family: var(--mono); font-size: 9px; letter-spacing: .3em; text-transform: uppercase;
+      color: rgba(244,244,246,.45); background: rgba(3,5,8,.66);
+      border: 1px solid var(--hairline); padding: 9px 14px; cursor: pointer;
+      backdrop-filter: blur(8px); transition: color .3s, border-color .3s;
+    }
+    .sky-sound:hover { color: var(--cyan); border-color: rgba(34,211,238,.5); }
+    @media (prefers-reduced-motion: reduce) {
+      .hero > * { animation: none; opacity: 1; transform: none; }
+      .hero h1 em { animation: none; }
+    }
+
     /* ── Layout ── */
     main { position: relative; z-index: 1; max-width: 980px; margin: 0 auto; padding: 0 28px; }
 
