@@ -1299,16 +1299,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
                               ),
                             ),
                             // The Vestiges: carved shards of culture,
-                            // STATIC in the void, tappable for a
-                            // re-readable reveal. V3.73 — fully static:
-                            // the carving angle is id-locked, the 250 ms
-                            // tumble clock is GONE (a battery breath
-                            // with it); the layer rebuilds only when
-                            // the eye or the library moves it.
+                            // tappable for a re-readable reveal.
+                            // V3.75 — they DRIFT: a slow id-phased
+                            // ellipse around their anchor (one turn
+                            // in 25–45 min — calm enough to rest the
+                            // eye, alive enough to catch a stare),
+                            // on a calm 1 s clock. The carving stays
+                            // id-locked, the angle never turns.
                             if (vestigesShown.isNotEmpty)
                               RepaintBoundary(
-                                child: LayoutBuilder(
-                                  builder: (context, c) {
+                                child: _HeavensClock(
+                                  period: const Duration(seconds: 1),
+                                  builder: (context, driftAt) =>
+                                      LayoutBuilder(
+                                    builder: (context, c) {
                                       // V3.62 — the shard budget: the
                                       // sky carries the shards NEAREST
                                       // the eye (fresh and kept ones are
@@ -1339,10 +1343,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                       })>[];
                                       for (final v in vestigesShown) {
                                         final sp = _camera.worldToScreen(
-                                          vestigeAt[v.id] ??
-                                              Offset(
-                                                v.offsetX,
-                                                v.offsetY,
+                                          (vestigeAt[v.id] ??
+                                                  Offset(
+                                                    v.offsetX,
+                                                    v.offsetY,
+                                                  )) +
+                                              VestigeMath.drift(
+                                                v.id,
+                                                driftAt,
                                               ),
                                           Size(c.maxWidth, c.maxHeight),
                                         );
@@ -1381,26 +1389,30 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                 }
                                                 final v = shard.v;
                                                 final sp = shard.sp;
-                                              // V3.72/73 — CULTURE WHISPERS
-                                              // IN WORLD CURRENCY AND IT
-                                              // RESTS: world-sized carving
-                                              // (0.048 of the sky — below
-                                              // wanderer-class), the 32 px
-                                              // box stays the FINGER's
-                                              // courtesy, the shard
-                                              // RECEDES with distance
-                                              // like all matter, and the
-                                              // carving angle is locked
-                                              // to its id — static. Kept
-                                              // shards keep their full
-                                              // light — earned importance
-                                              // is not borrowed.
+                                              // V3.75 — CULTURE IS
+                                              // SMALL AND IT
+                                              // WANDERS: carving
+                                              // 0.030 of the sky
+                                              // (below wanderer-
+                                              // class — found, not
+                                              // announced), the 32
+                                              // px box stays the
+                                              // FINGER's courtesy,
+                                              // the shard RECEDES
+                                              // with distance, and
+                                              // the whole carving
+                                              // rides its slow
+                                              // drift ellipse. Kept
+                                              // shards keep their
+                                              // full light — earned
+                                              // importance is not
+                                              // borrowed.
                                               final worldScale =
                                                   c.biggest.shortestSide /
                                                       _camera.viewExtent;
                                               final paintSide =
-                                                  (0.048 * worldScale)
-                                                      .clamp(22.0, 96.0);
+                                                  (0.030 * worldScale)
+                                                      .clamp(18.0, 96.0);
                                               final shardSide = math.max(
                                                 32.0,
                                                 paintSide,
@@ -1481,6 +1493,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                       );
                                     },
                                   ),
+                                ),
                               ),
                             // The Constellations: exquisite corpses. OPEN =
                             //    contribute a blind line; CLOSED = read it
@@ -3413,9 +3426,13 @@ class _GlimmerFieldPainter extends CustomPainter {
 }
 
 class _HeavensClock extends StatefulWidget {
-  const _HeavensClock({required this.builder});
+  const _HeavensClock({required this.builder, this.period});
 
   final Widget Function(BuildContext, DateTime) builder;
+
+  /// The beat (default 80 ms — orbits must glide). Calmer riders
+  /// pass their own: the vestiges' drift reads at 1 s (V3.75).
+  final Duration? period;
 
   @override
   State<_HeavensClock> createState() => _HeavensClockState();
@@ -3434,7 +3451,7 @@ class _HeavensClockState extends State<_HeavensClock> {
     // statique, les astres ne bougent plus", the S25 report — One UI
     // reports remove-animations and every clock obeyed to death).
     // The beat slows 5× under the flag — a calmer sky, a LIVING sky.
-    const base = Duration(milliseconds: 80);
+    final base = widget.period ?? const Duration(milliseconds: 80);
     _beat = Timer.periodic(
       platformDisablesAnimations() ? base * 5 : base,
       (_) {

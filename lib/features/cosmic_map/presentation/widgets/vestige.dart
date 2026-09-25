@@ -94,7 +94,7 @@ class VestigePainter extends CustomPainter {
       );
     }
     final baseAlpha =
-        (kept ? 0.58 : (read ? 0.15 : 0.20)) * recede;
+        (kept ? 0.58 : (read ? 0.14 : 0.18)) * recede;
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8

@@ -71,58 +71,68 @@ class Heavens {
   /// The gravity band's width.
   static const double echoBandSpan = 0.16;
 
-  /// V3.67 — LA PENSÉE ERRANTE: not every thought falls into a
-  /// gravity well. Roughly two in five are born FREE, anywhere in
-  /// the ether, and ride wide slow rings around the VOID itself.
-  /// V3.68 — the errant are the MAJORITY now (~65%) and their birth
-  /// ring spans the whole sky. The flag derives from `created_at`
-  /// (known at launch AND at render: the same input, the same
-  /// verdict, forever).
-  static bool isErrantThought(DateTime createdAt) {
+  /// V3.75 — THE CONSTITUTION: every echo orbits a BODY (its type's
+  /// planet, or a moon). Roughly one in six — deterministic on
+  /// `created_at`, the same verdict at launch and at render — is born
+  /// a MOON-COMPANION: a tight little court around one of the four
+  /// lunes, found by travelling. The void-ring "errant" concept is
+  /// retired: nothing orbits the emptiness, the hole is the only
+  /// center and matter gravitates around matter.
+  static bool ridesAMoon(DateTime createdAt) {
     final h = (createdAt.millisecondsSinceEpoch * 2654435761) &
         0x7fffffff;
-    return h % 100 < 65;
+    return h % 6 == 0;
   }
 
-  /// Where a new echo is BORN in the sky (V3.28): its intent planet's
-  /// live position plus a point inside the gravity band, clamped to
-  /// the known ether — OR, for a free thought
-  /// ([isErrantThought]), anywhere on the wide ring (0.28–0.92 of
-  /// the sky). The client computes this BEFORE the RPC; the sector
-  /// fetch, the A.L. telemetry and the rendered orbit then agree.
+  /// Where a new echo is BORN in the sky (V3.28 → V3.75): beside its
+  /// BODY — its intent planet's live position (a tight newborn orbit,
+  /// see KenosSystem's aging law), or, for a moon-companion
+  /// ([ridesAMoon]), beside its moon. The client computes this BEFORE
+  /// the RPC; the sector fetch, the A.L. telemetry and the rendered
+  /// orbit then agree: the author drops the thought where it will
+  /// actually drift.
   static Offset launchCoordsForPlanet(
     int planetIndex,
     DateTime at, [
     math.Random? rng,
   ]) {
     final random = rng ?? math.Random();
-    if (isErrantThought(at)) {
-      // V3.70 — THE CROWD LIVES IN THE MEDIAN: births crowd toward
-      // the system's skirts (0.34) and thin into the deep field
-      // (0.72), sqrt-biased so the swarm reads as a retinue thinning
-      // into distance — never a uniform sheet. The radius is capped
-      // by the square's TRUE edge along the angle: the ring breathes
-      // to the corners, nothing piles on the walls.
-      final a = random.nextDouble() * 2 * math.pi;
-      final edge = math.min(
-        0.48 / math.max(math.cos(a).abs(), 1e-9),
-        0.48 / math.max(math.sin(a).abs(), 1e-9),
-      );
-      final r = math.min(
-        0.34 + 0.38 * math.sqrt(random.nextDouble()),
-        edge,
-      );
-      return Offset(
-        (blackHole.dx + r * math.cos(a)).clamp(0.02, 0.98),
-        (blackHole.dy + r * math.sin(a)).clamp(0.02, 0.98),
-      );
-    }
-    final planet = planetPosition(planetIndex, at);
-    final radius = echoBandMin + random.nextDouble() * echoBandSpan;
+    final body = ridesAMoon(at)
+        ? wandererPosition(
+            (at.millisecondsSinceEpoch >> 3) % wandererCount, at)
+        : planetPosition(planetIndex, at);
+    // The newborn's band: tight against its body (the aging law will
+    // lift the orbit as the thought ages — near is young).
+    final radius = 0.015 + random.nextDouble() * 0.035;
     final angle = random.nextDouble() * 2 * math.pi;
     return Offset(
-      (planet.dx + radius * math.cos(angle)).clamp(0.02, 0.98),
-      (planet.dy + radius * math.sin(angle)).clamp(0.02, 0.98),
+      (body.dx + radius * math.cos(angle)).clamp(0.02, 0.98),
+      (body.dy + radius * math.sin(angle)).clamp(0.02, 0.98),
+    );
+  }
+
+  // ── The lunes (V3.12/V3.70/V3.74) ────────────────────────────────────
+  // Far slow arcs beyond every planetary lane, each at its own pace;
+  // every device agrees on where they are. Pure world astronomy —
+  // they live HERE (Heavens' charter) so the birth law and the map
+  // read ONE law.
+
+  /// How many lunes ride the sky.
+  static const int wandererCount = 4;
+
+  /// A lune's world position: arcs 0.60–1.05 of the sky, pacing
+  /// their circles in ~50–110 min (V3.74 — the sky must be SEEN to
+  /// turn). Still the far country, clear of Venus's swarm rim.
+  static Offset wandererPosition(int index, DateTime at) {
+    final i = index % wandererCount;
+    final radius = 0.60 + 0.225 * (i % 3);
+    final periodMs = (50 + 20 * i) * 60000.0;
+    final base = i * math.pi / 2;
+    final angle =
+        base + 2 * math.pi * at.millisecondsSinceEpoch / periodMs;
+    return Offset(
+      0.5 + radius * math.cos(angle),
+      0.5 + radius * math.sin(angle),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show Offset;
 
 /// A Vestige: real, curated culture drifting in the void — a quote, an
 /// etymology, a haiku, a micro-history. NEVER a fake confession: the
@@ -93,5 +94,20 @@ class VestigeMath {
   static double rotationOf(String id) {
     final h = (id.hashCode & 0x7fffffff);
     return (h % 9973) / 9973 * 2 * math.pi;
+  }
+
+  /// V3.75 — the shard's slow DRIFT: culture does not orbit, it
+  /// wanders — a tight ellipse around its anchor (radius ~0.02–0.045,
+  /// one turn in 25–45 min, id-phased). Calm enough to rest the eye,
+  /// alive enough to catch a stare ("les vestiges dérivent dans le
+  /// cosmos lentement", the constitution).
+  static Offset drift(String id, DateTime now) {
+    final h = (id.hashCode & 0x7fffffff);
+    final r = 0.02 + (h % 97) / 97 * 0.025;
+    final periodMs = (25 + 10 * ((h >> 4) % 3)) * 60000.0;
+    final phase =
+        now.millisecondsSinceEpoch / periodMs + (h % 9973) / 9973;
+    final a = 2 * math.pi * phase;
+    return Offset(r * math.cos(a), r * 0.7 * math.sin(a));
   }
 }

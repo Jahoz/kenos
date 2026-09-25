@@ -3,4 +3,4 @@
 /// answer to the stale service worker (a false regression once cost a
 /// full round — "le résultat n'est pas là" meant "le résultat n'est
 /// pas SERVI"). Bump with every deployed law change.
-const String kSkyLawStamp = 'V3.74';
+const String kSkyLawStamp = 'V3.75';

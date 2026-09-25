@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kenos/core/heavens/heavens.dart';
 import 'package:kenos/features/cosmic_map/application/kenos_system.dart';
 import 'package:kenos/features/echo/domain/echo.dart';
 import 'package:kenos/features/echo/domain/echo_color_theme.dart';
@@ -17,18 +18,18 @@ Echo _echo(String id, EchoColorTheme theme, {DateTime? createdAt}) => Echo(
 void main() {
   final t0 = DateTime(2026, 9, 1, 12);
 
-  // V3.67 — errance derives from created_at: tests need one
-  // timestamp of EACH verdict, found by scanning deterministically.
-  DateTime verdictAt(bool errant) {
+  // V3.75 — moon-companionship derives from created_at: tests need
+  // one timestamp of EACH verdict, found by scanning deterministically.
+  DateTime verdictAt(bool moon) {
     var at = DateTime(2026, 9, 1);
-    while (KenosSystem.isErrantThought(at) != errant) {
+    while (KenosSystem.ridesAMoon(at) != moon) {
       at = at.add(const Duration(seconds: 7));
     }
     return at;
   }
 
   final boundAt = verdictAt(false);
-  final errantAt = verdictAt(true);
+  final moonAt = verdictAt(true);
 
   group('KenosSystem — le ciel est déterministe', () {
     test('les trois planètes orbitent le trou noir à la bonne distance',
@@ -81,26 +82,46 @@ void main() {
       expect(moved, lessThan(0.18), reason: 'sans devenir un manège');
     });
 
-    test('un écho lié orbit SA planète dans sa bande élargie (ellipse propre)', () {
+    test('V3.75 — l\'âge est une distance : l\'orbite s\'élargit en pâlissant',
+        () {
+      // THE AGING LAW: a thought's distance from its body IS its age.
+      // Born tight (aphelion ~0.03), the orbit widens to the far band
+      // (~0.26) at the memory moon — its OWN eccentric ellipse at
+      // every instant (radius spans [A(1-e)/(1+e), A]).
       final echo =
           _echo('orbit-test-1', EchoColorTheme.indigo, createdAt: boundAt);
       final e = KenosSystem.liaisonEccentricity(echo);
-      final A = KenosSystem.liaisonAphelion(echo);
-      // V3.67: each bound echo rides its OWN eccentric ellipse —
-      // aphelion-bounded: the radius spans [A(1-e)/(1+e), A]. The
-      // crowd reads as a wide halo, never a drawn ring.
-      for (var i = 0; i < 40; i++) {
-        final p = KenosSystem.echoPosition(echo, t0.add(Duration(seconds: 13 * i)));
-        final planet =
-            KenosSystem.planetPosition(KenosSystem.planetIndexOf(echo), t0.add(Duration(seconds: 13 * i)));
-        final dist = (p - planet).distance;
-        expect(dist, greaterThanOrEqualTo(A * (1 - e) / (1 + e) - 0.01));
-        expect(dist, lessThanOrEqualTo(A + 0.01));
+      for (final (label, at) in [
+        ('jeune', boundAt),
+        ('à mi-lune', boundAt.add(const Duration(days: 15))),
+        ('vieux', boundAt.add(const Duration(days: 31))),
+      ]) {
+        final A = KenosSystem.orbitAphelion(echo, at);
+        for (var i = 0; i < 40; i++) {
+          final t = at.add(Duration(seconds: 13 * i));
+          final p = KenosSystem.echoPosition(echo, t);
+          final planet =
+              KenosSystem.planetPosition(KenosSystem.planetIndexOf(echo), t);
+          final dist = (p - planet).distance;
+          expect(dist, greaterThanOrEqualTo(A * (1 - e) / (1 + e) - 0.01),
+              reason: 'périhélie tenu ($label)');
+          expect(dist, lessThanOrEqualTo(A + 0.01),
+              reason: 'aphélie tenu ($label)');
+        }
       }
-      // The whole population stays inside the widened band.
-      expect(A, lessThanOrEqualTo(
-          KenosSystem.echoShells.last + KenosSystem.liaisonJitter + 1e-9));
-      expect(A, greaterThanOrEqualTo(KenosSystem.echoShells.first - 1e-9));
+      // The envelope: near when young, the far band when old.
+      expect(KenosSystem.orbitAphelion(echo, boundAt),
+          lessThanOrEqualTo(0.075), reason: 'né près de son monde');
+      expect(KenosSystem.orbitAphelion(echo, boundAt.add(const Duration(days: 31))),
+          greaterThanOrEqualTo(KenosSystem.echoFarBand - 0.005),
+          reason: 'la vieille pensée atteint la bande lointaine');
+      // And the tempo slows as the orbit widens (Kepler's courtesy).
+      expect(
+        KenosSystem.orbitPeriod(echo, boundAt.add(const Duration(days: 31)))
+            .inSeconds,
+        greaterThan(KenosSystem.orbitPeriod(echo, boundAt).inSeconds),
+        reason: 'loin = lent',
+      );
     });
 
     test('V3.67 — même coque, tempos différents : la foule se dé-synchronise', () {
@@ -122,61 +143,29 @@ void main() {
           reason: 'deux inconnus ne tournent pas du même pas');
     });
 
-    test('V3.67 — la pensée errante vit autour du VIDE, pas des planètes', () {
-      expect(KenosSystem.isErrantThought(errantAt), isTrue);
-      expect(KenosSystem.isErrantThought(boundAt), isFalse);
+    test('V3.75 — un compagnon gravite SA lune, porté à travers le ciel', () {
+      expect(KenosSystem.ridesAMoon(moonAt), isTrue);
+      expect(KenosSystem.ridesAMoon(boundAt), isFalse);
 
-      // An errant launch lands in the MEDIAN crowd (V3.70: crowded
-      // toward the system's skirts, thinning into the deep field,
-      // capped by the square's true edge — the ring breathes to the
-      // corners), never in a gravity band by design.
-      final rng = Random(11);
-      for (var i = 0; i < 30; i++) {
-        final p = KenosSystem.launchCoordsFor(
-          EchoColorTheme.teal,
-          errantAt,
-          rng,
-        );
-        final fromCenter = (p - KenosSystem.blackHole).distance;
-        expect(fromCenter, greaterThanOrEqualTo(0.33),
-            reason: 'jamais dans l\'escorte du système');
-        expect(fromCenter, lessThanOrEqualTo(0.70),
-            reason: 'la foule vit au médian, pas sur les murs');
+      // THE CONSTITUTION: every echo orbits a BODY. A moon-companion
+      // rides a TIGHT court around one of the four lunes — whatever
+      // the moment, it never strays far from ITS moon (the identity
+      // picks which lune, forever).
+      final echo =
+          _echo('companion-1', EchoColorTheme.indigo, createdAt: moonAt);
+      final h = echo.id.hashCode & 0x7fffffff;
+      final moonIndex = (h >> 7) % 4;
+      for (var i = 0; i < 40; i++) {
+        final t = t0.add(Duration(minutes: 3 * i));
+        final p = KenosSystem.echoPosition(echo, t);
+        final moon = Heavens.wandererPosition(moonIndex, t);
+        expect((p - moon).distance, lessThanOrEqualTo(0.13 + 0.01),
+            reason: 'la cour du compagnon reste serrée sur sa lune');
       }
-
-      // A bound launch still falls inside its planet's gravity band.
-      final planet = KenosSystem.planetPosition(0, boundAt);
-      for (var i = 0; i < 30; i++) {
-        final p = KenosSystem.launchCoordsFor(
-          EchoColorTheme.teal,
-          boundAt,
-          Random(13),
-        );
-        final dist = (p - planet).distance;
-        expect(
-          dist,
-          lessThanOrEqualTo(
-            KenosSystem.echoBandMin + KenosSystem.echoBandSpan + 1e-9,
-          ),
-          reason: 'née dans la bande de gravité de sa planète',
-        );
-      }
-
-      // The errant RENDER rides a ring around the void: constant
-      // distance from the centre, whatever the moment.
-      final errant =
-          _echo('errant-1', EchoColorTheme.indigo, createdAt: errantAt);
-      final e1 = KenosSystem.echoPosition(errant, t0);
-      final e2 = KenosSystem.echoPosition(errant, t0.add(
-        const Duration(minutes: 3),
-      ));
-      final r1 = (e1 - KenosSystem.blackHole).distance;
-      final r2 = (e2 - KenosSystem.blackHole).distance;
-      expect(r1, closeTo(r2, 1e-9), reason: 'un anneau, un rayon');
     });
 
-    test('un écho naît là où il dérivera (liée en bande, errante sur l\'anneau)', () {
-      for (final (at, errant) in [(boundAt, false), (errantAt, true)]) {
+    test('un écho naît là où il dérivera — près de SON corps', () {
+      for (final (at, moon) in [(boundAt, false), (moonAt, true)]) {
         final planet = KenosSystem.planetPosition(0, at);
         for (var i = 0; i < 40; i++) {
           final p = KenosSystem.launchCoordsFor(
@@ -187,22 +176,32 @@ void main() {
           // Inside the known ether, always.
           expect(p.dx, inInclusiveRange(0.02, 0.98));
           expect(p.dy, inInclusiveRange(0.02, 0.98));
-          if (!errant) {
-            // ...in its intent planet's gravity band (a hair of clamp
-            // slack at the sky's very edge).
+          if (!moon) {
+            // ...beside its intent planet — the newborn band is tight.
             final dist = (p - planet).distance;
             expect(
               dist,
-              lessThanOrEqualTo(
-                KenosSystem.echoBandMin + KenosSystem.echoBandSpan + 1e-9,
-              ),
-              reason: 'née dans la bande de gravité de sa planète',
+              lessThanOrEqualTo(0.06),
+              reason: 'née au bord de sa planète (près = jeune)',
             );
           } else {
-            // ...or on its wide ring around the void (V3.67/68).
-            final fromCenter = (p - KenosSystem.blackHole).distance;
-            expect(fromCenter, greaterThanOrEqualTo(0.27));
-            expect(fromCenter, lessThanOrEqualTo(0.93));
+            // ...or beside its moon: the companion is born in court.
+            // NB: a lune on her wide arc (r up to 1.05) may stand
+            // OUTSIDE the storable square — the birth anchors on her
+            // clamped projection (the stored truth), while the render
+            // follows her true position (within the fetch's slack).
+            final h2 = at.millisecondsSinceEpoch;
+            final moon = Heavens.wandererPosition(
+              (h2 >> 3) % 4,
+              at,
+            );
+            final anchor = Offset(
+              moon.dx.clamp(0.02, 0.98),
+              moon.dy.clamp(0.02, 0.98),
+            );
+            final dist = (p - anchor).distance;
+            expect(dist, lessThanOrEqualTo(0.06),
+                reason: 'née au bord de sa lune (ancrage stockable)');
           }
         }
       }
@@ -340,93 +339,50 @@ void main() {
                 ))
             .distance;
 
-    test('la grâce : une pensée fraîche reste dans SA coque, exactement',
-        () {
-      final echo = aged('grace', boundAt);
-      final e = KenosSystem.liaisonEccentricity(echo);
-      final A = KenosSystem.liaisonAphelion(echo);
-      // 47 h adrift: still in its lane, untouched — the sky it was
-      // launched into is the sky it keeps (its OWN ellipse: the
-      // radius sweeps [A(1-e)/(1+e), A], never beyond).
-      final at = boundAt.add(const Duration(hours: 47));
-      expect(KenosSystem.fallFraction(echo, at), 0.0);
-      var minR = 1.0;
-      var maxR = 0.0;
-      for (var i = 0; i < 60; i++) {
-        final r = radiusAt(echo, at.add(Duration(seconds: 9 * i)));
-        if (r < minR) minR = r;
-        if (r > maxR) maxR = r;
-      }
-      expect(maxR, lessThanOrEqualTo(A + 0.01));
-      expect(minR, greaterThanOrEqualTo(A * (1 - e) / (1 + e) - 0.01));
-    });
-
-    test('la chute : chaque jour resserre l\'ellipse vers son monde', () {
-      final echo = aged('falling', boundAt);
-      // The perihelion (the sweep's minimum) shrinks as the aphelion
-      // falls — age tightens the embrace, monotone in its envelope.
-      double periAt(int days) {
-        var minR = 1.0;
+    test('V3.75 — chaque jour ÉLOIGNE : l\'enveloppe s\'élargit, monotone', () {
+      final echo = aged('receding', boundAt);
+      // The aging law: the envelope (the sweep's maximum) WIDENS with
+      // the days — near is young, far is old.
+      double apoAt(int days) {
+        var maxR = 0.0;
         for (var i = 0; i < 60; i++) {
           final r = radiusAt(echo, boundAt.add(Duration(
             days: days,
             seconds: 9 * i,
           )));
-          if (r < minR) minR = r;
+          if (r > maxR) maxR = r;
         }
-        return minR;
+        return maxR;
       }
 
-      var previous = periAt(3);
+      var previous = apoAt(3);
       for (final days in [6, 10, 16, 22, 26, 29]) {
-        final r = periAt(days);
-        expect(r, lessThan(previous - 1e-4),
-            reason: 'la chute est monotone — l\'âge est une distance');
+        final r = apoAt(days);
+        expect(r, greaterThan(previous - 1e-4),
+            reason: 'l\'éloignement est monotone — l\'âge est une distance');
         previous = r;
       }
-      // Still a mote, never a ghost ON the world: the landing keeps
-      // its hair of sky.
-      expect(previous, greaterThan(KenosSystem.landingRadius *
-              (1 - KenosSystem.liaisonEccentricityMax) /
-              (1 + KenosSystem.liaisonEccentricityMax) -
-          0.01));
+      // At the moon's end the far band is reached, never beyond a
+      // hair: the thought recedes, it does not escape.
+      expect(previous, greaterThanOrEqualTo(KenosSystem.echoFarBand - 0.05));
+      expect(previous, lessThanOrEqualTo(
+          KenosSystem.echoFarBand + 0.06));
     });
 
-    test('la lune pleine : la pensée se pose au bord de son monde', () {
-      final echo = aged('landed', boundAt);
-      final e = KenosSystem.liaisonEccentricity(echo);
-      final at = boundAt.add(const Duration(days: 31));
-      expect(KenosSystem.fallFraction(echo, at), 1.0);
-      // At the landing the APHELION itself is the world's rim: the
-      // ellipse has collapsed to [landing(1-e)/(1+e), landing].
-      var minR = 1.0;
-      var maxR = 0.0;
-      for (var i = 0; i < 60; i++) {
-        final r = radiusAt(echo, at.add(Duration(seconds: 9 * i)));
-        if (r < minR) minR = r;
-        if (r > maxR) maxR = r;
-      }
-      expect(maxR, lessThanOrEqualTo(
-          KenosSystem.landingRadius + 0.01));
-      expect(minR, greaterThanOrEqualTo(
-          KenosSystem.landingRadius * (1 - e) / (1 + e) - 0.01));
-    });
-
-    test('les scellées tombent aussi — même l\'auteur voit la fin venir',
-        () {
+    test('la loi ne connaît pas l\'auteur — même les scellées s\'éloignent', () {
       final born = DateTime(2026, 9, 1);
       final foreign = aged('foreign', born);
       final own = aged('own', born, mine: true);
       final at = born.add(const Duration(days: 20));
       expect(
-        KenosSystem.fallFraction(own, at),
-        KenosSystem.fallFraction(foreign, at),
+        KenosSystem.ageFraction(own, at),
+        KenosSystem.ageFraction(foreign, at),
         reason: 'la loi ne connaît pas l\'auteur',
       );
       expect(
-        radiusAt(own, at),
-        lessThan(radiusAt(own, born)),
-        reason: 'même l\'auteur voit sa confidence approcher du monde',
+        KenosSystem.orbitAphelion(own, at),
+        greaterThan(KenosSystem.orbitAphelion(own, born)),
+        reason: 'même l\'auteur voit sa confidence s\'éloigner de lui',
       );
     });
 

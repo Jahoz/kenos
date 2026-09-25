@@ -294,13 +294,13 @@ class _SkyMapPainter extends CustomPainter {
       _dashedCircle(canvas, hole, KenosSystem.orbitRadiusOf(i) * s, lane);
 
       final p = w(KenosSystem.planetPosition(i, now));
-      final shells = Paint()
+      // V3.75 — the far band: where the aged ride at their moon's
+      // end (the shell diagram is retired with the void-ring law).
+      final band = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.5
         ..color = AppColors.fade(theme.halo, 0.13);
-      for (final shell in KenosSystem.echoShells) {
-        canvas.drawCircle(p, shell * s, shells);
-      }
+      canvas.drawCircle(p, KenosSystem.echoFarBand * s, band);
       canvas.drawCircle(p, 3.2, Paint()..color = theme.core);
       _labelAt(canvas, celestialBodies[i].name.toUpperCase(), p);
     }

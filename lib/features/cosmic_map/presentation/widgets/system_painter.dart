@@ -169,25 +169,24 @@ class SystemPainter extends CustomPainter {
         );
       }
 
-      // The echo lanes: where this world's thoughts whirl — the THREE
-      // true shells travelling with the planet (V3.28: the guides now
-      // draw exactly where the orbits run; the old 0.08/0.13 pair was
-      // a lie the sky kept telling).
+      // The echo lane: V3.75 — ONE whisper ring at the far band,
+      // where aged thoughts ride at their moon's end (the aging law
+      // in [KenosSystem.orbitAphelion]); newborns ride inside it,
+      // unseen structure. The three-shell diagram is retired.
       if (i != 2) {
-        for (final lane in KenosSystem.echoShells) {
-          canvas.drawCircle(
-            p,
-            lane * worldScale,
-            Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 0.5
-              ..color = AppColors.fade(theme.halo, 0.05),
-          );
-        }
-      } else {
         canvas.drawCircle(
           p,
-          KenosSystem.echoShells.first * worldScale,
+          KenosSystem.echoFarBand * worldScale,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.6
+            ..color = AppColors.fade(theme.halo, 0.06),
+        );
+      } else {
+        // Polaris keeps her own tighter whisper.
+        canvas.drawCircle(
+          p,
+          KenosSystem.echoFarBand * 0.6 * worldScale,
           Paint()
             ..style = PaintingStyle.stroke
             ..strokeWidth = 0.5

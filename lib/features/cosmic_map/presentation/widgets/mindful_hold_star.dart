@@ -532,10 +532,18 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     // applied per bucket by the star layer — one saveLayer for the
     // whole depth range, not one per star).
     var opacity = ParallaxMath.opacityFor(z);
+    // V3.75 — THE AGING LAW, seen: a thought pales as it recedes
+    // from its world — down to a third of its light at the memory
+    // moon. What is never read drifts away and dims; youth is close
+    // and bright.
+    final ageDays =
+        DateTime.now().difference(_echo.createdAt).inMilliseconds /
+            (30 * 24 * 3.6e6);
+    opacity *= 1.0 - 0.65 * ageDays.clamp(0.0, 1.0);
     // The reception field: far glimmers recede. V3.29 — the
     // bottle-in-the-sea law now shapes the sealed hearts too: one's
     // own rings fade GENTLY with distance (still anchors, never as
-    // deep as the ether's fade) — a far sealed ring outshouting the
+    // deep as the ether's fade) — a far sealed ring outshining the
     // readable ether inverted the product's whole hierarchy.
     final field = widget.reception.clamp(0.0, 1.0);
     opacity *= _echo.isMine ? 0.45 + 0.55 * field : 0.30 + 0.70 * field;

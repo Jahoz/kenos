@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:ui';
 
 import '../../../core/heavens/heavens.dart';
@@ -108,31 +107,10 @@ class CelestialMath {
   static const Offset polaris = Heavens.polaris;
 
   /// A wanderer's world position: far slow arcs beyond every orbit,
-  /// found only by travelling. Each drifts at its own imperceptible
-  /// pace; every device agrees on where they are.
-  /// V3.28 — the ring was 0.62-0.74, largely OUTSIDE the [0,1] sky
-  /// the camera can reach: bodies you could never actually meet, only
-  /// rumours past the frame. Pulled to 0.55-0.65: still the far
-  /// country, now a place the margin genuinely visits.
-  /// V3.70 — THE MEDIAN MUST BE POPULATED: at the survey the band
-  /// between the jewel (r~0.5) and the frame's edge read as dead
-  /// black — no witness of scale anywhere. The arcs reopen
-  /// (0.60-1.05): far silhouettes the survey frame CUTS, the dive
-  /// meets one by one. Still clear of Venus's swarm rim (0.515).
-  static Offset wandererPosition(int index, DateTime at) {
-    final i = index % celestialWanderers.length;
-    final radius = 0.60 + 0.225 * (i % 3);
-    // V3.74 — THE SKY MUST BE SEEN TO TURN: the half-day arcs
-    // (6-14 h) read as frozen. The wanderers now pace their circles
-    // in ~50-110 min — a slow drift the eye catches at the survey,
-    // still far, still unhurried.
-    final periodMs = (50 + 20 * i) * 60000.0;
-    final base = i * math.pi / 2;
-    final angle =
-        base + 2 * math.pi * at.millisecondsSinceEpoch / periodMs;
-    return Offset(
-      0.5 + radius * math.cos(angle),
-      0.5 + radius * math.sin(angle),
-    );
-  }
+  /// found only by travelling. V3.75 — the law lives in [Heavens]
+  /// now (the world's own astronomy): the birth of a moon-companion
+  /// echo and the map must read ONE law. This is the map's window on
+  /// it.
+  static Offset wandererPosition(int index, DateTime at) =>
+      Heavens.wandererPosition(index, at);
 }
