@@ -2317,6 +2317,10 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
   /// V3.58h — the previous frame's alive set: the hysteresis memory
   /// that keeps a boundary light from flapping between pipelines.
   final Set<String> _alivePrev = {};
+
+  /// V3.78e — ids recently demoted from the alive set, still fading
+  /// out as widgets (the boundary crossfade). Stamped, swept at 600 ms.
+  final Map<String, DateTime> _retiredAt = {};
   Size? _viewportSize;
 
   /// The glimmer field's clock (V3.24): one notifier, one painter —
@@ -2562,6 +2566,23 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
           if (!sticky) newcomers++;
           if (total >= stayBudget) break;
         }
+        // V3.78e — THE BOUNDARY IS A HAND, NOT AN EYE: a demotion
+        // from the alive set is a CROSSFADE, never a step. The light
+        // keeps its widget for a breath, sinking to the canvas's own
+        // dimness (_emerge reverses), while the glimmer field already
+        // paints it underneath — the pipelines dissolve into each
+        // other. Promotion mirrors it (born at 0.3, rising).
+        final demoted = _alivePrev.difference(alive);
+        final promoteStamp = now;
+        for (final id in demoted) {
+          _retiredAt.putIfAbsent(id, () => promoteStamp);
+        }
+        for (final id in alive) {
+          _retiredAt.remove(id);
+        }
+        _retiredAt.removeWhere(
+          (_, at) => now.difference(at) > const Duration(milliseconds: 600),
+        );
         _alivePrev
           ..clear()
           ..addAll(alive);
@@ -2575,7 +2596,12 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
         for (final s in sights) {
           final echo = s.echo;
           final z = s.z;
-          if (!alive.contains(echo.id)) {
+          // V3.78e — a demoted light keeps its widget while it fades
+          // (retiring: true); the canvas paints it too — the overlap
+          // IS the crossfade. Only fully-retired lights go canvas-only.
+          final retiring =
+              _retiredAt.containsKey(echo.id) && !alive.contains(echo.id);
+          if (!alive.contains(echo.id) && !retiring) {
             glimmers.add(echo);
             continue;
           }
@@ -2621,6 +2647,7 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
                       echo: echo,
                       z: z,
                       displayScale: dScale,
+                      retiring: retiring,
                       eyeDistanceAL:
                           (Offset(echo.coordX, echo.coordY) - eye).distance,
                       // The reception field: near = alive, far = a glimmer
@@ -2648,6 +2675,14 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
                   camera: widget.camera,
                   now: _glimmerClock.value ?? now,
                   reduced: _reduced,
+                  // V3.78e — the canvas carries the SAME tilt parallax
+                  // as the buckets (the widget carries it since the
+                  // dawn): a pipeline switch must never displace a
+                  // light by the offset between two renderings of the
+                  // same sky.
+                  tilt: _gatedTilt,
+                  motionScale: motionScale,
+                  zoomFloor: widget.camera.zoomFloor,
                 ),
               ),
             ),
@@ -3435,13 +3470,24 @@ class _GlimmerFieldPainter extends CustomPainter {
     required this.camera,
     required this.now,
     required this.reduced,
+    required this.tilt,
+    required this.motionScale,
+    required this.zoomFloor,
   }) : _center = camera.center,
-       _zoom = camera.zoom;
+       _zoom = camera.zoom,
+       super(repaint: tilt);
 
   final List<Echo> echoes;
   final TravelCamera camera;
   final DateTime now;
   final bool reduced;
+
+  /// V3.78e — the gated tilt, shared with the buckets: the canvas
+  /// sways with the widgets, repaint-listenable (a tilt tick repaints
+  /// the canvas without rebuilding anything).
+  final ValueNotifier<({double x, double y})> tilt;
+  final double motionScale;
+  final double zoomFloor;
 
   // Camera VALUES captured at construction (the camera is a single
   // mutable instance — comparing it to itself never fires).
@@ -3452,10 +3498,40 @@ class _GlimmerFieldPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final eyeScale = ParallaxMath.zoomScale(_zoom);
     final dScale = ParallaxMath.displayScale(size.shortestSide);
+    final t = tilt.value;
+    final calm = ParallaxMath.parallaxCalm(
+      _zoom,
+      fold: zoomFloor + 0.12,
+      floor: zoomFloor,
+    );
     for (final echo in echoes) {
       final z = echo.resolveZ(now);
       final world = KenosSystem.echoPosition(echo, now);
-      final sp = camera.worldToScreen(world, size);
+      var sp = camera.worldToScreen(world, size);
+      // The bucket a widget-star of this depth would ride: the SAME
+      // parallax formula, so the two pipelines agree to the pixel.
+      var b = 0;
+      while (b < _ParallaxStarLayerState._bucketEdges.length - 2 &&
+          z >= _ParallaxStarLayerState._bucketEdges[b + 1]) {
+        b++;
+      }
+      final bucketZ =
+          (_ParallaxStarLayerState._bucketEdges[b] +
+              _ParallaxStarLayerState._bucketEdges[b + 1]
+                  .clamp(0.0, 1.0)) /
+          2;
+      sp = sp.translate(
+        ParallaxMath.offsetPixels(
+          tilt: t.x * motionScale,
+          z: bucketZ,
+          amplitude: 46 * calm,
+        ),
+        ParallaxMath.offsetPixels(
+          tilt: t.y * motionScale,
+          z: bucketZ,
+          amplitude: 32 * calm,
+        ),
+      );
       if (sp.dx < -24 ||
           sp.dx > size.width + 24 ||
           sp.dy < -24 ||

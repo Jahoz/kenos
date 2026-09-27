@@ -39,6 +39,7 @@ class MindfulHoldStar extends ConsumerStatefulWidget {
     this.reception = 1.0,
     this.eyeDistanceAL,
     this.focusNode,
+    this.retiring = false,
   });
 
   final Echo echo;
@@ -64,6 +65,13 @@ class MindfulHoldStar extends ConsumerStatefulWidget {
   /// tests) own the traversal; null gives the star its own.
   final FocusNode? focusNode;
 
+  /// V3.78e — THE BOUNDARY IS A HAND, NOT AN EYE: when the alive
+  /// ranking retires this light back to the glimmer canvas, the widget
+  /// fades DOWN to the canvas's own dimness before leaving (and fades
+  /// UP from it when born) — a pipeline switch must never read as an
+  /// appearance, a disappearance, or a teleport.
+  final bool retiring;
+
   @override
   ConsumerState<MindfulHoldStar> createState() => _MindfulHoldStarState();
 }
@@ -87,6 +95,17 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   late final AnimationController _breath = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 6),
+  );
+
+  /// V3.78e — the emerge fade: born at the glimmer's own dimness
+  /// (0.3), rising to full light; retiring, sinking back. The two
+  /// pipelines cross-dissolve at their boundary instead of stepping.
+  late final AnimationController _emerge = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 450),
+    lowerBound: 0.3,
+    upperBound: 1.0,
+    value: 1.0,
   );
 
   bool _busy = false;
@@ -125,6 +144,23 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
       _breath.value = (_echo.id.hashCode % 97) / 97;
       _breath.repeat();
     }
+    // V3.78e — born from the glimmer's dimness unless already on the
+    // way out; reduced motion crosses instantly (calm, not stepping).
+    if (!reduced) {
+      _emerge.value = widget.retiring ? 1.0 : 0.3;
+      widget.retiring ? _emerge.reverse() : _emerge.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(MindfulHoldStar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // V3.78e — the retirement verdict can arrive mid-life (the alive
+    // ranking demotes this light back to the canvas): sink to the
+    // canvas's dimness; a re-promotion rises back.
+    if (widget.retiring != oldWidget.retiring) {
+      widget.retiring ? _emerge.reverse() : _emerge.forward();
+    }
   }
 
   // The Riverpod container, captured at mount: `ref` is dead when
@@ -144,6 +180,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     _beatTimer?.cancel();
     _controller.dispose();
     _breath.dispose();
+    _emerge.dispose();
     _focusNode.removeListener(_onFocusChanged);
     if (_ownsNode) _focusNode.dispose();
     super.dispose();
@@ -554,6 +591,11 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     // readable ether inverted the product's whole hierarchy.
     final field = widget.reception.clamp(0.0, 1.0);
     opacity *= _echo.isMine ? 0.45 + 0.55 * field : 0.30 + 0.70 * field;
+
+    // V3.78e — the emerge fade rides LAST (outermost): whatever the
+    // depth, the age and the reception say, a pipeline crossing fades
+    // through them, never steps over them.
+    visual = FadeTransition(opacity: _emerge, child: visual);
 
     if (hasUnreadSignal && !context.wantsReducedMotion) {
       // A signal waits: the star pulses — V3.59, render-level too. A
