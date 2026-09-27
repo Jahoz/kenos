@@ -15,11 +15,11 @@ Key facts:
 - Anonymity is architectural, not a promise: zero personal data, encryption
   on-device, invite links stored only as SHA-256 hashes
 - Free, no ads, no trackers; funded exclusively via GitHub Sponsors
+- One canonical origin (2026-09-27): the landing folds into the app —
+  every other KENOS URL redirects here
 
 Urls:
 
-- [Application (enter the ether)](https://kenos-lemon.vercel.app/): the app itself
-- [Landing page (French, canonical)](https://kenos-site.vercel.app/): full presentation
-- [Landing page (English)](https://kenos-site.vercel.app/index_en.html)
+- [Application (enter the ether)](https://kenos-lemon.vercel.app/): the app itself, canonical
 - [Source code](https://github.com/Jahoz/kenos): Flutter + Supabase, Polyform license
 - [Support the sanctuary](https://github.com/sponsors/Jahoz)
