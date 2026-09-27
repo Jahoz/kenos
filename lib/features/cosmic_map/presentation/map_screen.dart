@@ -2413,10 +2413,29 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
   void initState() {
     super.initState();
     _orbit.start();
+    // V3.78d — THE TILT NEVER REBUILDS. Watching the tilt in build
+    // meant every epsilon-gate crossing (a hand-held phone crosses it
+    // a handful of times a second) re-ran the WHOLE layer: the sights
+    // pass, the alive ranking, the bucket stack — and reset every
+    // star's drift baseline (the code's own warning: a 30 fps
+    // full-layer rebuild once wedged the tab at 0.3 fps). The tilt now
+    // rides a notifier: the buckets TRANSFORM their cached rasters,
+    // nothing rebuilds, no baseline ever resets for a sway.
+    _tiltSub = ref.listenManual(
+      tiltProvider.select(_gateTilt),
+      (_, t) => _gatedTilt.value = t,
+      fireImmediately: true,
+    );
   }
+
+  final ValueNotifier<({double x, double y})> _gatedTilt =
+      ValueNotifier((x: 0.0, y: 0.0));
+  ProviderSubscription<({double x, double y})>? _tiltSub;
 
   @override
   void dispose() {
+    _tiltSub?.close();
+    _gatedTilt.dispose();
     _orbit.dispose();
     _glimmerClock.dispose();
     for (final notifier in _shifts.values) {
@@ -2435,7 +2454,8 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
     // Ambient parallax calms down (×0.15) under reduce-motion.
     final motionScale = context.wantsReducedMotion ? 0.15 : 1.0;
     _reduced = context.wantsReducedMotion;
-    final tilt = ref.watch(tiltProvider.select(_gateTilt));
+    // V3.78d — the tilt lives in _gatedTilt (see initState): a sway
+    // must never cost a rebuild, only a transform.
     final now = DateTime.now();
     final sorted = _sortedSkies(now);
     _forgetStaleShifts();
@@ -2645,34 +2665,42 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
           // came alive — 0.3 fps. The bucket keeps only its parallax
           // transform, isolated behind its own boundary.
           final layer = RepaintBoundary(child: Stack(children: children));
+          // V3.78d — the bucket transform listens to the tilt itself:
+          // a crossing moves cached rasters, it never rebuilds them.
           layers.add(
-            Transform.translate(
-              offset: Offset(
-                ParallaxMath.offsetPixels(
-                  tilt: tilt.x * motionScale,
-                  z: bucketZ,
-                  // V3.58i — the sway calms as the eye approaches:
-                  // full at the overview, a quarter at max zoom.
-                  // V3.71 — the fold rides the aspect-aware floor.
-                  amplitude: 46 *
-                      ParallaxMath.parallaxCalm(
-                        widget.camera.zoom,
-                        fold: widget.camera.zoomFloor + 0.12,
-                        floor: widget.camera.zoomFloor,
-                      ),
-                ),
-                ParallaxMath.offsetPixels(
-                  tilt: tilt.y * motionScale,
-                  z: bucketZ,
-                  amplitude: 32 *
-                      ParallaxMath.parallaxCalm(
-                        widget.camera.zoom,
-                        fold: widget.camera.zoomFloor + 0.12,
-                        floor: widget.camera.zoomFloor,
-                      ),
-                ),
-              ),
-              child: layer,
+            ListenableBuilder(
+              listenable: _gatedTilt,
+              builder: (context, _) {
+                final tilt = _gatedTilt.value;
+                return Transform.translate(
+                  offset: Offset(
+                    ParallaxMath.offsetPixels(
+                      tilt: tilt.x * motionScale,
+                      z: bucketZ,
+                      // V3.58i — the sway calms as the eye approaches:
+                      // full at the overview, a quarter at max zoom.
+                      // V3.71 — the fold rides the aspect-aware floor.
+                      amplitude: 46 *
+                          ParallaxMath.parallaxCalm(
+                            widget.camera.zoom,
+                            fold: widget.camera.zoomFloor + 0.12,
+                            floor: widget.camera.zoomFloor,
+                          ),
+                    ),
+                    ParallaxMath.offsetPixels(
+                      tilt: tilt.y * motionScale,
+                      z: bucketZ,
+                      amplitude: 32 *
+                          ParallaxMath.parallaxCalm(
+                            widget.camera.zoom,
+                            fold: widget.camera.zoomFloor + 0.12,
+                            floor: widget.camera.zoomFloor,
+                          ),
+                    ),
+                  ),
+                  child: layer,
+                );
+              },
             ),
           );
         }
