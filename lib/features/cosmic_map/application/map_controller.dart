@@ -288,11 +288,18 @@ class MapController extends AsyncNotifier<List<Echo>> {
                     const Duration(minutes: 2)))
         .toList();
 
-    // Upsert fresh rows.
+    // Upsert fresh rows. V3.78 — the ether's truth WINS: a carried
+    // echo comes back with new momentum (an orbit that became a
+    // comet), a reborn one with a new created_at. The old no-op kept
+    // the stale copy until the star happened to fall out of a capped
+    // fetch and back in — then it teleported to its new family in one
+    // frame. Update in place; the change of law is visible at once.
     for (final echo in fresh) {
       final index = kept.indexWhere((e) => e.id == echo.id);
       if (index == -1) {
         kept.add(echo);
+      } else {
+        kept[index] = echo;
       }
     }
     state = AsyncValue.data(kept);

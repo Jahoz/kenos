@@ -713,15 +713,33 @@ class _MapScreenState extends ConsumerState<MapScreen>
   // library tripled, plus the merged shown-lists rebuilt with .any()
   // lookups). The layout depends only on the LISTS — the camera now
   // reads it, never recomputes it.
-  List<Vestige>? _laidVestigeSource;
-  List<ConstellationMeta>? _laidRingSource;
+  // V3.78 — STABLE REAL ESTATE, second law: the cache keys on CONTENT
+  // (id + seed fingerprints), not list identity — a 90 s breath that
+  // brings the same sky back re-lays nothing. And the cohorts lay in
+  // ID order: the server's created_at-desc put every NEW ring at the
+  // head of the cascade, so one birth moved the whole sky (the
+  // teleporting-objects report). With id order, an insertion only
+  // displaces the collisions it actually joins.
   int _laidKeptStamp = -1;
-  int _laidSalonCount = -1;
+  int _laidVestigeStamp = -1;
+  int _laidRingStamp = -1;
+  int _laidSalonStamp = -1;
   List<Vestige> _laidVestiges = const [];
   List<ConstellationMeta> _laidConstellations = const [];
   final Map<String, Offset> _laidVestigeAt = {};
   final Map<String, Offset> _laidCorpseAt = {};
   final Map<String, Offset> _laidSalonAt = {};
+
+  static int _restingStamp(Iterable<(String, double, double)> bodies) {
+    // Id AND seed: a body that kept its id but moved its seed is a new
+    // neighbour — the layout must know. (x71/x97: cheap irrational
+    // multipliers, seeds never align to a collision of their own.)
+    var stamp = 0;
+    for (final (id, x, y) in bodies) {
+      stamp = stamp * 31 + id.hashCode ^ (x * 71).round() ^ (y * 97).round();
+    }
+    return stamp;
+  }
 
   ({
     List<Vestige> vestiges,
@@ -738,10 +756,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
     for (final k in kept) {
       keptStamp = keptStamp * 31 + k.id.hashCode;
     }
-    if (identical(_vestiges, _laidVestigeSource) &&
-        identical(_constellations, _laidRingSource) &&
+    final vestigeStamp = _restingStamp(
+      _vestiges.map((v) => (v.id, v.offsetX, v.offsetY)),
+    );
+    final ringStamp = _restingStamp(
+      _constellations.map((c) => (c.id, c.seedX, c.seedY)),
+    );
+    final salonStamp = _restingStamp(
+      _salonAnchors.map((d) => (d.id, d.seedX, d.seedY)),
+    );
+    if (vestigeStamp == _laidVestigeStamp &&
+        ringStamp == _laidRingStamp &&
         keptStamp == _laidKeptStamp &&
-        _salonAnchors.length == _laidSalonCount) {
+        salonStamp == _laidSalonStamp) {
       return (
         vestiges: _laidVestiges,
         constellations: _laidConstellations,
@@ -750,10 +777,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
         salonAt: _laidSalonAt,
       );
     }
-    _laidVestigeSource = _vestiges;
-    _laidRingSource = _constellations;
     _laidKeptStamp = keptStamp;
-    _laidSalonCount = _salonAnchors.length;
+    _laidVestigeStamp = vestigeStamp;
+    _laidRingStamp = ringStamp;
+    _laidSalonStamp = salonStamp;
 
     // The reliquaire merges in, local forever, ember-marked.
     final vestigesShown = [
@@ -795,16 +822,23 @@ class _MapScreenState extends ConsumerState<MapScreen>
       staticAnchors.add(at);
     }
 
+    // V3.78 — ID ORDER: the cascade reads the same sequence whatever
+    // the wire brought (created_at-desc, a fresh birth at the head);
+    // only a body's own collisions displace it, never the fetch's.
+    final vestigesInLayOrder = [...vestigesShown]..sort((a, b) => a.id.compareTo(b.id));
+    final ringsInLayOrder = [...constellationsShown]..sort((a, b) => a.id.compareTo(b.id));
+    final salonsInLayOrder = [..._salonAnchors]..sort((a, b) => a.id.compareTo(b.id));
+
     _laidVestigeAt.clear();
-    for (final v in vestigesShown) {
+    for (final v in vestigesInLayOrder) {
       lay(v.id, Offset(v.offsetX, v.offsetY), _laidVestigeAt);
     }
     _laidCorpseAt.clear();
-    for (final cst in constellationsShown) {
+    for (final cst in ringsInLayOrder) {
       lay(cst.id, Offset(cst.seedX, cst.seedY), _laidCorpseAt);
     }
     _laidSalonAt.clear();
-    for (final door in _salonAnchors) {
+    for (final door in salonsInLayOrder) {
       lay(door.id, Offset(door.seedX, door.seedY), _laidSalonAt);
     }
     _laidVestiges = vestigesShown;
