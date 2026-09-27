@@ -344,6 +344,9 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     // distance to the star's CURRENT center (it orbits while you hold),
     // not to where your finger first landed.
     if (_downPosition == null) return;
+    // A pointer move can land after the star unmounted (the sheet took
+    // the sky with it) — the measure is over, not thrown.
+    if (!mounted) return;
     final renderObject = context.findRenderObject();
     if (renderObject is RenderBox && renderObject.hasSize) {
       final starCenter = renderObject.localToGlobal(
