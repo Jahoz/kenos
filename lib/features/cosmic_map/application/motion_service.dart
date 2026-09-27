@@ -42,11 +42,15 @@ class MotionService {
     try {
       _sub =
           accelerometerEventStream(
-            // V3.78b — the parallax deserves the display's own cadence:
-            // at 50 ms the tilt stepped the layers at 20 Hz under a
-            // 60 fps sky (a micro-stutter only hands could feel).
-            // The low-pass alpha rides along; more samples, same calm.
-            samplingPeriod: const Duration(milliseconds: 16),
+            // V3.78c — back to the calm stride. V3.78b tried the
+            // display cadence (16 ms) and the phone paid for it: the
+            // tilt gate only filters sub-pixel drift, a HAND-HELD
+            // phone crosses it constantly, and every crossing
+            // rebuilds the parallax layer stack (the code's own
+            // warning: a 30 fps full-layer rebuild once wedged the
+            // tab at 0.3 fps). One metabolism, two platforms: the
+            // sensor rides the fallback's own stride.
+            samplingPeriod: const Duration(milliseconds: 33),
           ).listen(
             _onAccelerometer,
             onError: (Object e) {
