@@ -42,7 +42,11 @@ class MotionService {
     try {
       _sub =
           accelerometerEventStream(
-            samplingPeriod: const Duration(milliseconds: 50),
+            // V3.78b — the parallax deserves the display's own cadence:
+            // at 50 ms the tilt stepped the layers at 20 Hz under a
+            // 60 fps sky (a micro-stutter only hands could feel).
+            // The low-pass alpha rides along; more samples, same calm.
+            samplingPeriod: const Duration(milliseconds: 16),
           ).listen(
             _onAccelerometer,
             onError: (Object e) {
