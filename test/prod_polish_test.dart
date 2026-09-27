@@ -17,7 +17,7 @@ void main() {
     test('déjà contribué : ce sont les mêmes mains', () {
       expect(
         contributeRefusalMessage(
-          const PostgrestExceptionLike('KENOS_ALREADY_CONTRIBUTED'),
+          const PostgrestException(message:'KENOS_ALREADY_CONTRIBUTED'),
         ),
         'TA PHRASE EST DÉJÀ DANS CE CORPS.',
       );
@@ -26,7 +26,7 @@ void main() {
     test('cadence : le ciel souffle deux minutes', () {
       expect(
         contributeRefusalMessage(
-          const PostgrestExceptionLike('KENOS_RATE_LIMIT'),
+          const PostgrestException(message:'KENOS_RATE_LIMIT'),
         ),
         contains('DEUX MINUTES'),
       );
@@ -34,12 +34,12 @@ void main() {
 
     test('refermé ailleurs, trop long, anneau dissous, méconnaissance', () {
       expect(
-        contributeRefusalMessage(const PostgrestExceptionLike('KENOS_CLOSED')),
+        contributeRefusalMessage(const PostgrestException(message:'KENOS_CLOSED')),
         'LE POÈME S\'EST REFERMÉ AILLEURS.',
       );
       expect(
         contributeRefusalMessage(
-          const PostgrestExceptionLike('KENOS_INVALID_LENGTH'),
+          const PostgrestException(message:'KENOS_INVALID_LENGTH'),
         ),
         contains('TROP LONGUE'),
       );
@@ -47,13 +47,13 @@ void main() {
       // it up to a breath late — the refusal must say what happened.
       expect(
         contributeRefusalMessage(
-          const PostgrestExceptionLike('KENOS_NOT_FOUND'),
+          const PostgrestException(message:'KENOS_NOT_FOUND'),
         ),
         'CET ANNEAU A RETOURNÉ AU VIDE.',
       );
       expect(
         contributeRefusalMessage(
-          const PostgrestExceptionLike('KENOS_UNAUTHENTICATED'),
+          const PostgrestException(message:'KENOS_UNAUTHENTICATED'),
         ),
         'L\'ÉTHER NE TE RECONNAÎT PLUS.',
       );
@@ -77,14 +77,14 @@ void main() {
   group('seedRefusalMessage — le garde dit son remède', () {
     test('cadence : deux minutes entre deux anneaux', () {
       expect(
-        seedRefusalMessage(const PostgrestExceptionLike('KENOS_RATE_LIMIT')),
+        seedRefusalMessage(const PostgrestException(message:'KENOS_RATE_LIMIT')),
         'LE CIEL SOUFFLE — DEUX MINUTES ENTRE DEUX ANNEAUX.',
       );
     });
 
     test('plafond : cinq poèmes ouverts par main', () {
       expect(
-        seedRefusalMessage(const PostgrestExceptionLike('KENOS_SEED_CAP')),
+        seedRefusalMessage(const PostgrestException(message:'KENOS_SEED_CAP')),
         'TA MAIN TIENT DÉJÀ CINQ POÈMES OUVERTS.',
       );
     });
@@ -92,7 +92,7 @@ void main() {
     test('méconnaissance, injoignable, refus inconnu', () {
       expect(
         seedRefusalMessage(
-          const PostgrestExceptionLike('KENOS_UNAUTHENTICATED'),
+          const PostgrestException(message:'KENOS_UNAUTHENTICATED'),
         ),
         'L\'ÉTHER NE TE RECONNAÎT PLUS.',
       );
@@ -103,6 +103,54 @@ void main() {
       expect(
         seedRefusalMessage(const PostgrestException(message: 'boom')),
         'L\'ÉTHER A REFUSÉ LA CONSTELLATION.',
+      );
+    });
+  });
+
+  group('refusalOf — the structural interpreter (audit 2026-09-23)', () {
+    test('reads the code from typed fields, never from toString', () {
+      expect(
+        refusalOf(const PostgrestException(message: 'KENOS_CLOSED')),
+        ConstellationRefusal.closed,
+      );
+      // Demo parity: the local repositories raise StateError('KENOS_*').
+      expect(
+        refusalOf(StateError('KENOS_NOT_FOUND')),
+        ConstellationRefusal.notFound,
+      );
+      // The typed salon refusal.
+      expect(
+        refusalOf(const SalonKeyRefused()),
+        ConstellationRefusal.inviteUnknown,
+      );
+    });
+
+    test('no code, no refusal — but the ether still answered', () {
+      // A PostgrestException with no known code (e.g. SQLSTATE 42501):
+      // a true refusal, just not one the grammar names.
+      expect(
+        refusalOf(const PostgrestException(code: '42501', message: '')),
+        isNull,
+      );
+      expect(
+        etherAnswered(const PostgrestException(code: '42501', message: '')),
+        isTrue,
+      );
+      // Anything else is the sky being far: nothing was refused.
+      expect(refusalOf(Exception('SocketException')), isNull);
+      expect(etherAnswered(Exception('SocketException')), isFalse);
+      // String sniffing is gone: a bare exception whose TEXT carries
+      // the token is NOT a refusal — only typed fields speak.
+      expect(refusalOf(Exception('KENOS_CLOSED')), isNull);
+    });
+
+    test('a PostgrestException whose message hides the token still maps', () {
+      expect(
+        refusalOf(const PostgrestException(
+          code: 'P0001',
+          message: 'raise_exception: KENOS_SEED_CAP — five open rings',
+        )),
+        ConstellationRefusal.seedCap,
       );
     });
   });
@@ -156,11 +204,3 @@ void main() {
   });
 }
 
-/// Minimal stand-in: only `toString()` matters to the mapper.
-class PostgrestExceptionLike implements Exception {
-  const PostgrestExceptionLike(this.message);
-  final String message;
-
-  @override
-  String toString() => message;
-}

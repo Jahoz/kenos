@@ -19,11 +19,10 @@ import '../../../core/widgets/anonymity_warning.dart';
 import '../../../core/widgets/hud.dart';
 import '../../../core/widgets/scramble_text.dart';
 import '../../cosmic_map/application/map_controller.dart';
-import '../../echo/data/echo_repository.dart';
 import '../../echo/domain/echo_color_theme.dart';
 import '../../echo/domain/echo_excerpt.dart';
 import '../../echo/domain/echo_media.dart';
-import '../../echo/domain/pii_guard.dart';
+import '../application/seal_echo.dart';
 import '../data/origin_whisper.dart';
 import 'widgets/media_draft_preview.dart';
 
@@ -39,7 +38,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
   final TextEditingController _input = TextEditingController();
   final FocusNode _focus = FocusNode();
 
-  static const _maxLength = 280;
+  static const _maxLength = SealEcho.maxLength;
 
   /// V3.52 — the first journey's voice, resolved once (a session never
   /// changes its tongue mid-thought).
@@ -47,7 +46,10 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
 
   EchoColorTheme _theme = EchoColorTheme.teal;
   bool _sealing = false;
-  bool _piiAcknowledged = false;
+
+  /// The PII warning is asked once per secret (the decisions live in
+  /// [SealEcho]; this is the draft's own memory).
+  final PiiGate _pii = PiiGate();
   final ImagePicker _picker = ImagePicker();
   final AudioRecorder _recorder = AudioRecorder();
   EchoMediaDraft? _media;
@@ -94,10 +96,11 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     super.dispose();
   }
 
-  bool get _canSend =>
-      !_sealing &&
-      (_input.text.trim().isNotEmpty || _media != null || _excerpt != null) &&
-      _input.text.length <= _maxLength;
+  bool get _canSend => !_sealing && SealEcho.canSend(
+        text: _input.text,
+        hasMedia: _media != null,
+        hasExcerpt: _excerpt != null,
+      );
 
   Future<void> _pickImage() async {
     try {
@@ -325,10 +328,12 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     controller.dispose();
     dialogFocus.dispose();
     if (!mounted) return;
-    if (excerpt == null) {
-      // Only scold when something was actually pasted: cancelling an
-      // empty dialog is renouncing, not failing.
-      if (pasted.isNotEmpty) {
+    // The door's verdict is the use case's (SealEcho.excerptVerdict):
+    // only a pasted-and-unparseable link is scolded — cancelling an
+    // empty dialog is renouncing, not failing.
+    switch (
+        SealEcho.excerptVerdict(pasted: pasted, parsed: excerpt)) {
+      case ExcerptDoorVerdict.malformed:
         showHud(
           context,
           _voice.pick(
@@ -336,13 +341,14 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
             'THIS LINK IS NEITHER SPOTIFY NOR YOUTUBE.',
           ),
         );
-      }
-      return;
+      case ExcerptDoorVerdict.renounce:
+        break;
+      case ExcerptDoorVerdict.keep:
+        setState(() {
+          _excerpt = excerpt as EchoExcerpt;
+          _media = null; // one attachment per echo
+        });
     }
-    setState(() {
-      _excerpt = excerpt;
-      _media = null; // one attachment per echo
-    });
   }
 
   Future<void> _sealAndLaunch() async {
@@ -352,7 +358,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     // ceremony. Once sealed, the ether is structurally blind to the
     // thought — this device-side look (phone/email, zero network) is
     // the only warning there will ever be. Warn, never block.
-    if (!_piiAcknowledged && PiiGuard.carriesIdentity(_input.text)) {
+    if (_pii.shouldWarn(_input.text)) {
       final proceed = await warnAnonymityLoss(
         context,
         voice: _voice,
@@ -370,7 +376,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
         ),
       );
       if (!mounted || !proceed) return;
-      _piiAcknowledged = true;
+      _pii.acknowledge();
     }
 
     setState(() => _sealing = true);
@@ -403,21 +409,7 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _sealing = false);
-      String message;
-      if (e is KenosException) {
-        message = e.code == KenosErrorCode.rateLimit
-            ? _voice.pick(
-                'REVIENS DANS 20 SECONDES.\nFRICTION COMME VERTU.',
-                'COME BACK IN 20 SECONDS.\nFRICTION AS A VIRTUE.',
-              )
-            : e.hudMessage;
-      } else {
-        message = _voice.pick(
-          'L\'ÉTHER A REFUSÉ L\'ÉCHO.',
-          'THE ETHER REFUSED THE ECHO.',
-        );
-      }
-      showHud(context, message);
+      showHud(context, SealEcho.launchFailureMessage(e, _voice));
     }
   }
 

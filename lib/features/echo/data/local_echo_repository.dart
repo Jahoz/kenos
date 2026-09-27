@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
+import '../../../core/heavens/heavens.dart';
 import '../../../core/utils/parallax_math.dart';
-import '../../cosmic_map/application/kenos_system.dart';
 import '../domain/echo.dart';
 import '../domain/echo_cipher.dart';
 import '../domain/echo_color_theme.dart';
@@ -147,12 +147,16 @@ class LocalEchoRepository implements EchoRepository {
       final sealed = await EchoCipher.seal(text);
       // V3.28 — demo parity: a thought is born where it will drift,
       // inside its intent planet's gravity band (same law as the
-      // cloud's launch).
+      // cloud's launch — the shared heavens, no feature reach).
       final echoTheme = EchoColorTheme.fromWire(theme);
       final createdAt = DateTime.now().subtract(
         Duration(minutes: _random.nextInt(60 * 24 * 30)),
       );
-      final born = KenosSystem.launchCoordsFor(echoTheme, createdAt, _random);
+      final born = Heavens.launchCoordsForPlanet(
+        echoTheme.skyPlanetIndex,
+        createdAt,
+        _random,
+      );
       _echoes[id] = _DemoEcho(
         echo: Echo(
           id: id,

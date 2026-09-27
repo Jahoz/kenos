@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:kenos/features/constellations/data/constellation_repository.dart';
 import 'package:kenos/features/constellations/presentation/constellation_sheets.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
   group('LocalConstellationRepository — the report parity (V3.51)', () {
@@ -88,15 +89,21 @@ void main() {
 
     test('the refusal grammar speaks the guard reasons', () {
       expect(
-        reportRefusalMessage(const PostgrestLike('KENOS_INVALID_STATE')),
+        reportRefusalMessage(
+          const PostgrestException(message: 'KENOS_INVALID_STATE'),
+        ),
         'RIEN N\'EST LISIBLE DANS CET ANNEAU.',
       );
       expect(
-        reportRefusalMessage(const PostgrestLike('KENOS_NOT_FOUND')),
+        reportRefusalMessage(
+          const PostgrestException(message: 'KENOS_NOT_FOUND'),
+        ),
         'CET ARTEFACT A RETOURNÉ AU VIDE.',
       );
       expect(
-        reportRefusalMessage(const PostgrestLike('KENOS_RATE_LIMIT')),
+        reportRefusalMessage(
+          const PostgrestException(message: 'KENOS_RATE_LIMIT'),
+        ),
         'LE CIEL SOUFFLE — REVIENS DEMAIN.',
       );
       expect(
@@ -160,14 +167,6 @@ class _RecordingRepo implements ConstellationRepository {
 
 /// A PostgREST-shaped refusal for the grammar test (the mapper reads
 /// `toString()` like the other kenos mappers).
-class PostgrestLike implements Exception {
-  const PostgrestLike(this.message);
-  final String message;
-
-  @override
-  String toString() => 'PostgrestException: $message';
-}
-
 class _NetworkGone implements Exception {
   const _NetworkGone();
 }

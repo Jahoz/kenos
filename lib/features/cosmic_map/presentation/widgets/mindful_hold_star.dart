@@ -20,6 +20,7 @@ import '../../application/kenos_system.dart';
 import '../../application/map_controller.dart';
 import '../../application/read_scar_controller.dart';
 import '../../application/reception_controller.dart';
+import '../../application/session_whispers.dart';
 import 'reception_sheet.dart';
 import 'reveal_sheet.dart';
 import 'ring_painters.dart';
@@ -62,12 +63,6 @@ class MindfulHoldStar extends ConsumerStatefulWidget {
   /// V3.48 — the keyboard's anchor. External nodes let callers (and
   /// tests) own the traversal; null gives the star its own.
   final FocusNode? focusNode;
-
-  /// One far-field whisper per app session (static: survives screen
-  /// remounts, like the Awakening's own guard) — the field teaches
-  /// itself once, then stays quiet.
-  @visibleForTesting
-  static bool farWhisperSpoken = false;
 
   @override
   ConsumerState<MindfulHoldStar> createState() => _MindfulHoldStarState();
@@ -265,6 +260,15 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   bool _keyboardHold = false;
   bool _spaceDown = false;
 
+  /// One far-field whisper per session — the field teaches itself
+  /// once (session state, see [farWhisperSpokenProvider]), then
+  /// stays quiet.
+  void _whisperFarField() {
+    if (ref.read(farWhisperSpokenProvider)) return;
+    ref.read(farWhisperSpokenProvider.notifier).state = true;
+    _toast('TROP LOIN. RAPPROCHE-TOI.');
+  }
+
   KeyEventResult _onFocusKey(FocusNode node, KeyEvent event) {
     final isSpace = event.logicalKey == LogicalKeyboardKey.space;
     if (event is KeyDownEvent && isSpace) {
@@ -272,10 +276,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
       _spaceDown = true;
       if (_busy || _echo.isMine) return KeyEventResult.ignored;
       if (widget.reception <= 0) {
-        if (!MindfulHoldStar.farWhisperSpoken) {
-          MindfulHoldStar.farWhisperSpoken = true;
-          _toast('TROP LOIN. RAPPROCHE-TOI.');
-        }
+        _whisperFarField();
         return KeyEventResult.handled;
       }
       _keyboardHold = true;
@@ -315,10 +316,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
       // Beyond the reception field: a glimmer, not a bottle. The hold
       // does not arm — the gesture stays a travel toward it. The sky
       // explains itself once, then stays quiet.
-      if (!MindfulHoldStar.farWhisperSpoken) {
-        MindfulHoldStar.farWhisperSpoken = true;
-        _toast('TROP LOIN. RAPPROCHE-TOI.');
-      }
+      _whisperFarField();
       return;
     }
     _downPosition = event.position;
@@ -365,8 +363,17 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
 
   void _onPointerUp() {
     _downPosition = null;
-    if (ref.read(heldEchoIdProvider) == _echo.id) {
-      ref.read(heldEchoIdProvider.notifier).state = null;
+    // A pan rebuilds the culled star list and can reassign this
+    // element mid-gesture (no keys, by design): the pointer-up may
+    // land on a disposed element. Release the hold through the
+    // container captured at mount — same grammar as dispose(), and
+    // equally silent when the container is already gone.
+    try {
+      if (_container.read(heldEchoIdProvider) == _echo.id) {
+        _container.read(heldEchoIdProvider.notifier).state = null;
+      }
+    } catch (_) {
+      // Died mid-hold: dispose already thawed the sky.
     }
     _stopBeats();
     if (_echo.isMine) return;

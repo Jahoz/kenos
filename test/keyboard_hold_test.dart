@@ -23,7 +23,6 @@ void main() {
   setUp(() {
     node = FocusNode(debugLabel: 'star');
     map = _SpyMap();
-    MindfulHoldStar.farWhisperSpoken = false;
   });
 
   Future<void> boot(WidgetTester tester, {double reception = 1}) async {

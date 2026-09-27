@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:kenos/features/constellations/data/constellation_repository.dart';
 import 'package:kenos/features/constellations/presentation/constellation_sheets.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
   group('The second key — demo parity (V3.53)', () {
@@ -55,19 +56,27 @@ void main() {
   group('The refusal grammar speaks the door\'s reasons', () {
     test('every guard has its word', () {
       expect(
-        reseedRefusalMessage(const _Refused('KENOS_LINES_EXIST')),
+        reseedRefusalMessage(
+          const PostgrestException(message: 'KENOS_LINES_EXIST'),
+        ),
         'LA PORTE A DÉJÀ ÉTÉ TOUCHÉE.',
       );
       expect(
-        reseedRefusalMessage(const _Refused('KENOS_CLOSED')),
+        reseedRefusalMessage(
+          const PostgrestException(message: 'KENOS_CLOSED'),
+        ),
         'LE POÈME S\'EST REFERMÉ.',
       );
       expect(
-        reseedRefusalMessage(const _Refused('KENOS_NOT_FOUND')),
+        reseedRefusalMessage(
+          const PostgrestException(message: 'KENOS_NOT_FOUND'),
+        ),
         'AUCUNE PORTE À RESEMER.',
       );
       expect(
-        reseedRefusalMessage(const _Refused('KENOS_UNAUTHENTICATED')),
+        reseedRefusalMessage(
+          const PostgrestException(message: 'KENOS_UNAUTHENTICATED'),
+        ),
         'L\'ÉTHER NE TE RECONNAÎT PLUS.',
       );
       expect(
@@ -127,16 +136,6 @@ void main() {
       expect(answer, isNull);
     });
   });
-}
-
-/// A PostgREST-shaped refusal (the mapper reads toString(), like the
-/// other kenos mappers — the KENOS_* code crosses before the type).
-class _Refused implements Exception {
-  const _Refused(this.code);
-  final String code;
-
-  @override
-  String toString() => 'PostgrestException: $code';
 }
 
 class _FarSky implements Exception {

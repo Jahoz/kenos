@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kenos/features/cosmic_map/application/session_whispers.dart';
 import 'package:kenos/features/cosmic_map/presentation/widgets/mindful_hold_star.dart';
 import 'package:kenos/features/echo/domain/echo.dart';
 import 'package:kenos/features/echo/domain/echo_color_theme.dart';
@@ -8,12 +9,11 @@ import 'package:kenos/features/echo/domain/echo_color_theme.dart';
 /// The reception field teaches itself ONCE: the first press on a star
 /// beyond the field whispers "TROP LOIN. RAPPROCHE-TOI." — the second
 /// stays silent (friction explained once is guidance, twice is noise).
+/// The once-ness is session state (farWhisperSpokenProvider): each
+/// test owns its scope, so each test owns its session.
 void main() {
-  setUp(() {
-    MindfulHoldStar.farWhisperSpoken = false;
-  });
-
-  Widget harness({required double reception}) {
+  Widget harness(WidgetTester tester, ProviderContainer container,
+      {required double reception}) {
     final echo = Echo(
       id: 'far-star',
       coordX: 0.5,
@@ -22,7 +22,8 @@ void main() {
       theme: EchoColorTheme.teal,
       createdAt: DateTime.now(),
     );
-    return ProviderScope(
+    return UncontrolledProviderScope(
+      container: container,
       child: MaterialApp(
         home: Scaffold(
           body: Center(
@@ -49,12 +50,14 @@ void main() {
   }
 
   testWidgets('au loin : un whisper, puis le silence', (tester) async {
-    await tester.pumpWidget(harness(reception: 0));
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(harness(tester, container, reception: 0));
     await tester.pump();
 
     await press(tester);
     expect(find.text('TROP LOIN. RAPPROCHE-TOI.'), findsOneWidget);
-    expect(MindfulHoldStar.farWhisperSpoken, isTrue);
+    expect(container.read(farWhisperSpokenProvider), isTrue);
 
     // The snackbar expires (4 s after its entry settled) and leaves.
     await tester.pump(const Duration(seconds: 5));
@@ -66,11 +69,13 @@ void main() {
   });
 
   testWidgets("à portée : pas de whisper, le hold s'arme", (tester) async {
-    await tester.pumpWidget(harness(reception: 1));
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(harness(tester, container, reception: 1));
     await tester.pump();
 
     await press(tester);
     expect(find.text('TROP LOIN. RAPPROCHE-TOI.'), findsNothing);
-    expect(MindfulHoldStar.farWhisperSpoken, isFalse);
+    expect(container.read(farWhisperSpokenProvider), isFalse);
   });
 }
