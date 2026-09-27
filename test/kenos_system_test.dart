@@ -42,9 +42,9 @@ void main() {
         // V3.21: the beacon holds the north corner, clear of every
         // orbiting lane (no more conjunctions through her sky).
         if (i == 2) {
-          // V3.76: the beacon holds the far corner (r ≈ 0.6364),
-          // clear of every widened lane.
-          expect(dist, closeTo(0.636396, 1e-5), reason: 'Polaris ne bouge pas');
+          // V3.79: the beacon holds the DEEPER far corner (r ≈ 0.8485),
+          // clear of every widened lane (the outer one rides 0.72).
+          expect(dist, closeTo(0.848528, 1e-5), reason: 'Polaris ne bouge pas');
           // V3.67: Venus's lane widened to 0.44 — the beacon keeps a
           // clear (if closer) sky: no conjunction touches her.
           expect(dist - KenosSystem.orbitRadiusOf(1),
@@ -253,8 +253,9 @@ void main() {
       }
       expect(maxD, greaterThan(KenosSystem.outerOrbit),
           reason: 'l\'aphélie dépasse les planètes');
-      expect(minD, lessThan(0.20),
-          reason: 'le périhélie frôle le vide');
+      expect(minD, lessThan(0.30),
+          reason: 'le périhélie plonge sous la voie intérieure '
+              '(V3.79 : le système a respiré, la comète avec lui)');
       expect(maxD - minD, greaterThan(0.15),
           reason: 'l\'arc est réellement excentrique');
     });

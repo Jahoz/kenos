@@ -22,7 +22,11 @@ class Heavens {
   /// the corner itself, r ≈ 0.64: the widened lanes (0.32/0.45) would
   /// graze the old north-corner post — the beacon watches the system
   /// from farther out, clear of all traffic).
-  static const Offset polaris = Offset(0.05, 0.05);
+  /// V3.79 — the beacon holds the DEEPER far corner: the system
+  /// breathes with the widened sky (lanes 0.42/0.72) and Polaris
+  /// moves with it, staying clear of every orbiting lane by more
+  /// than the 0.08 the determinism test pins (r ≈ 0.8485).
+  static const Offset polaris = Offset(-0.10, -0.10);
 
   /// The three intentions' anchors: the worlds thoughts gravitate
   /// around. Anchor order is law (teal/La Lune 0, indigo/Vénus 1,
@@ -37,21 +41,25 @@ class Heavens {
   /// OPENS: the retinue hugged the hole (0.24/0.38 — everything
   /// alive inside a disc of radius 0.64, one third of the sky's
   /// surface, "on reste toujours aussi proche du trou noir"). The
-  /// lanes widen to 0.32/0.45 with the far band at 0.38: the crowd's
-  /// envelope reaches 0.83 and the survey frame cuts it on every
-  /// screen — distance between the worlds at last.
+  /// V3.79 — THE SYSTEM BREATHES WITH THE SKY: V3.77 widened the
+  /// storable field to [-0.6, 1.6] and the system stayed compact in
+  /// the middle — "les astres principaux sont trop proches les uns
+  /// des autres et du trou noir" (the live report). Lanes 0.42/0.72:
+  /// +35% of sky to the hole, the planets' conjunction distance rises
+  /// 0.13 → 0.30, and Polaris (r 0.6364) breathes BETWEEN the lanes
+  /// — every crossing keeps the 0.08 floor the determinism test
+  /// pins (her radius chose the outer lane: 0.72 clears it).
   static double orbitRadiusOf(int index) =>
-      switch (index) { 0 => 0.32, _ => 0.45 };
+      switch (index) { 0 => 0.42, _ => 0.72 };
 
   /// Each lane has its own tempo. V3.74 — THE SKY MUST BE SEEN TO
-  /// TURN: the contemplative half-hours (30/55 min) read as frozen at
-  /// the survey ("tout est figé, les astres doivent subir des
-  /// rotations", the live report). The lanes now sweep in ~10/16 min
-  /// — a drift the eye catches in ten seconds, still a contemplative
-  /// sky, never a carousel (V3.22's law holds).
+  /// TURN; V3.79 — the widened lanes lengthen their laps to hold the
+  /// linear serenity the determinism test pins (~0.23 world-units a
+  /// minute, never a carousel): 11.5/20 min, Kepler's courtesy — the
+  /// outer world rides slower than the inner one.
   static Duration _periodOf(int index) => switch (index) {
-        0 => const Duration(minutes: 10),
-        _ => const Duration(minutes: 16),
+        0 => const Duration(milliseconds: 690000),
+        _ => const Duration(minutes: 20),
       };
 
   /// World position of a planet at a given moment. Polaris (index 2)
@@ -129,13 +137,15 @@ class Heavens {
   /// How many lunes ride the sky.
   static const int wandererCount = 4;
 
-  /// A lune's world position: arcs 0.72–1.12 of the sky, pacing
-  /// their circles in ~50–110 min (V3.74 — the sky must be SEEN to
-  /// turn). V3.76 — pushed out with the widened system; the far
-  /// limit keeps every lune centerable (the eye at max zoom).
+  /// A lune's world position: arcs the sky in ~50–110 min (V3.74 —
+  /// the sky must be SEEN to turn). V3.79 — pushed to 0.98–1.08: the
+  /// outer lane's retinue (0.72 + the echo band's 0.24) reaches
+  /// 0.96, and the lunes owe it a clear court; the far limit (1.08)
+  /// keeps every lune INSIDE the storable sky (0.5 − 1.08 = −0.58 ≥
+  /// −0.6) and centerable at the eye's reach.
   static Offset wandererPosition(int index, DateTime at) {
     final i = index % wandererCount;
-    final radius = 0.72 + 0.20 * (i % 3);
+    final radius = 0.98 + 0.05 * (i % 3);
     final periodMs = (50 + 20 * i) * 60000.0;
     final base = i * math.pi / 2;
     final angle =

@@ -241,7 +241,11 @@ class LocalEchoRepository implements EchoRepository {
   }
 
   @override
-  Future<List<Echo>> fetchStarMap() => fetchStarMapInSector(0, 0, 1, 1);
+  /// The demo ether's whole sky — V3.79: the widened field (the old
+  /// [0,1]² default forgot to breathe with V3.77, and seeds born
+  /// beside the widened lanes fell outside the "whole sky").
+  Future<List<Echo>> fetchStarMap() =>
+      fetchStarMapInSector(-0.55, -0.55, 1.55, 1.55);
 
   @override
   Future<List<Echo>> fetchStarMapInSector(

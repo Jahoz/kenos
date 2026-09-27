@@ -10,12 +10,13 @@ void main() {
     test('Polaris ne bouge pas — le point fixe, hors de la bande', () {
       final a = DateTime.fromMillisecondsSinceEpoch(0);
       final b = DateTime.fromMillisecondsSinceEpoch(987654321000);
-      expect(CelestialMath.polaris, const Offset(0.05, 0.05));
+      expect(CelestialMath.polaris, const Offset(-0.10, -0.10));
       // V3.21: the beacon clears every lane — no more conjunctions
-      // with the orbiting anchors (Moon 0.26, Venus 0.37).
+      // with the orbiting anchors. V3.79: the deeper far corner
+      // (r ≈ 0.8485) stays outside the widened outer lane (0.72).
       final r = (CelestialMath.polaris - const Offset(0.5, 0.5)).distance;
       expect(r, greaterThan(0.5), reason: 'hors de la bande orbitale');
-      expect(r - 0.37, greaterThan(0.15), reason: 'au-delà de la voie de Vénus');
+      expect(r - 0.72, greaterThan(0.08), reason: 'au-delà de la voie de Vénus');
       // Same instant twice — trivially equal, but the contract is fixed.
       expect(a.millisecondsSinceEpoch >= 0 && b.millisecondsSinceEpoch > 0, isTrue);
     });
@@ -36,12 +37,13 @@ void main() {
       for (var i = 0; i < celestialWanderers.length; i++) {
         final p = CelestialMath.wandererPosition(i, at);
         final dist = Offset(p.dx - 0.5, p.dy - 0.5).distance;
-        // V3.76: the arcs ride 0.72-1.12 (pushed out with the
-        // widened system) — the far country, cut by the survey
-        // frame, every lune still centerable at a deep gaze.
-        expect(dist, greaterThanOrEqualTo(0.72 - 1e-9),
+        // V3.79: the arcs ride 0.98-1.08 (the system breathes with
+        // the widened sky; the lunes keep clear of the outer lane's
+        // retinue) — the far country, cut by the survey frame, every
+        // lune still INSIDE the storable sky and centerable.
+        expect(dist, greaterThanOrEqualTo(0.98 - 1e-9),
             reason: 'les errants restent le lointain');
-        expect(dist, lessThanOrEqualTo(1.12 + 1e-9),
+        expect(dist, lessThanOrEqualTo(1.08 + 1e-9),
             reason: '…mais un lointain que la fenêtre du survey coupe');
       }
     });

@@ -2093,11 +2093,29 @@ class _AmbientBackground extends ConsumerStatefulWidget {
   return (x: (t.x * 125).round() / 125, y: (t.y * 125).round() / 125);
 }
 
+/// Scenery's own gate (V3.79): four times coarser than the content's
+/// ever was — a nebula stepping 1.5 px is invisible, and the ambient
+/// painters were the LAST rebuild-per-tremor site (a hand-held phone
+/// crossed the 0.008 gate a handful of times a second; scenery now
+/// shrugs until the tilt truly turns).
+({double x, double y}) _gateSceneryTilt(AsyncValue<Tilt> value) {
+  final t = value.valueOrNull ?? Tilt.zero;
+  return (x: (t.x * 33).round() / 33, y: (t.y * 33).round() / 33);
+}
+
 class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
   static const _tick = Duration(milliseconds: 125);
 
   double _time = 0;
   Timer? _twinkle;
+
+  /// V3.79 — the scenery's tilt, coarse-gated and NEVER watched in
+  /// build: the painters ride a ListenableBuilder (rebuild scope =
+  /// two CustomPaints, nothing above), and a tremor that stays under
+  /// the gate costs literally nothing.
+  final ValueNotifier<({double x, double y})> _sceneryTilt =
+      ValueNotifier((x: 0.0, y: 0.0));
+  ProviderSubscription<({double x, double y})>? _scenerySub;
 
   @override
   void initState() {
@@ -2107,11 +2125,18 @@ class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
         if (mounted) setState(() => _time += _tick.inMilliseconds / 1000);
       });
     }
+    _scenerySub = ref.listenManual(
+      tiltProvider.select(_gateSceneryTilt),
+      (_, t) => _sceneryTilt.value = t,
+      fireImmediately: true,
+    );
   }
 
   @override
   void dispose() {
     _twinkle?.cancel();
+    _scenerySub?.close();
+    _sceneryTilt.dispose();
     super.dispose();
   }
 
@@ -2120,29 +2145,39 @@ class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
     // Ambient parallax calms down (×0.15) but stays alive: the ether is
     // not a screenshot.
     final motionScale = context.wantsReducedMotion ? 0.15 : 1.0;
-    final tilt = ref.watch(tiltProvider.select(_gateTilt));
 
     return RepaintBoundary(
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CustomPaint(
-            painter: NebulaPainter(
-              tiltX: tilt.x * 0.5 * motionScale,
-              tiltY: tilt.y * 0.5 * motionScale,
-              time: _time,
-              presence: widget.presence,
-              hearthAt: widget.hearthAt,
-              hearthGlow: (1.0 - widget.presence).clamp(0.0, 1.0),
-            ),
-          ),
-          CustomPaint(
-            painter: BackgroundStarFieldPainter(
-              time: _time,
-              tiltX: tilt.x * motionScale,
-              tiltY: tilt.y * motionScale,
-              presence: widget.presence,
-            ),
+          ListenableBuilder(
+            listenable: _sceneryTilt,
+            builder: (context, _) {
+              final tilt = _sceneryTilt.value;
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  CustomPaint(
+                    painter: NebulaPainter(
+                      tiltX: tilt.x * 0.5 * motionScale,
+                      tiltY: tilt.y * 0.5 * motionScale,
+                      time: _time,
+                      presence: widget.presence,
+                      hearthAt: widget.hearthAt,
+                      hearthGlow: (1.0 - widget.presence).clamp(0.0, 1.0),
+                    ),
+                  ),
+                  CustomPaint(
+                    painter: BackgroundStarFieldPainter(
+                      time: _time,
+                      tiltX: tilt.x * motionScale,
+                      tiltY: tilt.y * motionScale,
+                      presence: widget.presence,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
           // Shooting stars: rare streaks crossing the dead field. A
           // const child — the twinkle's 8 fps rebuilds never touch it.
