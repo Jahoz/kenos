@@ -2417,29 +2417,14 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
   void initState() {
     super.initState();
     _orbit.start();
-    // V3.78d — THE TILT NEVER REBUILDS. Watching the tilt in build
-    // meant every epsilon-gate crossing (a hand-held phone crosses it
-    // a handful of times a second) re-ran the WHOLE layer: the sights
-    // pass, the alive ranking, the bucket stack — and reset every
-    // star's drift baseline (the code's own warning: a 30 fps
-    // full-layer rebuild once wedged the tab at 0.3 fps). The tilt now
-    // rides a notifier: the buckets TRANSFORM their cached rasters,
-    // nothing rebuilds, no baseline ever resets for a sway.
-    _tiltSub = ref.listenManual(
-      tiltProvider.select(_gateTilt),
-      (_, t) => _gatedTilt.value = t,
-      fireImmediately: true,
-    );
+    // V3.78f — the layer no longer listens to the tilt AT ALL: the
+    // content never parallaxes (see the bucket loop). The sway lives
+    // in the scenery alone; an echo holds its astre's orbit whatever
+    // the hand does.
   }
-
-  final ValueNotifier<({double x, double y})> _gatedTilt =
-      ValueNotifier((x: 0.0, y: 0.0));
-  ProviderSubscription<({double x, double y})>? _tiltSub;
 
   @override
   void dispose() {
-    _tiltSub?.close();
-    _gatedTilt.dispose();
     _orbit.dispose();
     _glimmerClock.dispose();
     for (final notifier in _shifts.values) {
@@ -2455,11 +2440,9 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
 
   @override
   Widget build(BuildContext context) {
-    // Ambient parallax calms down (×0.15) under reduce-motion.
-    final motionScale = context.wantsReducedMotion ? 0.15 : 1.0;
     _reduced = context.wantsReducedMotion;
-    // V3.78d — the tilt lives in _gatedTilt (see initState): a sway
-    // must never cost a rebuild, only a transform.
+    // V3.78f — no tilt here, no motion scale: the content never
+    // parallaxes. The sky holds its anchors; the scenery sways.
     final now = DateTime.now();
     final sorted = _sortedSkies(now);
     _forgetStaleShifts();
@@ -2675,14 +2658,6 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
                   camera: widget.camera,
                   now: _glimmerClock.value ?? now,
                   reduced: _reduced,
-                  // V3.78e — the canvas carries the SAME tilt parallax
-                  // as the buckets (the widget carries it since the
-                  // dawn): a pipeline switch must never displace a
-                  // light by the offset between two renderings of the
-                  // same sky.
-                  tilt: _gatedTilt,
-                  motionScale: motionScale,
-                  zoomFloor: widget.camera.zoomFloor,
                 ),
               ),
             ),
@@ -2692,52 +2667,16 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
           final children = buckets[b];
           if (children.isEmpty) continue;
 
-          final bucketZ =
-              (_bucketEdges[b] + _bucketEdges[b + 1].clamp(0.0, 1.0)) / 2;
-          // Depth haze now rides EACH star's cached glow (its own
-          // RepaintBoundary): a bucket-level ImageFiltered had to
-          // re-blur the whole viewport every frame once the orbits
-          // came alive — 0.3 fps. The bucket keeps only its parallax
-          // transform, isolated behind its own boundary.
           final layer = RepaintBoundary(child: Stack(children: children));
-          // V3.78d — the bucket transform listens to the tilt itself:
-          // a crossing moves cached rasters, it never rebuilds them.
-          layers.add(
-            ListenableBuilder(
-              listenable: _gatedTilt,
-              builder: (context, _) {
-                final tilt = _gatedTilt.value;
-                return Transform.translate(
-                  offset: Offset(
-                    ParallaxMath.offsetPixels(
-                      tilt: tilt.x * motionScale,
-                      z: bucketZ,
-                      // V3.58i — the sway calms as the eye approaches:
-                      // full at the overview, a quarter at max zoom.
-                      // V3.71 — the fold rides the aspect-aware floor.
-                      amplitude: 46 *
-                          ParallaxMath.parallaxCalm(
-                            widget.camera.zoom,
-                            fold: widget.camera.zoomFloor + 0.12,
-                            floor: widget.camera.zoomFloor,
-                          ),
-                    ),
-                    ParallaxMath.offsetPixels(
-                      tilt: tilt.y * motionScale,
-                      z: bucketZ,
-                      amplitude: 32 *
-                          ParallaxMath.parallaxCalm(
-                            widget.camera.zoom,
-                            fold: widget.camera.zoomFloor + 0.12,
-                            floor: widget.camera.zoomFloor,
-                          ),
-                    ),
-                  ),
-                  child: layer,
-                );
-              },
-            ),
-          );
+          // V3.78f — THE CONTENT NEVER PARALLAXES. The tilt sway used
+          // to displace each depth bucket by its own zoom-calmed
+          // offset while the planets stood still — under a hand's
+          // tilt, every pinch slid the echoes OFF their astre's orbit
+          // (the live report: "le zoom impacte la position des
+          // échos"). The cosmology is the law: echoes live around
+          // their astre, astres around the trou noir — scenery may
+          // breathe in depth, content holds its anchor.
+          layers.add(layer);
         }
 
         return Stack(fit: StackFit.expand, children: layers);
@@ -3470,24 +3409,13 @@ class _GlimmerFieldPainter extends CustomPainter {
     required this.camera,
     required this.now,
     required this.reduced,
-    required this.tilt,
-    required this.motionScale,
-    required this.zoomFloor,
   }) : _center = camera.center,
-       _zoom = camera.zoom,
-       super(repaint: tilt);
+       _zoom = camera.zoom;
 
   final List<Echo> echoes;
   final TravelCamera camera;
   final DateTime now;
   final bool reduced;
-
-  /// V3.78e — the gated tilt, shared with the buckets: the canvas
-  /// sways with the widgets, repaint-listenable (a tilt tick repaints
-  /// the canvas without rebuilding anything).
-  final ValueNotifier<({double x, double y})> tilt;
-  final double motionScale;
-  final double zoomFloor;
 
   // Camera VALUES captured at construction (the camera is a single
   // mutable instance — comparing it to itself never fires).
@@ -3498,40 +3426,12 @@ class _GlimmerFieldPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final eyeScale = ParallaxMath.zoomScale(_zoom);
     final dScale = ParallaxMath.displayScale(size.shortestSide);
-    final t = tilt.value;
-    final calm = ParallaxMath.parallaxCalm(
-      _zoom,
-      fold: zoomFloor + 0.12,
-      floor: zoomFloor,
-    );
     for (final echo in echoes) {
       final z = echo.resolveZ(now);
       final world = KenosSystem.echoPosition(echo, now);
-      var sp = camera.worldToScreen(world, size);
-      // The bucket a widget-star of this depth would ride: the SAME
-      // parallax formula, so the two pipelines agree to the pixel.
-      var b = 0;
-      while (b < _ParallaxStarLayerState._bucketEdges.length - 2 &&
-          z >= _ParallaxStarLayerState._bucketEdges[b + 1]) {
-        b++;
-      }
-      final bucketZ =
-          (_ParallaxStarLayerState._bucketEdges[b] +
-              _ParallaxStarLayerState._bucketEdges[b + 1]
-                  .clamp(0.0, 1.0)) /
-          2;
-      sp = sp.translate(
-        ParallaxMath.offsetPixels(
-          tilt: t.x * motionScale,
-          z: bucketZ,
-          amplitude: 46 * calm,
-        ),
-        ParallaxMath.offsetPixels(
-          tilt: t.y * motionScale,
-          z: bucketZ,
-          amplitude: 32 * calm,
-        ),
-      );
+      final sp = camera.worldToScreen(world, size);
+      // V3.78f — the canvas never parallaxes either: content holds
+      // its anchor, whatever pipeline paints it.
       if (sp.dx < -24 ||
           sp.dx > size.width + 24 ||
           sp.dy < -24 ||

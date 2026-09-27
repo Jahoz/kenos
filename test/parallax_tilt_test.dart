@@ -9,14 +9,14 @@ import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/data/local_echo_repository.dart';
 import 'package:kenos/features/echo/data/local_echo_store.dart';
 
-/// V3.78d — THE TILT NEVER REBUILDS (and it still MOVES). The buckets
-/// must answer a gated tilt change by transforming their rasters — a
-/// sway is a transform, never a relayout. The test drives the tilt
-/// stream itself: emit a step far past the epsilon gate, and the
-/// bucket translations must move — WITHOUT the star layer rebuilding
-/// (the star rasters keep their element identities).
+/// V3.78f — THE CONTENT NEVER PARALLAXES. An echo lives around its
+/// astre, astres around the trou noir: no tilt, no zoom, no sway may
+/// displace a light from its anchor. The test drives the tilt stream
+/// itself — a step far past the epsilon gate — and asserts the star
+/// layer's translations stay EXACTLY zero: the sway is the scenery's
+/// business (the deep field parallaxes), never the content's.
 void main() {
-  testWidgets('un sway de tilt déplace les buckets, sans rebuild',
+  testWidgets('un pas de tilt ne déplace AUCUN contenu — ancre stable',
       (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1.0;
@@ -52,9 +52,9 @@ void main() {
       }
     }
 
-    // The bucket translations of the star layer (Transform.translate
-    // widgets carrying the parallax): where they sit at rest.
-    List<Offset> bucketTranslations() => tester
+    // Every Transform translation in the sky must be ZERO, before and
+    // after a violent tilt step: content holds its anchor.
+    List<Offset> translations() => tester
         .widgetList<Transform>(find.byType(Transform))
         .map((t) => Offset(t.transform.entry(0, 3), t.transform.entry(1, 3)))
         .where((o) => o != Offset.zero)
@@ -62,20 +62,16 @@ void main() {
 
     tiltStream.add(Tilt.zero);
     await tester.pump(const Duration(milliseconds: 120));
-    // At rest the bucket translations are zero BY DEFINITION (tilt 0):
-    // the star layer must exist, carrying its Transform widgets.
-    expect(find.byType(Transform).evaluate().isNotEmpty, true,
-        reason: 'le ciel existe');
-    final before = bucketTranslations();
-    expect(before.isEmpty, true,
-        reason: 'au repos, aucune translation de parallaxe');
+    expect(translations(), isEmpty, reason: 'au repos, aucune translation');
 
-    // A step far past the epsilon gate (0.008): the buckets must move.
-    tiltStream.add(const Tilt(0.4, -0.4));
+    tiltStream.add(const Tilt(0.9, -0.9));
     await tester.pump(const Duration(milliseconds: 120));
-    final after = bucketTranslations();
-
-    expect(after.isNotEmpty, true,
-        reason: 'le sway déplace les buckets — un transform, jamais un rebuild');
+    await tester.pump(const Duration(milliseconds: 120));
+    expect(
+      translations(),
+      isEmpty,
+      reason: 'le contenu ne parallaxe pas — un écho vit autour de son astre, '
+          'un astre autour du trou noir, quoi que fasse la main',
+    );
   });
 }
