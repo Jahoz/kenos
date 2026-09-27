@@ -304,7 +304,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   }
 
   void _onPointerDown(PointerDownEvent event) {
-    if (_busy) return;
+    if (!mounted || _busy) return;
     if (_echo.isMine) {
       // Sealed echo: consult the bottle-in-the-sea signal (never the
       // text) — but only on a DELIBERATE tap (see _onSealedTap). A
@@ -365,6 +365,10 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   }
 
   void _onPointerUp() {
+    // The pointer-up can land on this element AFTER unmount (see the
+    // comment below): dispose already released the hold and thawed the
+    // sky — nothing is left to stop or reverse.
+    if (!mounted) return;
     _downPosition = null;
     // A pan rebuilds the culled star list and can reassign this
     // element mid-gesture (no keys, by design): the pointer-up may
