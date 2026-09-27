@@ -74,11 +74,14 @@ class KenosSystem {
         q = blackHole + (q - blackHole) / d * target;
       }
     }
-    // The beacon: Polaris keeps a clear sky.
+    // The beacon: Polaris keeps a clear sky. V3.76 — she holds the
+    // far corner: the outward push has nowhere to go (the square's
+    // wall), so the degenerate on-beacon case dodges TOWARD the
+    // heart instead of into the clamp.
     final toBeacon = q - CelestialMath.polaris;
     if (toBeacon.distance < clearance + 0.02 && toBeacon.distance >= 0) {
       final away = toBeacon.distance < 1e-9
-          ? const Offset(0, -1)
+          ? ((blackHole - CelestialMath.polaris) / (blackHole - CelestialMath.polaris).distance)
           : toBeacon / toBeacon.distance;
       q = CelestialMath.polaris + away * (clearance + 0.02);
     }
@@ -86,8 +89,14 @@ class KenosSystem {
     // squeezes clusters; instead, a stacked body takes the next
     // golden-angle station on a ring around its first collision —
     // clusters bloom apart, never through each other.
+    // V3.76 — the bloom's PHASE is the body's own: with one shared
+    // phase every collision in the sky hopped the SAME way, and the
+    // library smeared east ("toujours concentrés à droite"). Each
+    // body now blooms from its own bearing — collisions scatter in
+    // every direction.
     final base = q;
     const golden = 2.399963229728653; // radians, the golden angle
+    final basePhase = (base.dx * 917.0 + base.dy * 613.0) % (2 * math.pi);
     for (var n = 0; n < 24; n++) {
       var clear = true;
       for (final o in occupied) {
@@ -101,7 +110,7 @@ class KenosSystem {
       // n·φ on a spiral of radius c·√(n+1) — the layout that keeps
       // every pair at least ~c apart, for any cluster size (c rides
       // the clearance, V3.61).
-      final angle = n * golden;
+      final angle = n * golden + basePhase;
       final r = 0.09 * math.sqrt(n + 1);
       q = Offset(
         base.dx + r * math.cos(angle),
@@ -109,8 +118,8 @@ class KenosSystem {
       );
     }
     q = outsideTheHole(q);
-    // The known ether's bounds.
-    return Offset(q.dx.clamp(0.02, 0.98), q.dy.clamp(0.02, 0.98));
+    // V3.77 — the storable sky's widened bounds (beyond the square).
+    return Offset(q.dx.clamp(-0.55, 1.55), q.dy.clamp(-0.55, 1.55));
   }
 
   /// V3.62 — the lanes tightened (0.26/0.37 → 0.19/0.28): at the
@@ -161,92 +170,66 @@ class KenosSystem {
 
   // ── Echo orbits ────────────────────────────────────────────────────────
 
-  /// The gravity band's inner edge (see [Heavens.echoBandMin]).
-  static const double echoBandMin = Heavens.echoBandMin;
+  /// V3.75/76 — THE FAR BAND: where an aged thought rides at its
+  /// moon's end (0.38 from its world — the system opened with the
+  /// lanes), drawn as the one whisper ring around each planet. The
+  /// three-shell diagram is retired with the void-ring errants: the
+  /// swarm is a CROWD of own ellipses, aged by distance (see
+  /// [orbitAphelion]).
+  static const double echoFarBand = 0.38;
 
-  /// The gravity band's width (see [Heavens.echoBandSpan]).
-  static const double echoBandSpan = Heavens.echoBandSpan;
-
-  /// V3.28 — the band is no longer a hash-continuous smear but THREE
-  /// discrete shells: each ring turns as a ring, at its own fixed
-  /// tempo, and the swarm reads as structure instead of a churn.
-  /// Still 100% deterministic from the echo's identity.
-  ///
-  /// V3.67 — the shells are only the BASE of each orbit now: every
-  /// bound echo rides its OWN eccentric ellipse (aphelion jitter,
-  /// eccentricity, orientation and tempo hashed from its id — see
-  /// [launchCoordsFor] and [echoPosition]). Three perfect rings
-  /// turning in unison read, on a wide screen, as geometry — Hugo's
-  /// arbitrage: the sky must read as a CROWD, not a diagram.
-  ///
-  /// V3.68 — compact (0.13/0.18/0.23 → 0.09/0.14/0.19, rim 0.24):
-  /// the system is a jewel, its swarms tight around their worlds;
-  /// most thoughts drift FREE across the whole ether.
-  static const List<double> echoShells = [0.09, 0.14, 0.19];
-
-  /// Per-echo aphelion jitter on top of the shell (0 .. value).
-  static const double liaisonJitter = 0.05;
-
-  /// Per-echo orbital eccentricity range (bound thoughts). Aphelion
-  /// is bounded (shell + jitter), so the radius always stays within
-  /// [aphelion × (1 - e), aphelion].
+  /// Per-echo orbital eccentricity range. Aphelion is bounded, so the
+  /// radius always stays within [aphelion × (1 - e), aphelion].
   static const double liaisonEccentricityMin = 0.08;
   static const double liaisonEccentricityMax = 0.31;
 
-  /// V3.67 — LA PENSÉE ERRANTE (the flag derives from `created_at`;
+  /// V3.75 — THE CONSTITUTION (the flag derives from `created_at`;
   /// the law lives in [Heavens], shared with the ether's data layer).
-  static bool isErrantThought(DateTime createdAt) =>
-      Heavens.isErrantThought(createdAt);
+  /// Moon-companions: ~1 in 6, a tight court around one of the lunes.
+  static bool ridesAMoon(DateTime createdAt) =>
+      Heavens.ridesAMoon(createdAt);
 
-  /// One full revolution per shell (V3.22's contemplative range kept:
-  /// minutes per orbit, never a carousel).
-  static const List<Duration> _shellPeriods = [
-    Duration(seconds: 210),
-    Duration(seconds: 300),
-    Duration(seconds: 390),
-  ];
+  // ── V3.75 — THE AGING LAW ────────────────────────────────────────────
+  // A thought's distance from its body IS its age: born tight (0.03)
+  // against its world (or 0.025 against its moon), the orbit widens
+  // over the memory moon to the far band — older thoughts ride higher
+  // and slower, dimming as they recede (the star's age factor). What
+  // is never read drifts away: the memory recedes as it ages. La
+  // chute des jours is retired — thoughts no longer fall home; they
+  // recede instead, and the 30-day purge meets them at the rim.
 
-  /// The shell an echo rides: decided by its identity, stable forever.
-  static int _echoShell(Echo echo) =>
-      (echo.id.hashCode & 0x7fffffff) % echoShells.length;
+  /// The memory moon: days a thought takes to ride from its body's
+  /// face to the far band (the purge horizon stands).
+  static const Duration memoryMoon = Duration(days: 30);
 
-  /// V3.36 — LA CHUTE DES JOURS: an unread thought's orbit decays with
-  /// age. It lingers in its lane for [fallGrace] (a fresh thought
-  /// sags nowhere — the sky it was launched into is the sky it keeps),
-  /// then falls LINEARLY over the rest of its moon, from its shell
-  /// down to [landingRadius], just off the face of the world it was
-  /// confided to. The 30-day purge is the landing: what is never read
-  /// comes home to its intention. The age becomes a DISTANCE — around
-  /// each world, the swarm reads radially sorted by time adrift.
-  ///
-  /// Deterministic from `created_at`: every device sees the same
-  /// falling sky. And the culling stays honest BECAUSE the fall keeps
-  /// every mote within its planet's band — the stored launch
-  /// coordinates remain the truth the sector fetch believes (the
-  /// hole-fall variant of this law was rejected for exactly that:
-  /// decayed motes rendering far from any stored coordinate the fetch
-  /// could know).
-  static const Duration fallGrace = Duration(hours: 48);
-  static const double landingRadius = 0.02;
-  static const Duration echoMoon = Duration(days: 30);
+  /// Age as a 0..1 fraction of the memory moon.
+  static double ageFraction(Echo echo, DateTime at) =>
+      (at.difference(echo.createdAt).inMilliseconds /
+              memoryMoon.inMilliseconds)
+          .clamp(0.0, 1.0);
 
-  /// How far along its fall an echo is at [at]: 0 inside the grace,
-  /// 1 at the moon's end.
-  static double fallFraction(Echo echo, DateTime at) {
-    final age = at.difference(echo.createdAt);
-    if (age <= fallGrace) return 0;
-    final span = echoMoon - fallGrace;
-    return ((age - fallGrace).inMilliseconds / span.inMilliseconds)
-        .clamp(0.0, 1.0);
+  /// The orbit's far point (aphelion) at a moment: near when young,
+  /// the far band when old. Moon-companions stay tight to their lune
+  /// (courtiers, not migrants).
+  static double orbitAphelion(Echo echo, DateTime at) {
+    final t = ageFraction(echo, at);
+    final h = echo.id.hashCode & 0x7fffffff;
+    final jitter = ((h >> 3) % 100) / 100 * 0.04; // identity's own span
+    final moonCourt = Heavens.ridesAMoon(echo.createdAt);
+    final near = moonCourt ? 0.025 : 0.030;
+    final far = moonCourt ? 0.10 : echoFarBand;
+    return near + (far - near) * t + jitter;
   }
 
-  /// Orbital period: per-shell base, JITTERED PER ECHO (V3.67 — see
-  /// [liaisonEccentricityMax]: the synchronized ring-read is gone).
-  static Duration _echoPeriod(Echo echo) {
-    final baseMs = _shellPeriods[_echoShell(echo)].inMilliseconds;
+  /// The orbit's period at a moment: quick when young and near,
+  /// slower as the thought rides higher (Kepler's courtesy) — still
+  /// minutes per orbit, never a carousel (V3.22's law holds).
+  static Duration orbitPeriod(Echo echo, DateTime at) {
+    final t = ageFraction(echo, at);
     final h = echo.id.hashCode & 0x7fffffff;
     final jitter = 0.82 + 0.36 * ((h >> 5) % 100) / 100;
-    return Duration(milliseconds: (baseMs * jitter).round());
+    final seconds = (150 + 390 * t) * jitter;
+    return Duration(milliseconds: (seconds * 1000).round());
   }
 
   /// Planet index for an intent: the theme decides the gravity. The
@@ -257,18 +240,12 @@ class KenosSystem {
   /// Planet index for an echo: its intent decides its gravity.
   static int planetIndexOf(Echo echo) => themeIndexOf(echo.theme);
 
-  /// V3.28 — where a new echo is BORN in the server's sky: its intent
-  /// planet's live position plus a point inside the gravity band,
-  /// clamped to the known ether. The sector fetch, the A.L. telemetry
-  /// and the lineage anchors then agree with the rendered orbit: the
-  /// author drops the thought where it will actually drift.
-  ///
-  /// V3.67 — a free thought ([isErrantThought]) is born anywhere in
-  /// the ether, on its own wide ring around the void. The client
-  /// computes this BEFORE the RPC — no server law moves — and the
-  /// render derives the same verdict from the same `created_at`.
-  /// The placement itself lives in [Heavens] (one law, shared with
-  /// the demo ether's seeding).
+  /// V3.75 — where a new echo is BORN in the server's sky: BESIDE ITS
+  /// BODY (its intent planet, or its moon for a companion — see
+  /// [Heavens.launchCoordsForPlanet], one law shared with the demo
+  /// ether's seeding). The client computes this BEFORE the RPC — no
+  /// server law moves — and the render derives the same verdict from
+  /// the same `created_at`.
   static Offset launchCoordsFor(
     EchoColorTheme theme,
     DateTime at, [
@@ -276,67 +253,38 @@ class KenosSystem {
   ]) =>
       Heavens.launchCoordsForPlanet(theme.skyPlanetIndex, at, rng);
 
-  /// World position of an echo at a given moment — the orbit everyone
-  /// agrees on, derived only from the server timestamp and identity.
+  /// V3.75 — THE CONSTITUTION: every echo orbits a BODY by its type.
+  /// Comet (momentum > 0): unchanged, it crosses everything.
+  /// Moon-companion ([Heavens.ridesAMoon], ~1 in 6): a tight court
+  /// around one of the lunes, carried across the sky — found by
+  /// travelling. Every other thought: its OWN eccentric ellipse
+  /// around its intent planet, the span and tempo set by its AGE
+  /// (near is young, far is old, slow is old). The void-ring
+  /// "errant" law is retired: nothing orbits the emptiness.
   static Offset echoPosition(Echo echo, DateTime at) {
     // A rebounded echo (momentum > 0) leaves its planet's gravity:
     // a COMET on an eccentric ellipse around the void, crossing the
     // three orbits — the trace of the humans who carried it. Comets
-    // do not fall: they already cross everything, dying their own way.
+    // do not age: they already cross everything, dying their own way.
     if (echo.momentum > 0) {
       return _cometPosition(echo, at);
     }
-    // A free thought rides its own wide slow ring around the VOID:
-    // radius inherited from where it was born, tempo from its id —
-    // a sky of drifting strangers, desynchronized by construction.
-    if (isErrantThought(echo.createdAt)) {
-      final birth = Offset(echo.coordX, echo.coordY);
-      final r = (birth - blackHole).distance.clamp(0.25, 0.95);
-      final h = echo.id.hashCode & 0x7fffffff;
-      final period = Duration(
-        hours: 3 + (h % 7),
-      );
-      final phase =
-          (at.millisecondsSinceEpoch + h % 9973) / period.inMilliseconds;
-      final angle = 2 * math.pi * phase;
-      return Offset(
-        blackHole.dx + r * math.cos(angle),
-        blackHole.dy + r * math.sin(angle),
-      );
-    }
-    // A bound thought: its OWN eccentric ellipse around its intent
-    // planet — APHELION (shell + jitter), eccentricity, orientation
-    // and tempo all hashed from the identity. The halo reads as a
-    // crowd of crossing arcs, never as a drawn ring.
-    final planet = planetPosition(planetIndexOf(echo), at);
     final h = echo.id.hashCode & 0x7fffffff;
-    // LA CHUTE DES JOURS decays the APHELION toward the world it was
-    // confided to (the fall keeps the shape — only the span shrinks).
-    final fall = fallFraction(echo, at);
-    final freshAphelion = liaisonAphelion(echo);
-    final aphelion = fall <= 0
-        ? freshAphelion
-        : freshAphelion + (landingRadius - freshAphelion) * fall;
+    final body = Heavens.ridesAMoon(echo.createdAt)
+        ? Heavens.wandererPosition((h >> 7) % Heavens.wandererCount, at)
+        : planetPosition(planetIndexOf(echo), at);
+    final aphelion = orbitAphelion(echo, at);
     final e = liaisonEccentricity(echo);
     final omega = 2 * math.pi * ((h >> 17) % 360) / 360;
     final a = aphelion / (1 + e); // aphelion-bounded semi-major axis
-    final period = _echoPeriod(echo);
+    final period = orbitPeriod(echo, at);
     final phase =
         (at.millisecondsSinceEpoch + h % 9973) / period.inMilliseconds;
     final theta = 2 * math.pi * phase;
     final rr = a * (1 - e * e) / (1 + e * math.cos(theta));
     final x = rr * math.cos(theta + omega);
     final y = rr * math.sin(theta + omega);
-    return Offset(planet.dx + x, planet.dy + y);
-  }
-
-  /// The bound echo's APHELION (farthest point from its world):
-  /// its shell plus an identity-hashed jitter. Public so the fall's
-  /// tests can speak the same geometry (V3.67).
-  static double liaisonAphelion(Echo echo) {
-    final h = echo.id.hashCode & 0x7fffffff;
-    final shell = echoShells[_echoShell(echo)];
-    return shell + ((h >> 3) % 61) * (liaisonJitter / 60);
+    return Offset(body.dx + x, body.dy + y);
   }
 
   /// The bound echo's orbital eccentricity (identity-hashed).
@@ -358,7 +306,11 @@ class KenosSystem {
 
   static double _cometAphelion(Echo echo) {
     final h = echo.id.hashCode & 0x7fffffff;
-    return outerOrbit + 0.10 + 0.05 * (h % 7);
+    // V3.70 — the aphelion reaches into the median's deep half
+    // (0.63-1.08, was 0.48-0.73): every rebound now crosses the WHOLE
+    // middle country — each passage asserts the extent the survey
+    // implies.
+    return outerOrbit + 0.25 + 0.15 * (h % 4);
   }
 
   static double _cometOrientation(Echo echo) {

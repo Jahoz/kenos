@@ -13,9 +13,14 @@
   var ETHER_URL = "https://xmbdrzkvjxaaoqwluonx.supabase.co";
   var ETHER_ANON_KEY = "sb_publishable_DYyU1kOPhbId3BvQ73-8Nw_QQoEQtt3";
 
-  function row(moon, labels) {
+  function row(moon, idx) {
     var li = document.createElement("li");
     li.className = "moon";
+    var phase = document.createElement("span");
+    phase.className = "moon-phase";
+    // each Monday the calendar's moon is reborn thin, then waxes with age
+    phase.style.boxShadow = "inset " + Math.max(0, 6.5 - idx * 1.1) + "px 0 0 0 #030508";
+    li.appendChild(phase);
     var date = document.createElement("span");
     date.className = "moon-date";
     date.textContent = moon.released_on;
@@ -35,7 +40,7 @@
     var list = document.getElementById("moon-list");
     if (!list || !moons || !moons.length) return;
     list.textContent = "";
-    for (var i = 0; i < moons.length; i++) list.appendChild(row(moons[i]));
+    for (var i = 0; i < moons.length; i++) list.appendChild(row(moons[i], i));
     var foot = document.getElementById("moon-foot");
     if (foot) foot.hidden = false;
   }

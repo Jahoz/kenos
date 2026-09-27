@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show Offset;
 
 /// A Vestige: real, curated culture drifting in the void — a quote, an
 /// etymology, a haiku, a micro-history. NEVER a fake confession: the
@@ -80,16 +81,33 @@ List<Vestige> dailyRotation(List<Vestige> all, DateTime now) {
 }
 
 /// A Vestige's sky position: STATIC (culture doesn't orbit — it rests
-/// where it drifted ashore), with the faintest breathing rotation.
+/// where it drifted ashore), and so is its carving.
 class VestigeMath {
   VestigeMath._();
 
-  /// The shard's rotation at a moment (very slow tumble, id-hashed).
-  static double rotationAt(String id, DateTime at) {
+  /// V3.73 — the shard's carving angle, STATIC: deterministic from its
+  /// id (every hexagon points its own way — no two in choir), and it
+  /// never turns. Culture RESTS: it does not tumble, it does not
+  /// breathe, it waits ("les vestiges doivent être… statiques, le
+  /// reste doit vivre", the owner's word). The old 47 s tumble died
+  /// with its 250 ms clock — a battery breath with it.
+  static double rotationOf(String id) {
     final h = (id.hashCode & 0x7fffffff);
-    // Continuous spread (not bucketed): every shard tumbles on its own
-    // precise phase — no two in choir.
-    final phase = (at.millisecondsSinceEpoch / 47000 + (h % 9973) / 9973) % 1.0;
-    return phase * 2 * math.pi;
+    return (h % 9973) / 9973 * 2 * math.pi;
+  }
+
+  /// V3.75 — the shard's slow DRIFT: culture does not orbit, it
+  /// wanders — a tight ellipse around its anchor (radius ~0.02–0.045,
+  /// one turn in 25–45 min, id-phased). Calm enough to rest the eye,
+  /// alive enough to catch a stare ("les vestiges dérivent dans le
+  /// cosmos lentement", the constitution).
+  static Offset drift(String id, DateTime now) {
+    final h = (id.hashCode & 0x7fffffff);
+    final r = 0.02 + (h % 97) / 97 * 0.025;
+    final periodMs = (25 + 10 * ((h >> 4) % 3)) * 60000.0;
+    final phase =
+        now.millisecondsSinceEpoch / periodMs + (h % 9973) / 9973;
+    final a = 2 * math.pi * phase;
+    return Offset(r * math.cos(a), r * 0.7 * math.sin(a));
   }
 }

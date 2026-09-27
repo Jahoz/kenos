@@ -12,6 +12,7 @@ import '../../../core/audio/audio_providers.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/constants/app_layout.dart';
+import '../../../core/constants/app_meta.dart';
 import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/utils/motion_preferences.dart';
 import '../../../core/utils/parallax_math.dart';
@@ -128,6 +129,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // eye's field, the sky whispers where to travel.
     final breath = _breathLine;
     if (breath != null) parts.add(breath);
+    // V3.71 — the sky-law stamp: the iteration loop's answer to the
+    // stale service worker (a false regression once cost a full
+    // round). What the eye sees is what law it carries.
+    parts.add(kSkyLawStamp);
     return parts.join(' · ');
   }
 
@@ -236,6 +241,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// [territoriesAnnouncedProvider]); the born territory is ridden,
   /// never announced — the sky does not greet itself.
   void _onEyeTravels() {
+    // V3.71 — the fold's release: a deliberate zoom gesture (±0.02
+    // from the pinned gaze) re-evaluates the fold — the pin never
+    // survives a pinch. No setState here — the gates ride their own
+    // ListenableBuilder, and this listener fires on the same
+    // notifyListeners.
+    final pinnedAt = _gatesPinnedZoom;
+    if (_gatesPinned &&
+        pinnedAt != null &&
+        (_camera.zoom - pinnedAt).abs() > 0.02) {
+      _gatesPinned = false;
+    }
     final territory = VoidTerritories.territoryAt(_camera.center);
     if (territory != _territory) {
       final wasBorn = _territory == null;
@@ -385,6 +401,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   bool _showingCorpseGuide = false;
+
+  /// V3.70/71 — THE FOLD: below the survey floor (+ a breath) the
+  /// two gates kneel into a single pebble. The survey's whole point is
+  /// the sky's window — two stacked doors stole a third of the portrait
+  /// frame exactly when immensity had to land. Tapping the pebble pins
+  /// the doors open at THIS gaze; any deliberate zoom gesture (±0.02)
+  /// re-evaluates the fold — the pin never survives a pinch. The
+  /// threshold rides the camera's ASPECT-AWARE floor (V3.71).
+  bool _gatesPinned = false;
+  double? _gatesPinnedZoom;
+  double get _foldZoom => _camera.zoomFloor + 0.12;
 
   void _dismissCorpseGuide() {
     setState(() => _showingCorpseGuide = false);
@@ -1158,14 +1185,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     // The eye moves → only what looks through it
                     // rebuilds: heavens, vestiges, corpses, stars. The
                     // HUD, the gates and the scenery keep their frames.
-                    child: ListenableBuilder(
+                      child: ListenableBuilder(
                       listenable: _camera,
-                      // epoch lives HERE, inside the camera builder: a
-                      // stale captured epoch made shouldRepaint see two
-                      // identical clocks — the heavens froze mid-gesture
-                      // and jumped at the next screen rebuild.
+                      // This builder recomputes on every camera pulse:
+                      // stale captured instants once made shouldRepaint
+                      // see two identical clocks — the heavens froze
+                      // mid-gesture and jumped at the next screen
+                      // rebuild (V3.12c; the vestiges' own clock left
+                      // with their tumble, V3.73).
                       builder: (context, _) {
-                        final epoch = DateTime.now();
                         // V3.12c — serene real estate: every resting
                         // body (vestige, corpse) is resolved against
                         // the throat, the lanes, the beacon and every
@@ -1270,19 +1298,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                 ),
                               ),
                             ),
-                            // The Vestiges: carved shards of culture, static
-                            // in the void, tappable for a re-readable reveal.
-                            // Their tumble rides their own CALM clock
-                            // (V3.17c: 64 shards repainting at the heavens'
-                            // 12.5 Hz beat was a third of the wide view's
-                            // paint bill) and the whole stack owns ONE
-                            // RepaintBoundary — culture drifts even when
-                            // the eye rests, cheaply.
+                            // The Vestiges: carved shards of culture,
+                            // tappable for a re-readable reveal.
+                            // V3.75 — they DRIFT: a slow id-phased
+                            // ellipse around their anchor (one turn
+                            // in 25–45 min — calm enough to rest the
+                            // eye, alive enough to catch a stare),
+                            // on a calm 1 s clock. The carving stays
+                            // id-locked, the angle never turns.
                             if (vestigesShown.isNotEmpty)
                               RepaintBoundary(
                                 child: _HeavensClock(
-                                  period: const Duration(milliseconds: 250),
-                                  builder: (context, vestigeBeat) => LayoutBuilder(
+                                  period: const Duration(seconds: 1),
+                                  builder: (context, driftAt) =>
+                                      LayoutBuilder(
                                     builder: (context, c) {
                                       // V3.62 — the shard budget: the
                                       // sky carries the shards NEAREST
@@ -1314,10 +1343,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                       })>[];
                                       for (final v in vestigesShown) {
                                         final sp = _camera.worldToScreen(
-                                          vestigeAt[v.id] ??
-                                              Offset(
-                                                v.offsetX,
-                                                v.offsetY,
+                                          (vestigeAt[v.id] ??
+                                                  Offset(
+                                                    v.offsetX,
+                                                    v.offsetY,
+                                                  )) +
+                                              VestigeMath.drift(
+                                                v.id,
+                                                driftAt,
                                               ),
                                           Size(c.maxWidth, c.maxHeight),
                                         );
@@ -1356,14 +1389,51 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                 }
                                                 final v = shard.v;
                                                 final sp = shard.sp;
-                                              // Shards grow with the eye
-                                              // too (V3.17) — the painter
-                                              // sizes itself to its box.
-                                              final shardSide =
-                                                  32 *
-                                                  ParallaxMath.zoomScale(
-                                                    _camera.zoom,
+                                              // V3.75 — CULTURE IS
+                                              // SMALL AND IT
+                                              // WANDERS: carving
+                                              // 0.030 of the sky
+                                              // (below wanderer-
+                                              // class — found, not
+                                              // announced), the 32
+                                              // px box stays the
+                                              // FINGER's courtesy,
+                                              // the shard RECEDES
+                                              // with distance, and
+                                              // the whole carving
+                                              // rides its slow
+                                              // drift ellipse. Kept
+                                              // shards keep their
+                                              // full light — earned
+                                              // importance is not
+                                              // borrowed.
+                                              final worldScale =
+                                                  c.biggest.shortestSide /
+                                                      _camera.viewExtent;
+                                              final paintSide =
+                                                  (0.030 * worldScale)
+                                                      .clamp(18.0, 96.0);
+                                              final shardSide = math.max(
+                                                32.0,
+                                                paintSide,
+                                              );
+                                              final keptShard =
+                                                  _artifacts.isKept(v.id);
+                                              final shardWorld = vestigeAt[
+                                                      v.id] ??
+                                                  Offset(
+                                                    v.offsetX,
+                                                    v.offsetY,
                                                   );
+                                              final recede = keptShard
+                                                  ? 1.0
+                                                  : (1.0 -
+                                                          (shardWorld -
+                                                                  _camera
+                                                                      .center)
+                                                              .distance *
+                                                              0.5)
+                                                      .clamp(0.3, 1.0);
                                               return Positioned(
                                                 left: sp.dx - shardSide / 2,
                                                 top: sp.dy - shardSide / 2,
@@ -1384,12 +1454,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                   },
                                                   child: CustomPaint(
                                                     painter: VestigePainter(
+                                                      // V3.73 — static
+                                                      // carving: the id
+                                                      // alone decides the
+                                                      // angle, forever.
                                                       rotation:
-                                                          VestigeMath.rotationAt(
+                                                          VestigeMath.rotationOf(
                                                             v.id,
-                                                            context.wantsReducedMotion
-                                                                ? epoch
-                                                                : DateTime.now(),
                                                           ),
                                                       fresh: v.isFresh,
                                                       color:
@@ -1409,6 +1480,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                                       kept: _artifacts.isKept(
                                                         v.id,
                                                       ),
+                                                      scale:
+                                                          paintSide / 32.0,
+                                                      recede: recede,
                                                     ),
                                                   ),
                                                 ),
@@ -1812,45 +1886,96 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 minimum: const EdgeInsets.only(
                   bottom: AppLayout.mirrorGateBottomInset,
                 ),
-                // V3.43 — wide windows: the two doors stand SIDE BY
-                // SIDE (two doors, côte à côte); phones keep the
-                // stack, where the thumb lives.
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final wide =
-                        constraints.maxWidth >= AppLayout.gatesSideBySide;
-                    return Flex(
-                      direction: wide ? Axis.horizontal : Axis.vertical,
-                      mainAxisSize: MainAxisSize.min,
-                      // Both doors stand on the same floor (the first
-                      // is a breath taller — the hierarchy, again).
-                      crossAxisAlignment: wide
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.center,
-                      children: [
-                        _GateDoor(
-                          key: const ValueKey('gate-constellation'),
-                          label: ref.watch(voiceProvider).pick(
-                            'SEMER UNE CONSTELLATION',
-                            'SOW A CONSTELLATION',
-                          ),
-                          onPressed: () async {
-                            final seeded = await context.push('/cadavre');
-                            if (seeded is SeededConstellation) {
-                              await _corpseSeeded(seeded);
-                            }
-                          },
+                // V3.70 — THE FOLD: below the survey fold the two
+                // doors kneel into one quiet pebble (the sky's window
+                // is the point of the survey gaze). The pebble pins
+                // them open; the dive past the fold releases the pin
+                // (see [_gatesPinned]).
+                child: ListenableBuilder(
+                  listenable: _camera,
+                  builder: (context, _) {
+                    final folded =
+                        _camera.zoom <= _foldZoom && !_gatesPinned;
+                    // A soft arrival for whichever side wakes — no
+                    // crossfade machinery: the leaving side leaves NOW
+                    // (the tree stays honest for the eye and the tests).
+                    return TweenAnimationBuilder<double>(
+                      key: ValueKey(folded ? 'gate-folded' : 'gate-raised'),
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 320),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, t, child) => Opacity(
+                        opacity: t,
+                        child: ScaleTransition(
+                          scale: Tween(begin: 0.94, end: 1.0)
+                              .animate(CurvedAnimation(
+                            parent: AlwaysStoppedAnimation(t),
+                            curve: Curves.easeOutCubic,
+                          )),
+                          child: child,
                         ),
-                        SizedBox(width: wide ? 14 : 0, height: wide ? 0 : 10),
-                        _GateDoor.first(
-                          key: const ValueKey('gate-echo'),
-                          label: ref.watch(voiceProvider).pick(
-                            'FORMULER UN ÉCHO',
-                            'FORMULATE AN ECHO',
-                          ),
-                          onPressed: () => context.push('/mirror'),
-                        ),
-                      ],
+                      ),
+                      child: folded
+                          ? _GatePebble(
+                              key: const ValueKey('gate-pebble'),
+                              label: ref.watch(voiceProvider).pick(
+                                'OUVRIR LES PORTES',
+                                'OPEN THE GATES',
+                              ),
+                              onOpen: () => setState(() {
+                                _gatesPinned = true;
+                                _gatesPinnedZoom = _camera.zoom;
+                              }),
+                            )
+                          : LayoutBuilder(
+                              // V3.43 — wide windows: the two doors
+                              // stand SIDE BY SIDE (two doors, côte à
+                              // côte); phones keep the stack, where
+                              // the thumb lives.
+                              builder: (context, constraints) {
+                                final wide = constraints.maxWidth >=
+                                    AppLayout.gatesSideBySide;
+                                return Flex(
+                                  direction: wide
+                                      ? Axis.horizontal
+                                      : Axis.vertical,
+                                  mainAxisSize: MainAxisSize.min,
+                                  // Both doors stand on the same floor
+                                  // (the first is a breath taller —
+                                  // the hierarchy, again).
+                                  crossAxisAlignment: wide
+                                      ? CrossAxisAlignment.end
+                                      : CrossAxisAlignment.center,
+                                  children: [
+                                    _GateDoor(
+                                      key: const ValueKey('gate-constellation'),
+                                      label: ref.watch(voiceProvider).pick(
+                                        'SEMER UNE CONSTELLATION',
+                                        'SOW A CONSTELLATION',
+                                      ),
+                                      onPressed: () async {
+                                        final seeded =
+                                            await context.push('/cadavre');
+                                        if (seeded is SeededConstellation) {
+                                          await _corpseSeeded(seeded);
+                                        }
+                                      },
+                                    ),
+                                    SizedBox(
+                                        width: wide ? 14 : 0,
+                                        height: wide ? 0 : 10),
+                                    _GateDoor.first(
+                                      key: const ValueKey('gate-echo'),
+                                      label: ref.watch(voiceProvider).pick(
+                                        'FORMULER UN ÉCHO',
+                                        'FORMULATE AN ECHO',
+                                      ),
+                                      onPressed: () => context.push('/mirror'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
                     );
                   },
                 ),
@@ -2167,10 +2292,12 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
   int _orbitTickCount = 0;
 
   void _onOrbitTick(Duration elapsed) {
-    if (!mounted || _reduced) return;
-    // 120 Hz displays double the work for nothing the eye can name:
-    // the drift rides at most ~60 fps (V3.25).
-    if (elapsed - _lastOrbitAt < const Duration(milliseconds: 12)) return;
+    if (!mounted) return;
+    // V3.73 — reduced motion CALMS the drift, it never stills it: the
+    // echoes and glimmers keep gliding at a calmer stride (a frozen
+    // ether reads as a broken sky — the S25 report).
+    final stride = _reduced ? 48 : 12;
+    if (elapsed - _lastOrbitAt < Duration(milliseconds: stride)) return;
     _lastOrbitAt = elapsed;
     final now = DateTime.now();
     _driftSkies(now);
@@ -2492,12 +2619,23 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
                   z: bucketZ,
                   // V3.58i — the sway calms as the eye approaches:
                   // full at the overview, a quarter at max zoom.
-                  amplitude: 46 * ParallaxMath.parallaxCalm(widget.camera.zoom),
+                  // V3.71 — the fold rides the aspect-aware floor.
+                  amplitude: 46 *
+                      ParallaxMath.parallaxCalm(
+                        widget.camera.zoom,
+                        fold: widget.camera.zoomFloor + 0.12,
+                        floor: widget.camera.zoomFloor,
+                      ),
                 ),
                 ParallaxMath.offsetPixels(
                   tilt: tilt.y * motionScale,
                   z: bucketZ,
-                  amplitude: 32 * ParallaxMath.parallaxCalm(widget.camera.zoom),
+                  amplitude: 32 *
+                      ParallaxMath.parallaxCalm(
+                        widget.camera.zoom,
+                        fold: widget.camera.zoomFloor + 0.12,
+                        floor: widget.camera.zoomFloor,
+                      ),
                 ),
               ),
               child: layer,
@@ -2848,6 +2986,87 @@ class _Centered extends StatelessWidget {
 /// the space between the words stays stable and readable. The
 /// corpse's indigo stays on the map (rings, closed artifacts), where
 /// it has contrast — on the void floor it read as mud.
+/// V3.70 — the gates folded: one quiet pebble where the two doors
+/// stood. A hairline ring, a mote of light — the survey keeps its
+/// window, the acts stay one tap away.
+class _GatePebble extends StatefulWidget {
+  const _GatePebble({
+    super.key,
+    required this.label,
+    required this.onOpen,
+  });
+
+  final String label;
+  final VoidCallback onOpen;
+
+  @override
+  State<_GatePebble> createState() => _GatePebbleState();
+}
+
+class _GatePebbleState extends State<_GatePebble> {
+  bool _pressed = false;
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final dim = _pressed ? 0.72 : 1.0;
+    final hover = _hovered && !_pressed ? 1.0 : 0.0;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTap: widget.onOpen,
+        child: Semantics(
+          button: true,
+          label: widget.label,
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              // Translucent by design — the pebble sits ON the sky, it
+              // is not a surface like the doors: the survey's void
+              // prints through.
+              color: AppColors.voidBlack.withValues(alpha: 0.55 * dim),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.fade(
+                  AppColors.cyan,
+                  (0.30 + 0.25 * hover) * dim,
+                ),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.fade(
+                    AppColors.cyan,
+                    (0.06 + 0.10 * hover) * dim,
+                  ),
+                  blurRadius: 14,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Center(
+              child: Container(
+                width: 3.5,
+                height: 3.5,
+                decoration: BoxDecoration(
+                  color: AppColors.fade(AppColors.pureLight, 0.85 * dim),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _GateDoor extends StatefulWidget {
   const _GateDoor({super.key, required this.label, required this.onPressed})
     : first = false;
@@ -3207,18 +3426,13 @@ class _GlimmerFieldPainter extends CustomPainter {
 }
 
 class _HeavensClock extends StatefulWidget {
-  const _HeavensClock({
-    required this.builder,
-    this.period = const Duration(milliseconds: 80),
-  });
+  const _HeavensClock({required this.builder, this.period});
 
   final Widget Function(BuildContext, DateTime) builder;
 
-  /// The beat. The heavens themselves need their 80 ms (orbits must
-  /// glide); slow-decorating riders (the vestiges' tumble) pass a
-  /// calmer one — a shard rotating at 4 Hz reads exactly like 12.5 Hz,
-  /// at a third of the repaint price.
-  final Duration period;
+  /// The beat (default 80 ms — orbits must glide). Calmer riders
+  /// pass their own: the vestiges' drift reads at 1 s (V3.75).
+  final Duration? period;
 
   @override
   State<_HeavensClock> createState() => _HeavensClockState();
@@ -3231,11 +3445,19 @@ class _HeavensClockState extends State<_HeavensClock> {
   @override
   void initState() {
     super.initState();
-    if (!platformDisablesAnimations()) {
-      _beat = Timer.periodic(widget.period, (_) {
+    // V3.73 — REDUCED MOTION CALMS THE HEAVENS, IT NEVER STILLS THEM.
+    // A frozen sky reads as a broken app: orbits, breath and drift
+    // dying together is over-compliance with the flag ("tout est
+    // statique, les astres ne bougent plus", the S25 report — One UI
+    // reports remove-animations and every clock obeyed to death).
+    // The beat slows 5× under the flag — a calmer sky, a LIVING sky.
+    final base = widget.period ?? const Duration(milliseconds: 80);
+    _beat = Timer.periodic(
+      platformDisablesAnimations() ? base * 5 : base,
+      (_) {
         if (mounted) setState(() => _now = DateTime.now());
-      });
-    }
+      },
+    );
   }
 
   @override

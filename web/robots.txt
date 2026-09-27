@@ -1,0 +1,5 @@
+# KENOS — the app origin: one canvas, one URL, nothing to hide.
+User-agent: *
+Allow: /
+
+Sitemap: https://kenos-lemon.vercel.app/sitemap.xml

@@ -80,9 +80,10 @@ deploy-site: ## Deploy the landing (kenos-site) + pin the production alias
 	  URL=$$(echo "$$DEPLOY" | awk '/Production/ && /jahozs-projects/ {print $$2}' | head -1); \
 	  vercel alias set "$$URL" kenos-site.vercel.app; \
 	  sleep 3; \
-	  curl -fsS -o /dev/null "https://kenos-site.vercel.app/?v=$$(date +%s)" \
-	    && echo "landing verified: 200" \
-	    || (echo "LANDING BROKEN — check vercel alias" && exit 1)
+	  LOC=$$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "https://kenos-site.vercel.app/?v=$$(date +%s)"); \
+	  echo "$$LOC" | grep -q '^301 https://kenos-lemon\.vercel\.app' \
+	    && echo "landing verified: 301 → the app (one canonical origin)" \
+	    || (echo "LANDING BROKEN — expected 301 to the app, got: $$LOC" && exit 1)
 
 db-start: ## Start the local Supabase stack (ports 56321-56324)
 	supabase start

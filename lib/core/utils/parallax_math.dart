@@ -46,10 +46,10 @@ class ParallaxMath {
   /// The eye's resting zoom — the anchor of [zoomScale]. The launched
   /// look (TravelCamera's default) must stay scale 1.0: the tuned sky
   /// and its tests are calibrated to it (V3.61 moved it 1.75 → 2.4 to
-  /// de-clutter; V3.64 walked it back to 1.7; V3.68 pulls it to 1.25 —
-  /// the wider gaze is the point: the system must sit in the middle
-  /// distance, the sky must carry it).
-  static const double eyeBaseZoom = 1.25;
+  /// de-clutter; V3.64 walked it back to 1.7; V3.68 pulled to 1.25;
+  /// V3.69 opens at the SURVEY itself, 1.0 — the whole-ether map is
+  /// the opening stance, the dive is the journey).
+  static const double eyeBaseZoom = 1.0;
 
   /// How much celestial BODIES grow as the eye zooms. Zoom moves the
   /// window (viewExtent) — but a zoom nothing grows through is a zoom
@@ -97,18 +97,27 @@ class ParallaxMath {
   /// traversable void extends far past the last light (V3.40), but it
   /// wore the same dust and veils as the heart: travel read as a
   /// texture sliding, not a distance crossed. Presence is geography
-  /// now — full within the lit ether, dying to nothing in the far
-  /// country. Leaving IS watching the sky empty itself; and the
-  /// traveller gone far sees the ether glow at their back (the
-  /// hearth). V3.68 — the lit band widens (0.35–1.1 → 0.55–1.25):
-  /// the resting gaze now SEES the whole populated ether, and only
-  /// the true rim empties.
+  /// now — full within the lit ether, dying into the far country.
+  /// Leaving IS watching the sky empty itself; and the traveller
+  /// gone far sees the ether glow at their back (the hearth).
+  /// V3.68/69 — the lit band rides the survey gaze (0.8–1.25): the
+  /// whole opening map stays dressed, only the true rim empties.
+  ///
+  /// V3.70 — THE FRAME MUST CUT A DRESSED SKY. On a tall phone the
+  /// survey's long axis spans ~2.4 world units while the dressed disc
+  /// was 2.5: the frame landed exactly where the ether DIED — a
+  /// pendant on velvet, never a cosmos (the S25 report). The fade now
+  /// dies far past the deepest frame (0.8 → 1.55) and the far country
+  /// keeps a FLOOR forever: emptiness with relief, never flat black.
+  static const double presenceFloor = 0.06;
+
   static double etherPresence(Offset eye) {
     final d = (eye - const Offset(0.5, 0.5)).distance;
-    if (d <= 0.55) return 1.0;
-    if (d >= 1.25) return 0.0;
-    final t = (d - 0.55) / (1.25 - 0.55);
-    return 1.0 - t * t * (3 - 2 * t);
+    if (d <= 0.8) return 1.0;
+    if (d >= 1.55) return presenceFloor;
+    final t = (d - 0.8) / (1.55 - 0.8);
+    final fade = t * t * (3 - 2 * t);
+    return 1.0 - fade * (1.0 - presenceFloor);
   }
 
   /// V3.37 — the zoom where far lights move fast enough that a 30 fps
@@ -153,7 +162,17 @@ class ParallaxMath {
   /// régulier", the live report). Full amplitude at the resting eye,
   /// a quarter at max zoom — the feature survives, the distraction
   /// dies.
-  static double parallaxCalm(double zoom) =>
-      1.0 - 0.75 * (((zoom - eyeBaseZoom) / (8.0 - eyeBaseZoom))
-              .clamp(0.0, 1.0));
+  ///
+  /// V3.70 — THE SURVEY SWAYS: below the fold the tilt is AMPLIFIED,
+  /// up to ×1.35 at the survey floor — tilting the phone slides the
+  /// whole sky inside its frame: the strongest mobile cue that the
+  /// void has depth beyond the glass. V3.71: [fold] and [floor] ride
+  /// the camera's aspect-aware pinch floor (defaults keep the square
+  /// law).
+  static double parallaxCalm(double zoom, {double fold = 1.2, double floor = 0.9}) {
+    if (zoom <= fold) {
+      return 1.0 + 0.35 * ((fold - zoom) / (fold - floor)).clamp(0.0, 1.0);
+    }
+    return 1.0 - 0.75 * ((zoom - fold) / (8.0 - fold)).clamp(0.0, 1.0);
+  }
 }

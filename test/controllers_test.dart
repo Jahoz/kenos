@@ -284,14 +284,14 @@ void main() {
       // travel slack, never more than the sky.
       expect(repo.rects, hasLength(1));
       final r = repo.rects.single;
-      // V3.66 — the slack covers the RENDER divergence: an echo lives
-      // up to 0.63 from its stored launch coordinates (lane 0.40 +
-      // shell rim 0.23), so the rect is the whole known ether [0,1]²
-      // and the containment check keeps travel refetches at zero.
-      expect(r.loX, closeTo(0.0, 0.001));
-      expect(r.loY, closeTo(0.0, 0.001));
-      expect(r.hiX, closeTo(1.0, 0.001));
-      expect(r.hiY, closeTo(1.0, 0.001));
+      // V3.77 — beyond the square: the opening camera's rect plus
+      // the travel slack now covers the WIDENED storable sky
+      // [-0.6, 1.6] (clamped at the bound) and the containment
+      // check keeps travel refetches at zero.
+      expect(r.loX, closeTo(-0.6, 0.001));
+      expect(r.loY, closeTo(-0.6, 0.001));
+      expect(r.hiX, closeTo(1.6, 0.001));
+      expect(r.hiY, closeTo(1.6, 0.001));
       expect(repo.budgets.single, SectorGrid.viewBudget,
           reason: 'la carte peint des étoiles, pas un catalogue');
     });

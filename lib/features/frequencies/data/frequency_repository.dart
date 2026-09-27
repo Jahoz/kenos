@@ -135,8 +135,8 @@ class LocalFrequencyRepository implements FrequencyRepository {
       final dist = _random.nextDouble() * radius;
       _ghosts.add(RemoteWave(
         id: 'ghost-${DateTime.now().microsecondsSinceEpoch}',
-        offsetX: (centerX + dist * cos(angle)).clamp(0.0, 1.0),
-        offsetY: (centerY + dist * sin(angle)).clamp(0.0, 1.0),
+        offsetX: (centerX + dist * cos(angle)).clamp(-0.6, 1.6),
+        offsetY: (centerY + dist * sin(angle)).clamp(-0.6, 1.6),
         noteIndex: _random.nextInt(20),
         hueIndex: _random.nextInt(4),
         createdAt: DateTime.now(),

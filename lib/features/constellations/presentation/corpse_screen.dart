@@ -61,8 +61,10 @@ class _CorpseScreenState extends ConsumerState<CorpseScreen> {
           .toList();
       final seed = KenosSystem.resolveResting(
         Offset(
-          (eye.dx + (rng.nextDouble() - 0.5) * 0.12).clamp(0.05, 0.95),
-          (eye.dy + (rng.nextDouble() - 0.5) * 0.12).clamp(0.05, 0.95),
+          // V3.77 — the widened sky: seeds may fall past the old
+          // square's walls (the traversable country is storable now).
+          (eye.dx + (rng.nextDouble() - 0.5) * 0.12).clamp(-0.55, 1.55),
+          (eye.dy + (rng.nextDouble() - 0.5) * 0.12).clamp(-0.55, 1.55),
         ),
         occupied: others,
       );

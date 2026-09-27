@@ -10,7 +10,7 @@ void main() {
     test('Polaris ne bouge pas — le point fixe, hors de la bande', () {
       final a = DateTime.fromMillisecondsSinceEpoch(0);
       final b = DateTime.fromMillisecondsSinceEpoch(987654321000);
-      expect(CelestialMath.polaris, const Offset(0.13, 0.13));
+      expect(CelestialMath.polaris, const Offset(0.05, 0.05));
       // V3.21: the beacon clears every lane — no more conjunctions
       // with the orbiting anchors (Moon 0.26, Venus 0.37).
       final r = (CelestialMath.polaris - const Offset(0.5, 0.5)).distance;
@@ -36,13 +36,13 @@ void main() {
       for (var i = 0; i < celestialWanderers.length; i++) {
         final p = CelestialMath.wandererPosition(i, at);
         final dist = Offset(p.dx - 0.5, p.dy - 0.5).distance;
-        // V3.28: the ring is pulled inside the navigable sky (was
-        // 0.62-0.74, past the frame) — still the far country, clear
-        // of Venus's swarm rim (0.515), now genuinely reachable.
-        expect(dist, greaterThanOrEqualTo(0.55 - 1e-9),
+        // V3.76: the arcs ride 0.72-1.12 (pushed out with the
+        // widened system) — the far country, cut by the survey
+        // frame, every lune still centerable at a deep gaze.
+        expect(dist, greaterThanOrEqualTo(0.72 - 1e-9),
             reason: 'les errants restent le lointain');
-        expect(dist, lessThanOrEqualTo(0.65 + 1e-9),
-            reason: '…mais un lointain que la marge visite vraiment');
+        expect(dist, lessThanOrEqualTo(1.12 + 1e-9),
+            reason: '…mais un lointain que la fenêtre du survey coupe');
       }
     });
 

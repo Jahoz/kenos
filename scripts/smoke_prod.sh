@@ -31,8 +31,8 @@
 #
 # Usage (CI sets the same env):
 #   APP_URL=... SUPABASE_URL=... SUPABASE_ANON_KEY=... ./scripts/smoke_prod.sh
-# Cost: one anonymous auth user per run (the same user any site
-# visit creates) and nothing else.
+# Cost: nothing that stays — the anonymous body signed in for the deep
+# probes dissolves itself before the run ends (§5, 2026-09-27).
 
 set -euo pipefail
 
@@ -51,7 +51,7 @@ ko() { FAIL=$((FAIL + 1)); FAILURES="${FAILURES}- $1
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 # Pre-created so a curl that never connects still reads as "" bodies.
-: > "$TMP/root" ; : > "$TMP/rpc" ; : > "$TMP/deep" ; : > "$TMP/door" ; : > "$TMP/landing"
+: > "$TMP/root" ; : > "$TMP/rpc" ; : > "$TMP/deep" ; : > "$TMP/door" ; : > "$TMP/landing.h"
 
 # ── RPC identifiers actually referenced by the client ───────────────────
 # Multiline-safe: flatten the Dart sources first, then pick the quoted
@@ -75,7 +75,7 @@ rpc_probe_payload() {
     report_echo)              echo '{"p_echo_id":"","p_reason_code":""}' ;;
     fetch_receptions)         echo '{}' ;;
     burn_reception)           echo '{"p_echo_id":""}' ;;
-    seed_constellation)       echo '{"p_seed_x":0,"p_seed_y":0}' ;;
+    seed_constellation)       echo '{"p_seed_x":0,"p_seed_y":0,"p_kind":"POEM","p_invited":false}' ;;
     contribute_line)          echo '{"p_constellation_id":"","p_ciphertext":"","p_key":""}' ;;
     fetch_constellations)     echo '{"p_min_x":0,"p_min_y":0,"p_max_x":0,"p_max_y":0}' ;;
     peek_previous_line)       echo '{"p_constellation_id":""}' ;;
@@ -88,6 +88,9 @@ rpc_probe_payload() {
     fetch_nearby_frequencies) echo '{"p_x":0,"p_y":0,"p_radius":0.01}' ;;
     report_constellation)     echo '{"p_constellation_id":"","p_reason_code":""}' ;;
     reseed_salon_key)         echo '{"p_constellation_id":""}' ;;
+    # La Braise (V3.60): the passage RPCs — no-arg forge, one-key claim.
+    forge_passage)            echo '{}' ;;
+    claim_passage)            echo '{"p_key":""}' ;;
     admin_list_vestige_proposals) echo '{}' ;;
     admin_decide_vestige_proposal) echo '{"p_proposal_id":"","p_approve":true}' ;;
     admin_fetch_vestiges)     echo '{"p_locale":"fr"}' ;;
@@ -135,12 +138,17 @@ else
   ko "bundle cache-control is '$cache' — expected must-revalidate (stale-bundle risk)"
 fi
 
-# ── 1b. The landing is served (the vitrine shares the prod blast radius) ──
-code=$(curl -sS -o "$TMP/landing" -w '%{http_code}' "$LANDING_URL/") || code="curl-error"
-if [ "$code" = "200" ] && grep -q '<title>KENOS' "$TMP/landing"; then
-  ok "landing GET / → 200, content present"
+# ── 1b. The landing origin folds into the app (ONE canonical URL) ───────
+# The two Vercel origins once each claimed to be canonical (self-canonical
+# tags, robots, sitemap on both). The app origin won (2026-09-27): the
+# landing 301s to it forever. A redirect that stops answering — or stops
+# pointing at the app — IS the regression this watches for.
+code=$(curl -sS -o /dev/null -D "$TMP/landing.h" -w '%{http_code}' "$LANDING_URL/") || code="curl-error"
+loc="$(tr -d '\r' < "$TMP/landing.h" | sed -n 's/^[Ll]ocation:[[:space:]]*//p' | tail -1)"
+if [ "$code" = "301" ] && [ "${loc%/}" = "${APP_URL%/}" ]; then
+  ok "landing → 301 $APP_URL (one canonical origin)"
 else
-  ko "landing GET / → $code (empty redeploy? see Makefile deploy-site gate)"
+  ko "landing GET / → $code Location '$loc' — expected 301 to $APP_URL (see Makefile deploy-site gate)"
 fi
 
 # ── 2. Every client RPC exists on the prod schema (never executed) ───────
@@ -226,6 +234,25 @@ if [ -n "$JWT" ]; then
     ok "vestige-sow anonymous → $code (coherent: $(printf '%s' "$body" | head -c 80))"
   else
     ko "vestige-sow broken: $code $(printf '%s' "$body" | head -c 120)"
+  fi
+
+  # ── 5. The broom: the harness body dissolves itself ────────────────────
+  # Every run signs one anonymous body in through the app's own door;
+  # since 2026-09-27 it also unmakes it before leaving — auth.users
+  # stops growing by one traveller per night. dissolve_body's own
+  # guards (fresh + empty only) make real users untouchable by design.
+  code=$(curl -sS -o "$TMP/rpc" -w '%{http_code}' -X POST "$SUPABASE_URL/rest/v1/rpc/dissolve_body" \
+    -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $JWT" \
+    -H 'Content-Type: application/json' -d '{}') || code="curl-error"
+  body="$(cat "$TMP/rpc")"
+  # A `returns void` RPC answers 204 No Content when it executes — the
+  # body is gone, which is the success itself.
+  if [ "$code" = "200" ] || [ "$code" = "204" ]; then
+    ok "dissolve_body — the harness body returns to the ether"
+  elif [ "$code" = "404" ]; then
+    echo "  ⚠ dissolve_body not on the prod schema yet — run make db-push (20260927120000); harness bodies keep accumulating until then"
+  else
+    ko "dissolve_body unexpected answer $code: $(printf '%s' "$body" | head -c 120)"
   fi
 fi
 

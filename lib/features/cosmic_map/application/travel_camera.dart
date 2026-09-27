@@ -25,27 +25,56 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// never spend a frame on a pan.
 class TravelCamera extends ChangeNotifier {
   TravelCamera({
-    double zoom = 1.25,
-    this.margin = 0.65,
+    double zoom = 1.0,
+    this.margin = 0.7,
     Offset center = const Offset(0.5, 0.5),
   })  : _zoom = zoom.clamp(minZoom, maxZoom),
         _center = center;
 
-  /// How much of the world fills the screen at once (1.25 → ~80% of
-  /// the short side). V3.68 — the gaze pulls back: the system (V3.67's
-  /// lanes and halos) was WIDER than the old 1.7 window — the eye
-  /// lived INSIDE the retinue, and no rearrangement of matter could
-  /// read as immensity from within. At 1.25 the system is a JEWEL in
-  /// the middle distance and the sky carries it.
+  /// How much of the world fills the screen at once (1.0 → the whole
+  /// ether's width). V3.69 — SURVEY IS THE OPENING GAZE: the system
+  /// being world-sized now, the whole-sky view is the map that says
+  /// "immense" — the jewel and its field at once — and the dive to
+  /// reading depth is the journey. V3.68's 1.25 pulled back halfway;
+  /// the frame-anchored heart stayed 18% of the screen whatever the
+  /// gaze, and the immensity never flagged ("c'est pas flagrant").
   double _zoom;
   double get zoom => _zoom;
 
   /// Pinch bounds: deep enough to split the tightest clusters (8×
   /// separates stars born a few pixels apart), never a map of pixels.
-  /// V3.64 — the survey floor opens (1.2 → 1.0): the whole known
-  /// ether in one gaze, a majestic map — far lights, nothing at hand.
-  static const double minZoom = 1.0;
+  /// V3.68 — the survey floor opens (1.2 → 1.0); V3.69 a hair below
+  /// the opening gaze (0.9).
+  ///
+  /// V3.71 — THE SURVEY RIDES THE LONG AXIS: the pull-back floor is
+  /// now ASPECT-AWARE — the long side may carry at most
+  /// [surveyLongSpan] world units at the deepest gaze. The flat 0.9
+  /// let a tall phone's long axis span 2.4 worlds: the WHOLE
+  /// populated ether framed with dust margins — a pendant on velvet,
+  /// never a cosmos (the S25 verdict on V3.70: the space dressed the
+  /// frame, the frame still owned everything that mattered). On a
+  /// 2.16:1 phone the floor rises to ~1.35: the survey CUTS the
+  /// crowd itself, on both axes. Squares and 16:10 keep the flat
+  /// floor (the whole-ether survey survives where it fits).
+  static const double minZoom = 0.9;
   static const double maxZoom = 8.0;
+
+  /// World units carried by the LONG side at the deepest gaze — the
+  /// immensity budget: at max pull-back the populated world (crowd to
+  /// ~1.44, wanderers to ~2.1) must OVERFLOW the frame.
+  static const double surveyLongSpan = 1.6;
+
+  /// The aspect-aware pinch floor for a viewport.
+  static double zoomFloorFor(Size viewport) {
+    final aspect = viewport.longestSide / viewport.shortestSide;
+    final bySpan = aspect / surveyLongSpan;
+    return bySpan <= minZoom ? minZoom : bySpan.clamp(minZoom, maxZoom);
+  }
+
+  /// The pinch floor as the attached viewport dictates (flat
+  /// [minZoom] before the first layout).
+  double _zoomFloor = minZoom;
+  double get zoomFloor => _zoomFloor;
 
   /// V3.40 — the traversable void extends WELL past the known ether
   /// (the eye rides [-0.65, 1.65]): the worlds and their rings are
@@ -86,10 +115,14 @@ class TravelCamera extends ChangeNotifier {
   Size? _attached;
 
   /// Tell the camera the aspect it looks through (rect walls depend
-  /// on it). Silent on purpose — layouts fire often.
+  /// on it). Silent on purpose — layouts fire often. V3.71: the
+  /// aspect also sets the pinch FLOOR (the long-span law) — a gaze
+  /// already below it is raised before the first paint.
   void attach(Size viewport) {
     if (_attached == viewport) return;
     _attached = viewport;
+    _zoomFloor = zoomFloorFor(viewport);
+    _zoom = _zoom.clamp(_zoomFloor, maxZoom);
     _center = _clamped(_center); // the walls moved with the aspect
   }
 
@@ -141,7 +174,7 @@ class TravelCamera extends ChangeNotifier {
   /// fingers where it is (the focal point anchors the zoom).
   void zoomBy(double factor, Offset focalWorldPoint) {
     final previousZoom = _zoom;
-    _zoom = (_zoom * factor).clamp(minZoom, maxZoom);
+    _zoom = (_zoom * factor).clamp(_zoomFloor, maxZoom);
     final applied = _zoom / previousZoom;
     if (applied == 1.0) return;
     // Keep the focal world point at the same screen position:
@@ -182,9 +215,21 @@ class TravelCamera extends ChangeNotifier {
   }
 
   Offset _clamped(Offset c) => Offset(
-        c.dx.clamp(-margin + _halfW, 1.0 + margin - _halfW),
-        c.dy.clamp(-margin + _halfH, 1 + margin - _halfH),
+        _clampAxis(c.dx, _halfW),
+        _clampAxis(c.dy, _halfH),
       );
+
+  /// V3.70 — past the survey, a tall window swallows the whole
+  /// traversable band (lo > hi): a raw clamp there snaps between the
+  /// two crossed bounds — a vertical JUMP at every pan, the survey
+  /// floor's own ghost. The eye holds the MIDDLE instead: the whole
+  /// band is already in view, travel rides the free axis.
+  double _clampAxis(double v, double half) {
+    final lo = -margin + half;
+    final hi = 1.0 + margin - half;
+    if (lo > hi) return (lo + hi) / 2;
+    return v.clamp(lo, hi);
+  }
 
   /// Poetic drift label: "0.42 A.L." (two decimals, French dot kept
   /// machine-voiced as HUD).

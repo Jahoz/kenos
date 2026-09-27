@@ -104,25 +104,45 @@ void main() {
     });
 
     test('V3.58i — la dérive vivante s\'apaise à mesure qu\'on approche', () {
-      expect(ParallaxMath.parallaxCalm(ParallaxMath.eyeBaseZoom), 1.0,
-          reason: 'pleine vie à la vue large');
+      // V3.70 — le repos EST le survey : il balance (voir le test
+      // dédié). Le plein "neutre" vit au pli (1.2), dernier degré
+      // avant l'amplification.
+      expect(ParallaxMath.parallaxCalm(1.2), closeTo(1.0, 1e-9),
+          reason: 'pleine vie neutre au pli');
       expect(ParallaxMath.parallaxCalm(8.0), closeTo(0.25, 1e-9),
           reason: 'un quart au zoom max — le feature survit, la distraction meurt');
       for (var z = 1.2; z <= 8.0; z += 0.3) {
         expect(ParallaxMath.parallaxCalm(z), inInclusiveRange(0.25, 1.0));
         expect(ParallaxMath.parallaxCalm(z + 0.3) <=
-            ParallaxMath.parallaxCalm(z) + 1e-9, isTrue,
+                ParallaxMath.parallaxCalm(z) + 1e-9, isTrue,
             reason: 'monotone : approcher ne réveille jamais');
+      }
+    });
+
+    test('V3.70 — le survey balance : le ciel glisse dans son cadre', () {
+      // Sous le pli (1.2), l\'amplification monte vers le plancher du
+      // survey (0.9 → ×1.35) : incliner le téléphone fait glisser le
+      // ciel — la fenêtre sur l\'infini, pas une carte sous verre.
+      expect(ParallaxMath.parallaxCalm(1.2), closeTo(1.0, 1e-9),
+          reason: 'continu au pli');
+      expect(ParallaxMath.parallaxCalm(0.9), closeTo(1.35, 1e-9),
+          reason: '×1.35 au plancher du survey');
+      for (var z = 0.9; z <= 1.2; z += 0.05) {
+        expect(ParallaxMath.parallaxCalm(z), inInclusiveRange(1.0, 1.35));
+        expect(ParallaxMath.parallaxCalm(z + 0.05) <=
+                ParallaxMath.parallaxCalm(z) + 1e-9, isTrue,
+            reason: 'reculer amplifie, sans à-coup');
       }
     });
 
     test('zoomer approfondit, dézoomer recule — jamais de renversement', () {
       final s = ParallaxMath.zoomScale;
       expect(s(2.5), greaterThan(1.0));
-      expect(s(1.2), lessThan(1.0));
+      // L'ancre vit au survey (V3.69) : sous 1,0 l'étoile rétrécit.
+      expect(s(0.9), lessThan(1.0));
       // Monotone sur toute la plage de l'œil.
-      var previous = s(1.2);
-      for (var z = 1.3; z <= 8.0; z += 0.1) {
+      var previous = s(0.9);
+      for (var z = 1.0; z <= 8.0; z += 0.1) {
         final v = s(double.parse(z.toStringAsFixed(1)));
         expect(v, greaterThan(previous));
         previous = v;
@@ -130,11 +150,13 @@ void main() {
     });
 
     test('subtil par construction : jamais des ballons', () {
-      // Au zoom maximal (8), un corps ne grossit que ~3×.
-      expect(ParallaxMath.zoomScale(8.0), closeTo(3.05, 0.05));
-      // Au zoom minimal (1,0), il rétrécit à peine (~0,88×) —
-      // V3.68 : l'ancre a suivi le regard, 1,7 → 1,25.
-      expect(ParallaxMath.zoomScale(1.0), closeTo(0.875, 0.02));
+      // Au zoom maximal (8), une ÉTOILE ne grossit que ~3,5× (les
+      // corps du système sont world-sized depuis V3.69 — eux
+      // reculent et grandissent avec le monde).
+      expect(ParallaxMath.zoomScale(8.0), closeTo(3.48, 0.05));
+      // Au plancher du survey (0,9), à peine plus petit (~0,94×) —
+      // V3.69 : l'ancre vit au survey, 1,0.
+      expect(ParallaxMath.zoomScale(0.9), closeTo(0.94, 0.02));
     });
   });
 

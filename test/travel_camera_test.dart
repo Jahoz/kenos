@@ -50,7 +50,7 @@ void main() {
 
       camera.zoomBy(1.8, focalWorld);
 
-      expect(camera.zoom, closeTo(1.25 * 1.8, 1e-6));
+      expect(camera.zoom, closeTo(1.0 * 1.8, 1e-6));
       final after = camera.worldToScreen(focalWorld, viewport);
       // The anchored point barely moved on screen (clamping may shift
       // it a little — it must NOT fly away).
@@ -92,16 +92,18 @@ void main() {
   });
 
   group('V3.40 — le vide traversable : tout corps nommé s\'atteint', () {
-    test('chaque monde, chaque errant : l\'œil au repos PEUT le centrer',
+    test('chaque monde, chaque errant : un regard légal PEUT le centrer',
         () {
-      // The rings are CIRCLES in a SQUARE ether: the wanderers (r up
-      // to 0.65) step past the rim along the axes, and at the old
-      // +0.1 margin they were sometimes UNREACHABLE (the eye saw at
-      // most to 1.1; Europe rides to 1.15). The traversable void now
-      // extends to ±0.5: a fresh eye at its resting zoom can centre
-      // on every named body, at any moment of their arcs — sampled
+      // The rings are CIRCLES in a SQUARE ether: the wanderers step
+      // past the rim along the axes, and at the old +0.1 margin they
+      // were sometimes UNREACHABLE. The traversable void extends to
+      // ±0.7: no named body is a rumour past the walls — sampled
       // across a day and a half to catch the axis crossings.
+      // V3.70 — the far arcs (to 1.05) are met by DIVING: the survey
+      // frame CUTS them, the reading gaze centres them. Every body is
+      // centerable at the resting eye or a modest dive (zoom ≤ 4).
       final t0 = DateTime(2026, 9, 14);
+      const gazes = [1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0];
       for (var s = 0; s < 32; s++) {
         final at = t0.add(Duration(hours: s));
         final bodies = <String, Offset>{
@@ -112,14 +114,18 @@ void main() {
                 CelestialMath.wandererPosition(i, at),
         };
         for (final entry in bodies.entries) {
-          final camera = TravelCamera(); // the resting eye, default void
-          camera.panByWorld(entry.value - camera.center);
-          expect(
-            (camera.center - entry.value).distance,
-            lessThan(1e-9),
-            reason:
-                '${entry.key} doit être centrable à $at (position ${entry.value})',
-          );
+          var centered = false;
+          for (final gaze in gazes) {
+            final camera = TravelCamera(zoom: gaze);
+            camera.panByWorld(entry.value - camera.center);
+            if ((camera.center - entry.value).distance < 1e-9) {
+              centered = true;
+              break;
+            }
+          }
+          expect(centered, isTrue,
+              reason:
+                  '${entry.key} doit être centrable à $at (position ${entry.value})');
         }
       }
     });
@@ -128,11 +134,11 @@ void main() {
         () {
       final camera = TravelCamera();
       camera.panByWorld(const Offset(100, 100));
-      expect(camera.center.dx, lessThanOrEqualTo(1.65));
-      expect(camera.center.dy, lessThanOrEqualTo(1.65));
+      expect(camera.center.dx, lessThanOrEqualTo(1.7));
+      expect(camera.center.dy, lessThanOrEqualTo(1.7));
       camera.panByWorld(const Offset(-200, -200));
-      expect(camera.center.dx, greaterThanOrEqualTo(-0.65));
-      expect(camera.center.dy, greaterThanOrEqualTo(-0.65));
+      expect(camera.center.dx, greaterThanOrEqualTo(-0.7));
+      expect(camera.center.dy, greaterThanOrEqualTo(-0.7));
     });
   });
 
@@ -147,8 +153,8 @@ void main() {
       expect((dx - a).distance, closeTo((dy - a).distance, 1e-6),
           reason: 'avant V3.65 le même Δ valait 1,6× plus en largeur');
       // The short side carries viewExtent: 0.1 world = 0.1 × zoom ×
-      // shortestSide px at zoom 1.25.
-      expect((dx - a).distance, closeTo(0.1 * 1.25 * 1000, 1e-6));
+      // shortestSide px at the survey gaze (zoom 1.0).
+      expect((dx - a).distance, closeTo(0.1 * 1.0 * 1000, 1e-6));
     });
 
     test('le rect visible est un rectangle honnête : 1,6× plus large que haut', () {
@@ -157,9 +163,9 @@ void main() {
       final w = r.maxX - r.minX;
       final h = r.maxY - r.minY;
       // The SHORT side (height, 1000px) carries viewExtent exactly.
-      expect(h, closeTo(1 / 1.25, 1e-9),
+      expect(h, closeTo(1.0, 1e-9),
           reason: 'le petit côté porte viewExtent');
-      expect(w, closeTo(1 / 1.25 * 1.6, 1e-9),
+      expect(w, closeTo(1.6, 1e-9),
           reason: 'le grand côté montre PLUS de monde, pas un étirement');
     });
 
@@ -177,10 +183,68 @@ void main() {
       final camera = TravelCamera(zoom: 1.0)..attach(wide);
       camera.panByWorld(const Offset(50, 50));
       final c = camera.center;
-      // halfW = 0.8 → the wall sits at 1.65 - 0.8 = 0.85.
-      expect(c.dx, lessThanOrEqualTo(0.85 + 1e-9));
-      // halfH = 0.5 → the vertical wall sits at 1.65 - 0.5 = 1.15.
-      expect(c.dy, lessThanOrEqualTo(1.15 + 1e-9));
+      // halfW = 0.8 → the wall sits at 1.7 - 0.8 = 0.9.
+      expect(c.dx, lessThanOrEqualTo(0.9 + 1e-9));
+      // halfH = 0.5 → the vertical wall sits at 1.7 - 0.5 = 1.2.
+      expect(c.dy, lessThanOrEqualTo(1.2 + 1e-9));
+    });
+
+    test('V3.71 — le survey chevauche le grand axe : le plancher suit l\'aspect',
+        () {
+      const tall = Size(400, 867); // 2.167:1 — the S25-class phone
+      // The floor RISES with the aspect: the long side may carry at
+      // most surveyLongSpan worlds at the deepest gaze.
+      final floor = TravelCamera.zoomFloorFor(tall);
+      expect(floor, closeTo(2.1675 / 1.6, 1e-3),
+          reason: 'le grand axe porte 1,6 unités monde, pas 2,4');
+      expect(floor, greaterThan(1.2), reason: 'un vrai relèvement sur écran haut');
+
+      // A gaze below the floor is RAISED at attach (before paint).
+      final camera = TravelCamera(zoom: 0.9)..attach(tall);
+      expect(camera.zoom, closeTo(floor, 1e-9));
+      final r = camera.visibleRect;
+      expect(
+        (r.maxY - r.minY) / (r.maxX - r.minX),
+        closeTo(867 / 400, 1e-9),
+        reason: 'le rect reste honnête',
+      );
+      // The long axis carries exactly the budget.
+      expect(
+        (r.maxY - r.minY),
+        closeTo(TravelCamera.surveyLongSpan, 1e-9),
+        reason: 'le budget d\'immensité tient au plancher',
+      );
+
+      // And the vertical walls are REAL there (the old degenerate
+      // snap is unreachable by construction): the eye can travel.
+      camera.panByWorld(const Offset(0, 0.4));
+      expect(camera.center.dy, greaterThan(0.5));
+      camera.panByWorld(const Offset(0, -0.9));
+      expect(camera.center.dy, lessThan(0.5));
+
+      // Squares and 16:10 keep the flat floor — the whole-ether
+      // survey survives where it fits.
+      expect(TravelCamera.zoomFloorFor(const Size(400, 400)),
+          TravelCamera.minZoom);
+      expect(TravelCamera.zoomFloorFor(const Size(1600, 1000)),
+          closeTo(1.0, 1e-9));
+    });
+
+    test('V3.70 — le clamp dégénéré tient le milieu (garde-fou)', () {
+      // V3.71 rend le cas inatteignable via l'aspect seul, mais une
+      // PETITE marge sur écran haut recroise les bornes (lo > hi) :
+      // le garde-fou doit tenir le milieu — jamais de saut entre les
+      // bornes croisées (le spectre du « backward jump »).
+      const tall = Size(400, 867);
+      final camera = TravelCamera(zoom: 1.5, margin: 0.1)..attach(tall);
+      camera.panByWorld(const Offset(0, 0.4));
+      expect(camera.center.dy, closeTo(0.5, 1e-9),
+          reason: 'la bande entière est au cadre : le milieu tient');
+      camera.panByWorld(const Offset(0, -0.4));
+      expect(camera.center.dy, closeTo(0.5, 1e-9));
+      // L'axe libre reste libre : le voyage horizontal vit.
+      camera.panByWorld(const Offset(0.2, 0));
+      expect(camera.center.dx, greaterThan(0.5));
     });
 
     test('sans attach (téléphone, premiers tests) : le regard carré d\'avant', () {

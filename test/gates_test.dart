@@ -15,7 +15,7 @@ import 'package:kenos/features/echo/data/local_echo_store.dart';
 /// light and near-full text, and the corpse's indigo is gone from
 /// the gate (it lives on the map, where it has contrast).
 void main() {
-  Future<void> boot(WidgetTester tester) async {
+  Future<void> boot(WidgetTester tester, {bool raiseGates = true}) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -46,6 +46,15 @@ void main() {
         await tester.pump(const Duration(milliseconds: 2100));
       }
     }
+    // V3.70 — the doors kneel into a pebble at the survey gaze (the
+    // opening zoom): raise them through the pebble.
+    if (raiseGates) {
+      final pebble = find.byKey(const ValueKey('gate-pebble'));
+      if (pebble.evaluate().isNotEmpty) {
+        await tester.tap(pebble);
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+    }
   }
 
   BoxDecoration doorDecoration(WidgetTester tester, Key key) {
@@ -58,6 +67,24 @@ void main() {
     final widget = tester.widget<Container>(container);
     return widget.decoration! as BoxDecoration;
   }
+
+  testWidgets('V3.70 — au survey, les portes se replient en un galet',
+      (tester) async {
+    await boot(tester, raiseGates: false);
+
+    // The opening gaze (zoom 1.0 < 1.2): the pebble owns the floor,
+    // the doors are nowhere — the sky keeps its window.
+    expect(find.byKey(const ValueKey('gate-pebble')), findsOneWidget);
+    expect(find.byKey(const ValueKey('gate-echo')), findsNothing);
+    expect(find.byKey(const ValueKey('gate-constellation')), findsNothing);
+
+    // One tap pins the doors back open.
+    await tester.tap(find.byKey(const ValueKey('gate-pebble')));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.byKey(const ValueKey('gate-echo')), findsOneWidget);
+    expect(find.byKey(const ValueKey('gate-pebble')), findsNothing);
+  });
 
   testWidgets('deux portes, la taille du pouce, des mots opaques',
       (tester) async {

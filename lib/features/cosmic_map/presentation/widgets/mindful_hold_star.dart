@@ -304,7 +304,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   }
 
   void _onPointerDown(PointerDownEvent event) {
-    if (_busy) return;
+    if (!mounted || _busy) return;
     if (_echo.isMine) {
       // Sealed echo: consult the bottle-in-the-sea signal (never the
       // text) — but only on a DELIBERATE tap (see _onSealedTap). A
@@ -344,6 +344,9 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     // distance to the star's CURRENT center (it orbits while you hold),
     // not to where your finger first landed.
     if (_downPosition == null) return;
+    // A pointer move can land after the star unmounted (the sheet took
+    // the sky with it) — the measure is over, not thrown.
+    if (!mounted) return;
     final renderObject = context.findRenderObject();
     if (renderObject is RenderBox && renderObject.hasSize) {
       final starCenter = renderObject.localToGlobal(
@@ -362,6 +365,10 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   }
 
   void _onPointerUp() {
+    // The pointer-up can land on this element AFTER unmount (see the
+    // comment below): dispose already released the hold and thawed the
+    // sky — nothing is left to stop or reverse.
+    if (!mounted) return;
     _downPosition = null;
     // A pan rebuilds the culled star list and can reassign this
     // element mid-gesture (no keys, by design): the pointer-up may
@@ -532,10 +539,18 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     // applied per bucket by the star layer — one saveLayer for the
     // whole depth range, not one per star).
     var opacity = ParallaxMath.opacityFor(z);
+    // V3.75 — THE AGING LAW, seen: a thought pales as it recedes
+    // from its world — down to a third of its light at the memory
+    // moon. What is never read drifts away and dims; youth is close
+    // and bright.
+    final ageDays =
+        DateTime.now().difference(_echo.createdAt).inMilliseconds /
+            (30 * 24 * 3.6e6);
+    opacity *= 1.0 - 0.65 * ageDays.clamp(0.0, 1.0);
     // The reception field: far glimmers recede. V3.29 — the
     // bottle-in-the-sea law now shapes the sealed hearts too: one's
     // own rings fade GENTLY with distance (still anchors, never as
-    // deep as the ether's fade) — a far sealed ring outshouting the
+    // deep as the ether's fade) — a far sealed ring outshining the
     // readable ether inverted the product's whole hierarchy.
     final field = widget.reception.clamp(0.0, 1.0);
     opacity *= _echo.isMine ? 0.45 + 0.55 * field : 0.30 + 0.70 * field;

@@ -75,10 +75,13 @@ void main() {
       expect(a, b);
     });
 
-    test('les positions restent dans l\'éther connu', () {
-      final q = KenosSystem.resolveResting(const Offset(0.999, 0.999));
-      expect(q.dx, lessThanOrEqualTo(0.98));
-      expect(q.dy, lessThanOrEqualTo(0.98));
+    test('les positions restent dans le ciel stockable (V3.77 : au-delà du carré)', () {
+      final q = KenosSystem.resolveResting(const Offset(1.5, 1.5));
+      expect(q.dx, lessThanOrEqualTo(1.55));
+      expect(q.dy, lessThanOrEqualTo(1.55));
+      final inside = KenosSystem.resolveResting(const Offset(0.999, 0.999));
+      expect(inside.dx, lessThanOrEqualTo(1.55));
+      expect(inside.dy, lessThanOrEqualTo(1.55));
     });
   });
 }

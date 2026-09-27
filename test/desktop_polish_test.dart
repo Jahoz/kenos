@@ -107,6 +107,12 @@ void main() {
           await tester.pump(const Duration(milliseconds: 2100));
         }
       }
+      // V3.70 — raise the folded doors through the pebble.
+      final pebble = find.byKey(const ValueKey('gate-pebble'));
+      if (pebble.evaluate().isNotEmpty) {
+        await tester.tap(pebble);
+        await tester.pump(const Duration(milliseconds: 500));
+      }
     }
 
     testWidgets('le survol vivifie la première porte', (tester) async {

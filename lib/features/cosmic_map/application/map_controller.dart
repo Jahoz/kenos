@@ -190,13 +190,13 @@ class MapController extends AsyncNotifier<List<Echo>> {
   /// decide which old stars the fresh answer may replace. One single
   /// constant: a star "in rect" is exactly a star the fetch could see.
   /// V3.66 — the fetch must believe the RENDER, not the launch: a
-  /// bound echo lives up to 0.62 from its stored launch coordinates
-  /// (V3.68: lane 0.38 + eccentric aphelion 0.24; errant thoughts
-  /// stay on their birth ring by construction). The old 0.05 slack
+  /// bound echo lives up to 0.83 from its stored launch coordinates
+  /// (V3.76: lane 0.45 + aging aphelion 0.38; a moon-companion rides
+  /// her lune's arc — bounded by the fetch clamp). The old 0.05 slack
   /// culled exactly the motes that had drifted INTO view. The rect
   /// still clamps to the server's [0,1]², and the containment check
   /// keeps travel refetches rare.
-  static const _travelSlack = 0.78;
+  static const _travelSlack = 0.95;
 
   /// Last rect already synced — a stationary release or a jitter does
   /// not re-ask the ether.
@@ -204,16 +204,19 @@ class MapController extends AsyncNotifier<List<Echo>> {
   DateTime? _lastSyncedAt;
 
   /// Slacks a raw viewport rect to the fetch rect: clamped to the
-  /// server's [0,1]², padded by [_travelSlack]. One single formula so
-  /// the first gaze and every travel sync speak the same geometry.
+  /// sky's STORABLE extent — V3.77: beyond the square, the widened
+  /// [-0.6, 1.6] bound (the walls of the old [0,1]² made a visible
+  /// rectangle past which only void remained). Padded by
+  /// [_travelSlack]. One single formula so the first gaze and every
+  /// travel sync speak the same geometry.
   ({double loX, double loY, double hiX, double hiY}) _slackRect(
     ({double minX, double minY, double maxX, double maxY}) r,
   ) =>
       (
-        loX: (r.minX - _travelSlack).clamp(0.0, 1.0),
-        loY: (r.minY - _travelSlack).clamp(0.0, 1.0),
-        hiX: (r.maxX + _travelSlack).clamp(0.0, 1.0),
-        hiY: (r.maxY + _travelSlack).clamp(0.0, 1.0),
+        loX: (r.minX - _travelSlack).clamp(-0.6, 1.6),
+        loY: (r.minY - _travelSlack).clamp(-0.6, 1.6),
+        hiX: (r.maxX + _travelSlack).clamp(-0.6, 1.6),
+        hiY: (r.maxY + _travelSlack).clamp(-0.6, 1.6),
       );
 
   Future<void> refreshViewport({

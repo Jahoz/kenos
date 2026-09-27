@@ -33,11 +33,13 @@ void main() {
       );
     });
 
-    test('Polaris watches the system — she is not of the far country', () {
-      // Her corner sits at r ≈ 0.523, inside the gardens edge (0.54).
+    test('Polaris watches the system — V3.76: from the rim', () {
+      // Her corner sits at r ≈ 0.636, past the gardens edge (0.54):
+      // the beacon holds the FAR corner, watching the widened system
+      // (lanes 0.32/0.45) from the known ether's rim.
       expect(
         VoidTerritories.territoryAt(CelestialMath.polaris),
-        VoidTerritory.gardens,
+        VoidTerritory.farCountry,
       );
     });
 
