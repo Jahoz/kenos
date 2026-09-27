@@ -61,3 +61,4 @@ supabase/.branches/
 .mimosa/
 .video_agent/
 .zcode/
+.playwright-mcp/

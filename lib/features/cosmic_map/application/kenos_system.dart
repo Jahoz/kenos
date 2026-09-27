@@ -306,11 +306,11 @@ class KenosSystem {
 
   static double _cometAphelion(Echo echo) {
     final h = echo.id.hashCode & 0x7fffffff;
-    // V3.70 — the aphelion reaches into the median's deep half
-    // (0.63-1.08, was 0.48-0.73): every rebound now crosses the WHOLE
-    // middle country — each passage asserts the extent the survey
-    // implies.
-    return outerOrbit + 0.25 + 0.15 * (h % 4);
+    // V3.79 — the system breathed (outer lane 0.45 → 0.72): the
+    // comet's reach follows it (just past the outer world, never
+    // deep into the lune court). Every rebound still crosses every
+    // orbit — each passage asserts the extent the survey implies.
+    return outerOrbit + 0.10 + 0.12 * (h % 4);
   }
 
   static double _cometOrientation(Echo echo) {

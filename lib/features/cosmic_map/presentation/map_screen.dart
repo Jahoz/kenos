@@ -713,15 +713,33 @@ class _MapScreenState extends ConsumerState<MapScreen>
   // library tripled, plus the merged shown-lists rebuilt with .any()
   // lookups). The layout depends only on the LISTS — the camera now
   // reads it, never recomputes it.
-  List<Vestige>? _laidVestigeSource;
-  List<ConstellationMeta>? _laidRingSource;
+  // V3.78 — STABLE REAL ESTATE, second law: the cache keys on CONTENT
+  // (id + seed fingerprints), not list identity — a 90 s breath that
+  // brings the same sky back re-lays nothing. And the cohorts lay in
+  // ID order: the server's created_at-desc put every NEW ring at the
+  // head of the cascade, so one birth moved the whole sky (the
+  // teleporting-objects report). With id order, an insertion only
+  // displaces the collisions it actually joins.
   int _laidKeptStamp = -1;
-  int _laidSalonCount = -1;
+  int _laidVestigeStamp = -1;
+  int _laidRingStamp = -1;
+  int _laidSalonStamp = -1;
   List<Vestige> _laidVestiges = const [];
   List<ConstellationMeta> _laidConstellations = const [];
   final Map<String, Offset> _laidVestigeAt = {};
   final Map<String, Offset> _laidCorpseAt = {};
   final Map<String, Offset> _laidSalonAt = {};
+
+  static int _restingStamp(Iterable<(String, double, double)> bodies) {
+    // Id AND seed: a body that kept its id but moved its seed is a new
+    // neighbour — the layout must know. (x71/x97: cheap irrational
+    // multipliers, seeds never align to a collision of their own.)
+    var stamp = 0;
+    for (final (id, x, y) in bodies) {
+      stamp = stamp * 31 + id.hashCode ^ (x * 71).round() ^ (y * 97).round();
+    }
+    return stamp;
+  }
 
   ({
     List<Vestige> vestiges,
@@ -738,10 +756,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
     for (final k in kept) {
       keptStamp = keptStamp * 31 + k.id.hashCode;
     }
-    if (identical(_vestiges, _laidVestigeSource) &&
-        identical(_constellations, _laidRingSource) &&
+    final vestigeStamp = _restingStamp(
+      _vestiges.map((v) => (v.id, v.offsetX, v.offsetY)),
+    );
+    final ringStamp = _restingStamp(
+      _constellations.map((c) => (c.id, c.seedX, c.seedY)),
+    );
+    final salonStamp = _restingStamp(
+      _salonAnchors.map((d) => (d.id, d.seedX, d.seedY)),
+    );
+    if (vestigeStamp == _laidVestigeStamp &&
+        ringStamp == _laidRingStamp &&
         keptStamp == _laidKeptStamp &&
-        _salonAnchors.length == _laidSalonCount) {
+        salonStamp == _laidSalonStamp) {
       return (
         vestiges: _laidVestiges,
         constellations: _laidConstellations,
@@ -750,10 +777,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
         salonAt: _laidSalonAt,
       );
     }
-    _laidVestigeSource = _vestiges;
-    _laidRingSource = _constellations;
     _laidKeptStamp = keptStamp;
-    _laidSalonCount = _salonAnchors.length;
+    _laidVestigeStamp = vestigeStamp;
+    _laidRingStamp = ringStamp;
+    _laidSalonStamp = salonStamp;
 
     // The reliquaire merges in, local forever, ember-marked.
     final vestigesShown = [
@@ -795,16 +822,23 @@ class _MapScreenState extends ConsumerState<MapScreen>
       staticAnchors.add(at);
     }
 
+    // V3.78 — ID ORDER: the cascade reads the same sequence whatever
+    // the wire brought (created_at-desc, a fresh birth at the head);
+    // only a body's own collisions displace it, never the fetch's.
+    final vestigesInLayOrder = [...vestigesShown]..sort((a, b) => a.id.compareTo(b.id));
+    final ringsInLayOrder = [...constellationsShown]..sort((a, b) => a.id.compareTo(b.id));
+    final salonsInLayOrder = [..._salonAnchors]..sort((a, b) => a.id.compareTo(b.id));
+
     _laidVestigeAt.clear();
-    for (final v in vestigesShown) {
+    for (final v in vestigesInLayOrder) {
       lay(v.id, Offset(v.offsetX, v.offsetY), _laidVestigeAt);
     }
     _laidCorpseAt.clear();
-    for (final cst in constellationsShown) {
+    for (final cst in ringsInLayOrder) {
       lay(cst.id, Offset(cst.seedX, cst.seedY), _laidCorpseAt);
     }
     _laidSalonAt.clear();
-    for (final door in _salonAnchors) {
+    for (final door in salonsInLayOrder) {
       lay(door.id, Offset(door.seedX, door.seedY), _laidSalonAt);
     }
     _laidVestiges = vestigesShown;
@@ -2059,11 +2093,29 @@ class _AmbientBackground extends ConsumerStatefulWidget {
   return (x: (t.x * 125).round() / 125, y: (t.y * 125).round() / 125);
 }
 
+/// Scenery's own gate (V3.79): four times coarser than the content's
+/// ever was — a nebula stepping 1.5 px is invisible, and the ambient
+/// painters were the LAST rebuild-per-tremor site (a hand-held phone
+/// crossed the 0.008 gate a handful of times a second; scenery now
+/// shrugs until the tilt truly turns).
+({double x, double y}) _gateSceneryTilt(AsyncValue<Tilt> value) {
+  final t = value.valueOrNull ?? Tilt.zero;
+  return (x: (t.x * 33).round() / 33, y: (t.y * 33).round() / 33);
+}
+
 class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
   static const _tick = Duration(milliseconds: 125);
 
   double _time = 0;
   Timer? _twinkle;
+
+  /// V3.79 — the scenery's tilt, coarse-gated and NEVER watched in
+  /// build: the painters ride a ListenableBuilder (rebuild scope =
+  /// two CustomPaints, nothing above), and a tremor that stays under
+  /// the gate costs literally nothing.
+  final ValueNotifier<({double x, double y})> _sceneryTilt =
+      ValueNotifier((x: 0.0, y: 0.0));
+  ProviderSubscription<({double x, double y})>? _scenerySub;
 
   @override
   void initState() {
@@ -2073,11 +2125,18 @@ class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
         if (mounted) setState(() => _time += _tick.inMilliseconds / 1000);
       });
     }
+    _scenerySub = ref.listenManual(
+      tiltProvider.select(_gateSceneryTilt),
+      (_, t) => _sceneryTilt.value = t,
+      fireImmediately: true,
+    );
   }
 
   @override
   void dispose() {
     _twinkle?.cancel();
+    _scenerySub?.close();
+    _sceneryTilt.dispose();
     super.dispose();
   }
 
@@ -2086,29 +2145,39 @@ class _AmbientBackgroundState extends ConsumerState<_AmbientBackground> {
     // Ambient parallax calms down (×0.15) but stays alive: the ether is
     // not a screenshot.
     final motionScale = context.wantsReducedMotion ? 0.15 : 1.0;
-    final tilt = ref.watch(tiltProvider.select(_gateTilt));
 
     return RepaintBoundary(
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CustomPaint(
-            painter: NebulaPainter(
-              tiltX: tilt.x * 0.5 * motionScale,
-              tiltY: tilt.y * 0.5 * motionScale,
-              time: _time,
-              presence: widget.presence,
-              hearthAt: widget.hearthAt,
-              hearthGlow: (1.0 - widget.presence).clamp(0.0, 1.0),
-            ),
-          ),
-          CustomPaint(
-            painter: BackgroundStarFieldPainter(
-              time: _time,
-              tiltX: tilt.x * motionScale,
-              tiltY: tilt.y * motionScale,
-              presence: widget.presence,
-            ),
+          ListenableBuilder(
+            listenable: _sceneryTilt,
+            builder: (context, _) {
+              final tilt = _sceneryTilt.value;
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  CustomPaint(
+                    painter: NebulaPainter(
+                      tiltX: tilt.x * 0.5 * motionScale,
+                      tiltY: tilt.y * 0.5 * motionScale,
+                      time: _time,
+                      presence: widget.presence,
+                      hearthAt: widget.hearthAt,
+                      hearthGlow: (1.0 - widget.presence).clamp(0.0, 1.0),
+                    ),
+                  ),
+                  CustomPaint(
+                    painter: BackgroundStarFieldPainter(
+                      time: _time,
+                      tiltX: tilt.x * motionScale,
+                      tiltY: tilt.y * motionScale,
+                      presence: widget.presence,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
           // Shooting stars: rare streaks crossing the dead field. A
           // const child — the twinkle's 8 fps rebuilds never touch it.
@@ -2283,6 +2352,10 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
   /// V3.58h — the previous frame's alive set: the hysteresis memory
   /// that keeps a boundary light from flapping between pipelines.
   final Set<String> _alivePrev = {};
+
+  /// V3.78e — ids recently demoted from the alive set, still fading
+  /// out as widgets (the boundary crossfade). Stamped, swept at 600 ms.
+  final Map<String, DateTime> _retiredAt = {};
   Size? _viewportSize;
 
   /// The glimmer field's clock (V3.24): one notifier, one painter —
@@ -2379,6 +2452,10 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
   void initState() {
     super.initState();
     _orbit.start();
+    // V3.78f — the layer no longer listens to the tilt AT ALL: the
+    // content never parallaxes (see the bucket loop). The sway lives
+    // in the scenery alone; an echo holds its astre's orbit whatever
+    // the hand does.
   }
 
   @override
@@ -2398,10 +2475,9 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
 
   @override
   Widget build(BuildContext context) {
-    // Ambient parallax calms down (×0.15) under reduce-motion.
-    final motionScale = context.wantsReducedMotion ? 0.15 : 1.0;
     _reduced = context.wantsReducedMotion;
-    final tilt = ref.watch(tiltProvider.select(_gateTilt));
+    // V3.78f — no tilt here, no motion scale: the content never
+    // parallaxes. The sky holds its anchors; the scenery sways.
     final now = DateTime.now();
     final sorted = _sortedSkies(now);
     _forgetStaleShifts();
@@ -2508,6 +2584,23 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
           if (!sticky) newcomers++;
           if (total >= stayBudget) break;
         }
+        // V3.78e — THE BOUNDARY IS A HAND, NOT AN EYE: a demotion
+        // from the alive set is a CROSSFADE, never a step. The light
+        // keeps its widget for a breath, sinking to the canvas's own
+        // dimness (_emerge reverses), while the glimmer field already
+        // paints it underneath — the pipelines dissolve into each
+        // other. Promotion mirrors it (born at 0.3, rising).
+        final demoted = _alivePrev.difference(alive);
+        final promoteStamp = now;
+        for (final id in demoted) {
+          _retiredAt.putIfAbsent(id, () => promoteStamp);
+        }
+        for (final id in alive) {
+          _retiredAt.remove(id);
+        }
+        _retiredAt.removeWhere(
+          (_, at) => now.difference(at) > const Duration(milliseconds: 600),
+        );
         _alivePrev
           ..clear()
           ..addAll(alive);
@@ -2521,7 +2614,12 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
         for (final s in sights) {
           final echo = s.echo;
           final z = s.z;
-          if (!alive.contains(echo.id)) {
+          // V3.78e — a demoted light keeps its widget while it fades
+          // (retiring: true); the canvas paints it too — the overlap
+          // IS the crossfade. Only fully-retired lights go canvas-only.
+          final retiring =
+              _retiredAt.containsKey(echo.id) && !alive.contains(echo.id);
+          if (!alive.contains(echo.id) && !retiring) {
             glimmers.add(echo);
             continue;
           }
@@ -2567,6 +2665,7 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
                       echo: echo,
                       z: z,
                       displayScale: dScale,
+                      retiring: retiring,
                       eyeDistanceAL:
                           (Offset(echo.coordX, echo.coordY) - eye).distance,
                       // The reception field: near = alive, far = a glimmer
@@ -2603,44 +2702,16 @@ class _ParallaxStarLayerState extends ConsumerState<_ParallaxStarLayer>
           final children = buckets[b];
           if (children.isEmpty) continue;
 
-          final bucketZ =
-              (_bucketEdges[b] + _bucketEdges[b + 1].clamp(0.0, 1.0)) / 2;
-          // Depth haze now rides EACH star's cached glow (its own
-          // RepaintBoundary): a bucket-level ImageFiltered had to
-          // re-blur the whole viewport every frame once the orbits
-          // came alive — 0.3 fps. The bucket keeps only its parallax
-          // transform, isolated behind its own boundary.
           final layer = RepaintBoundary(child: Stack(children: children));
-          layers.add(
-            Transform.translate(
-              offset: Offset(
-                ParallaxMath.offsetPixels(
-                  tilt: tilt.x * motionScale,
-                  z: bucketZ,
-                  // V3.58i — the sway calms as the eye approaches:
-                  // full at the overview, a quarter at max zoom.
-                  // V3.71 — the fold rides the aspect-aware floor.
-                  amplitude: 46 *
-                      ParallaxMath.parallaxCalm(
-                        widget.camera.zoom,
-                        fold: widget.camera.zoomFloor + 0.12,
-                        floor: widget.camera.zoomFloor,
-                      ),
-                ),
-                ParallaxMath.offsetPixels(
-                  tilt: tilt.y * motionScale,
-                  z: bucketZ,
-                  amplitude: 32 *
-                      ParallaxMath.parallaxCalm(
-                        widget.camera.zoom,
-                        fold: widget.camera.zoomFloor + 0.12,
-                        floor: widget.camera.zoomFloor,
-                      ),
-                ),
-              ),
-              child: layer,
-            ),
-          );
+          // V3.78f — THE CONTENT NEVER PARALLAXES. The tilt sway used
+          // to displace each depth bucket by its own zoom-calmed
+          // offset while the planets stood still — under a hand's
+          // tilt, every pinch slid the echoes OFF their astre's orbit
+          // (the live report: "le zoom impacte la position des
+          // échos"). The cosmology is the law: echoes live around
+          // their astre, astres around the trou noir — scenery may
+          // breathe in depth, content holds its anchor.
+          layers.add(layer);
         }
 
         return Stack(fit: StackFit.expand, children: layers);
@@ -3394,6 +3465,8 @@ class _GlimmerFieldPainter extends CustomPainter {
       final z = echo.resolveZ(now);
       final world = KenosSystem.echoPosition(echo, now);
       final sp = camera.worldToScreen(world, size);
+      // V3.78f — the canvas never parallaxes either: content holds
+      // its anchor, whatever pipeline paints it.
       if (sp.dx < -24 ||
           sp.dx > size.width + 24 ||
           sp.dy < -24 ||
