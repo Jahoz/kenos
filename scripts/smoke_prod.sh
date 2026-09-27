@@ -245,7 +245,9 @@ if [ -n "$JWT" ]; then
     -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $JWT" \
     -H 'Content-Type: application/json' -d '{}') || code="curl-error"
   body="$(cat "$TMP/rpc")"
-  if [ "$code" = "200" ]; then
+  # A `returns void` RPC answers 204 No Content when it executes — the
+  # body is gone, which is the success itself.
+  if [ "$code" = "200" ] || [ "$code" = "204" ]; then
     ok "dissolve_body — the harness body returns to the ether"
   elif [ "$code" = "404" ]; then
     echo "  ⚠ dissolve_body not on the prod schema yet — run make db-push (20260927120000); harness bodies keep accumulating until then"
