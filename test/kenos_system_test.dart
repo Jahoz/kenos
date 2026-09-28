@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/core/heavens/heavens.dart';
+import 'package:kenos/core/utils/parallax_math.dart';
 import 'package:kenos/features/cosmic_map/application/kenos_system.dart';
 import 'package:kenos/features/echo/domain/echo.dart';
 import 'package:kenos/features/echo/domain/echo_color_theme.dart';
@@ -124,6 +125,37 @@ void main() {
         greaterThan(KenosSystem.orbitPeriod(echo, boundAt).inSeconds),
         reason: 'loin = lent',
       );
+    });
+
+    test('V3.81 — la cour âgée ne traverse jamais le champ de lecture', () {
+      // THE COURT LAW: at 0.38 (V3.75's far band) the aged swarm of
+      // the inner world dove to r 0.04 from the hole — straight
+      // through the reception bubble (r 0.205): each orbit promoted
+      // lights to bright widgets and demoted them back, and the sky
+      // "apparaissait et disparaissait" (the live report, pinned to
+      // the pixel meter: square-wave flashes at fixed positions, and
+      // the sight count drifting 57→75 as wide orbits swept the
+      // window). The court's rim keeps every bound thought outside
+      // the reading field at rest — the eye reads by TRAVELLING to a
+      // world's court, never by waiting for the court to drift
+      // through the eye.
+      for (final echo in [
+        _echo('court-inner', EchoColorTheme.teal, createdAt: boundAt),
+        _echo('court-outer', EchoColorTheme.indigo, createdAt: boundAt),
+      ]) {
+        final agedAt = boundAt.add(const Duration(days: 31));
+        final lane = KenosSystem.orbitRadiusOf(KenosSystem.planetIndexOf(echo));
+        final maxAphelion = KenosSystem.orbitAphelion(echo, agedAt);
+        expect(
+          lane - maxAphelion,
+          greaterThan(
+              ParallaxMath.receptionRadius + ParallaxMath.receptionFade),
+          reason: 'la cour ne pénètre jamais le champ de lecture',
+        );
+        // And the court stays a court: attached, never the whole sky.
+        expect(maxAphelion, lessThan(0.2),
+            reason: "la cour vieillie reste près de son astre");
+      }
     });
 
     test('V3.80 — la rotation est fluide et permanente, à tout âge', () {

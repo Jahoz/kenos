@@ -170,13 +170,20 @@ class KenosSystem {
 
   // ── Echo orbits ────────────────────────────────────────────────────────
 
-  /// V3.75/76 — THE FAR BAND: where an aged thought rides at its
-  /// moon's end (0.38 from its world — the system opened with the
-  /// lanes), drawn as the one whisper ring around each planet. The
-  /// three-shell diagram is retired with the void-ring errants: the
-  /// swarm is a CROWD of own ellipses, aged by distance (see
-  /// [orbitAphelion]).
-  static const double echoFarBand = 0.38;
+  /// V3.81 — LA COUR: where an aged thought rides at its moon's end,
+  /// drawn as the one whisper ring around each planet. The court's
+  /// rim must keep a thought NEAR ITS WORLD for its whole life: at
+  /// 0.38 (V3.75's far band, sized for lanes 0.32/0.45) the aged
+  /// swarm of the inner world spanned r 0.04–0.80 from the hole —
+  /// sweeping out of the resting window each orbit AND crossing the
+  /// reception bubble (r 0.205): lights bloomed and sank, entered
+  /// and left the frame, "apparaissaient et disparaissaient" (the
+  /// live report). At 0.15 the inner swarm spans r 0.23–0.61 — the
+  /// court NEVER enters the reading field at rest, and a thought
+  /// stays attached to its astre, visible whenever its astre is.
+  /// Aging remains DISTANCE: born at 0.03, riding to the rim at the
+  /// memory moon — the far band is the court's edge, not the system's.
+  static const double echoFarBand = 0.15;
 
   /// Per-echo orbital eccentricity range. Aphelion is bounded, so the
   /// radius always stays within [aphelion × (1 - e), aphelion].

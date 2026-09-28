@@ -3479,8 +3479,16 @@ class _GlimmerFieldPainter extends CustomPainter {
       );
       // The same light as a holdable star carries, at glimmer
       // distance: depth-dimmed, field-dimmed, never breathing.
-      final alpha =
-          ParallaxMath.opacityFor(z) * (0.30 + 0.70 * reception) * 0.85;
+      // V3.81 — and aged, exactly like the widgets (the aging law
+      // must read in BOTH pipelines: what is never read drifts to
+      // the court's rim and dims there — a glimmer that stayed
+      // young forever broke the one law of age-as-distance).
+      final ageDays =
+          now.difference(echo.createdAt).inMilliseconds / (30 * 24 * 3.6e6);
+      final alpha = ParallaxMath.opacityFor(z) *
+          (0.30 + 0.70 * reception) *
+          0.85 *
+          (1.0 - 0.65 * ageDays.clamp(0.0, 1.0));
       final paint = Paint()..color = AppColors.fade(echo.theme.core, alpha);
       canvas.drawCircle(
         sp,
