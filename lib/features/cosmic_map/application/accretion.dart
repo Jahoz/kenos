@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
 import 'kenos_system.dart';
+import 'travel_camera.dart';
 
 /// V3.12b — accretion: what dies here does not scatter, it FALLS.
 ///
@@ -88,6 +89,21 @@ class AccretionController extends Notifier<List<AccretionMote>> {
   static Color colorAt(AccretionMote mote, double t) {
     final base = mote.tint ?? AppColors.pureLight;
     return Color.lerp(base, AppColors.roseText, Curves.easeIn.transform(t))!;
+  }
+
+  /// V3.82 — THE HOLE FED UNSEEN: is the gouffre outside the traveller's
+  /// frame? A fall plays from the dead star into the hole's rose
+  /// horizon — at deep reading zoom the gouffre sits several windows
+  /// away and the whole spiral happens off-stage: the destruction is
+  /// true but silent. The sky then says it once, in the HUD's machine
+  /// voice — the death is never rumor.
+  static bool holeOffStage(TravelCamera camera, Size viewport) {
+    final sp = camera.worldToScreen(KenosSystem.blackHole, viewport);
+    const m = 40.0; // the painter's own body-cull courtesy
+    return sp.dx < -m ||
+        sp.dx > viewport.width + m ||
+        sp.dy < -m ||
+        sp.dy > viewport.height + m;
   }
 }
 

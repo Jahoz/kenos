@@ -1135,6 +1135,21 @@ class _MapScreenState extends ConsumerState<MapScreen>
       },
     );
 
+    // V3.82 — THE HOLE FED UNSEEN: a fall fed while the gouffre sits
+    // outside the frame still happens (what dies here FALLS — the
+    // accretion constitution), but at deep reading zoom the whole
+    // spiral plays off-stage. The sky says it once, machine-voiced —
+    // the death is never rumor. Phoenix rises stay silent: they play
+    // where the thought was read, always on stage.
+    ref.listen(accretionProvider, (previous, next) {
+      if (next.length <= (previous?.length ?? 0)) return;
+      final mote = next.last;
+      if (mote.rising) return;
+      if (AccretionController.holeOffStage(_camera, _viewport) && mounted) {
+        showHud(context, 'LE GOUFFRE S\'EST NOURRI.');
+      }
+    });
+
     return Scaffold(
       backgroundColor: AppColors.voidBlack,
       // First gesture anywhere = audio unlock (iOS autoplay policy).

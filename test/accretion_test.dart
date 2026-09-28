@@ -1,8 +1,11 @@
+import 'dart:ui' show Size;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/core/constants/app_colors.dart';
 import 'package:kenos/features/cosmic_map/application/accretion.dart';
 import 'package:kenos/features/cosmic_map/application/kenos_system.dart';
+import 'package:kenos/features/cosmic_map/application/travel_camera.dart';
 
 /// V3.12b — nothing rests upon the black hole, and what dies falls in.
 void main() {
@@ -94,6 +97,22 @@ void main() {
       final end = AccretionController.colorAt(mote, 1);
       expect(start, AppColors.teal);
       expect(end, AppColors.roseText);
+    });
+
+    test('V3.82 — le gouffre hors champ : la chute se dit, l\'œil au repos la voit', () {
+      // THE HOLE FED UNSEEN: a fall is true whatever the frame, but a
+      // death must never be rumor — the sky says it when the spiral
+      // plays off-stage. At the resting eye the gouffre is framed (no
+      // whisper); in the far country (a portrait phone's narrow
+      // window, the eye travelled east to the rim) it is not.
+      final viewport = const Size(390, 800);
+      final rest = TravelCamera();
+      expect(AccretionController.holeOffStage(rest, viewport), isFalse,
+          reason: 'à l\'œil au repos, le gouffre est cadré');
+
+      final far = TravelCamera(center: const Offset(1.5, 0.5));
+      expect(AccretionController.holeOffStage(far, viewport), isTrue,
+          reason: 'au pays lointain, la chute joue hors champ');
     });
   });
 }
