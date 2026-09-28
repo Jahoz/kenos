@@ -68,6 +68,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
     final current = state.valueOrNull ?? const <Echo>[];
 
     if (content == null) {
+      _pendingSky = null; // V3.84 — a live write cancels any held sky
       state = AsyncData(current.where((e) => e.id != id).toList());
       return null;
     }
@@ -96,6 +97,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
         updated.add(echo);
       }
     }
+    _pendingSky = null; // V3.84 — a live write cancels any held sky
     state = AsyncData(updated);
     unawaited(store.recordEchoRead());
     ref.invalidate(userStatsProvider);
@@ -122,6 +124,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
       final sealed = phoenix.copyWith(theme: source.theme);
       await store.addSealed(sealed);
       final current = state.valueOrNull ?? const <Echo>[];
+      _pendingSky = null; // V3.84 — a live write cancels any held sky
       state = AsyncData([sealed, ...current]);
       return true;
     } catch (e) {
@@ -176,6 +179,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
     unawaited(store.recordEchoSent());
     ref.invalidate(userStatsProvider);
     final current = state.valueOrNull ?? const <Echo>[];
+    _pendingSky = null; // V3.84 — a live write cancels any held sky
     state = AsyncData([echo, ...current]);
   }
 
@@ -203,6 +207,19 @@ class MapController extends AsyncNotifier<List<Echo>> {
   ({double loX, double loY, double hiX, double hiY})? _lastSyncedRect;
   DateTime? _lastSyncedAt;
 
+  /// V3.84 — THE HAND OUTRANKS THE ETHER: a fetched sky held while the
+  /// traveller's hand is still moving. The sector fetch's true cost is
+  /// not the network — it is the landing: JSON decode + merge + a full
+  /// sky-stack rebuild in ONE frame, and the response arrives whenever
+  /// the RTT decides, mid-gesture more often than not. On a phone that
+  /// one frame measured 248 ms while the hand was still travelling
+  /// ("ça fige puis ça reprend", the live report; the phone bench —
+  /// CPU ×4, DPR 3 — pins it: same pan, network cut, zero spikes).
+  /// When [refreshViewport]'s caller reports the hand busy, the merged
+  /// list WAITS here; the screen applies it at its next quiet beat
+  /// ([applyPendingSky]).
+  List<Echo>? _pendingSky;
+
   /// Slacks a raw viewport rect to the fetch rect: clamped to the
   /// sky's STORABLE extent — V3.77: beyond the square, the widened
   /// [-0.6, 1.6] bound (the walls of the old [0,1]² made a visible
@@ -224,6 +241,7 @@ class MapController extends AsyncNotifier<List<Echo>> {
     required double minY,
     required double maxX,
     required double maxY,
+    bool Function()? isQuiet,
   }) async {
     final repo = ref.read(echoRepositoryProvider);
     final rect = _slackRect((minX: minX, minY: minY, maxX: maxX, maxY: maxY));
@@ -302,12 +320,33 @@ class MapController extends AsyncNotifier<List<Echo>> {
         kept[index] = echo;
       }
     }
+    // V3.84 — the hand outranks the ether: hold the write while the
+    // traveller is still moving, land it whole at the next quiet beat.
+    if (isQuiet != null && !isQuiet()) {
+      _pendingSky = kept;
+      return;
+    }
+    // A live write supersedes anything still held (an older held sky
+    // must never resurrect over a fresher truth).
+    _pendingSky = null;
     state = AsyncValue.data(kept);
+  }
+
+  /// Lands a sky held back by V3.84 — called by the map at its quiet
+  /// beat (a debounce on the camera's own pulses). The last held sky
+  /// wins; any direct write (consume, rebound, launch, forget) cancels
+  /// the hold first — a stale sky never resurrects.
+  void applyPendingSky() {
+    final pending = _pendingSky;
+    if (pending == null) return;
+    _pendingSky = null;
+    state = AsyncValue.data(pending);
   }
 
   /// Forgets an echo (after post-read dissolution or interception elsewhere).
   void forget(String id) {
     final current = state.valueOrNull ?? const <Echo>[];
+    _pendingSky = null; // V3.84 — a live write cancels any held sky
     state = AsyncData(current.where((e) => e.id != id).toList());
   }
 }

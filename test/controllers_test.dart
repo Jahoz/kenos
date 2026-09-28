@@ -420,6 +420,60 @@ void main() {
           reason: 'l\'éther la rend toujours : elle reste');
     });
 
+    test('V3.84 — la main prime : le ciel fetché attend le calme, jamais de résurrection',
+        () async {
+      // THE HAND OUTRANKS THE ETHER: the sector fetch's landing cost
+      // (decode + merge + full sky rebuild) froze the pan for 248 ms
+      // when the response arrived mid-gesture. The controller now
+      // HOLDS the merged list while the hand travels; the quiet beat
+      // lands it — and a live write cancels the hold, so a stale sky
+      // can never resurrect over a fresher truth.
+      await container.read(mapControllerProvider.future);
+      final controller = container.read(mapControllerProvider.notifier);
+      var handTravels = true;
+
+      repo.ether.add(_remote('held-1', x: 0.5, y: 0.5));
+      now = now.add(const Duration(minutes: 6));
+      await controller.refreshViewport(
+        minX: 0.2,
+        minY: 0.2,
+        maxX: 0.8,
+        maxY: 0.8,
+        isQuiet: () => !handTravels,
+      );
+      // The fetch RAN (the rect moved the TTL along) but the sky
+      // waits: nothing landed while the hand was on the void.
+      expect(container.read(mapControllerProvider).valueOrNull!
+          .map((e) => e.id), isNot(contains('held-1')),
+          reason: 'la main voyage : l\'écriture attend');
+
+      // The quiet beat: the held sky lands whole.
+      handTravels = false;
+      controller.applyPendingSky();
+      expect(container.read(mapControllerProvider).valueOrNull!
+          .map((e) => e.id), contains('held-1'),
+          reason: 'au calme, le ciel retenu atterrit entier');
+
+      // A second hold, cancelled by a live write: the consumed echo
+      // must STAY gone — the stale held sky never resurrects it.
+      handTravels = true;
+      repo.ether.add(_remote('held-2', x: 0.5, y: 0.5));
+      repo.ether.removeWhere((e) => e.id == 'ether-1');
+      now = now.add(const Duration(minutes: 6));
+      await controller.refreshViewport(
+        minX: 0.3,
+        minY: 0.3,
+        maxX: 0.9,
+        maxY: 0.9,
+        isQuiet: () => !handTravels,
+      );
+      controller.forget('held-1'); // a live write mid-hold
+      controller.applyPendingSky(); // the stale hold must be dead
+      final echoes = container.read(mapControllerProvider).valueOrNull!;
+      expect(echoes.map((e) => e.id), isNot(contains('held-1')),
+          reason: 'une écriture vivante tue le ciel retenu — pas de résurrection');
+    });
+
     test('rebound : le phénix devient une étoile scellée à momentum + 1',
         () async {
       await container.read(mapControllerProvider.future);

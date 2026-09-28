@@ -241,6 +241,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// [territoriesAnnouncedProvider]); the born territory is ridden,
   /// never announced — the sky does not greet itself.
   void _onEyeTravels() {
+    // V3.84 — every pulse re-arms the quiet beat: the ether syncs only
+    // when the sky has been still for 350 ms (the hand outranks the
+    // ether — a mid-gesture landing once froze the pan for 248 ms).
+    _scheduleSkySync();
     // V3.71 — the fold's release: a deliberate zoom gesture (±0.02
     // from the pinned gaze) re-evaluates the fold — the pin never
     // survives a pinch. No setState here — the gates ride their own
@@ -374,11 +378,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // their own), and the drone learns the birth radius once it lives.
     _camera.addListener(_onEyeTravels);
     _onEyeTravels();
-    if (_landedByLink) {
-      // The first gaze at the landed rect (the default heart rect is
-      // already covered by the union dedup).
-      _refreshAfterTravel();
-    }
+    // The first gaze at a landed link rides the quiet beat like every
+    // other sync (V3.84) — the listener call above already armed it.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_landedByLink) showHud(context, 'UN ŒIL T\'A CONDUIT ICI.');
       final audio = ref.read(audioControllerProvider);
@@ -667,6 +668,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     WidgetsBinding.instance.removeObserver(this);
     _skyBreath?.cancel();
     _glide?.cancel();
+    _skySyncDebounce?.cancel();
     _eyeWhisperTimer?.cancel();
     _wheelDue?.cancel();
     _territoryTimer?.cancel();
@@ -687,7 +689,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
       _glide?.cancel();
       _camera.panByWorld(landed - _camera.center);
       _landedByLink = true;
-      _refreshAfterTravel();
+      // V3.84 — the link's pan pulses the camera; the quiet beat asks
+      // the ether 350 ms later (no immediate sync here anymore).
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) showHud(context, 'UN ŒIL T\'A CONDUIT ICI.');
       });
@@ -858,6 +861,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// pinch — clustered stars can be separated to be held).
   void _onScaleStart(ScaleStartDetails details) {
     _glide?.cancel();
+    _handOnSky = true; // V3.84 — the hand outranks the ether
     _lastPointerDown = details.focalPoint;
     _dragTotal = Offset.zero;
     _pinchFactor = 1.0;
@@ -878,14 +882,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   void _onScaleEnd(ScaleEndDetails details) {
+    _handOnSky = false; // V3.84 — the hand lifts; the glide may still run
     // Neither travelled nor zoomed: an intention — a planet glides the
     // eye toward its gravity. (One detector, one grammar.)
     if (_dragTotal.distance < 8 && (_pinchFactor - 1.0).abs() < 0.03) {
       _onVoidTap();
       return;
     }
+    // V3.84 — the sync no longer fires HERE: the last camera pulse
+    // (this gesture's, or the glide's to come) arms the 350 ms quiet
+    // beat, and THAT beat asks the ether. The answer can never land
+    // inside the hand that asked for it.
     if (context.wantsReducedMotion) {
-      _refreshAfterTravel();
       return;
     }
     final velocity = details.velocity.pixelsPerSecond;
@@ -895,7 +903,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
         velocity / _camera.pxPerWorld(_viewport);
     final path = DriftGlide().path(-worldPerSecond).toList();
     if (path.isEmpty) {
-      _refreshAfterTravel();
+      // No glide: the gesture's last pulse already armed the quiet
+      // beat (V3.84) — nothing to do here.
       return;
     }
     var i = 0;
@@ -904,7 +913,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
       if (i >= path.length) {
         _glide?.cancel();
         _glide = null;
-        _refreshAfterTravel();
+        // V3.84 — the glide's last pulse armed the quiet beat; the
+        // sync lands 350 ms after the sky went still.
         return;
       }
       _camera.panByWorld(path[i++]);
@@ -921,20 +931,43 @@ class _MapScreenState extends ConsumerState<MapScreen>
     ref.read(travelPositionProvider.notifier).state = _camera.center;
   }
 
-  /// What the eye sees changed: ask the ether for this window.
+  /// What the eye sees changed: ask the ether for this window — but
+  /// only at a QUIET beat (V3.84: the hand outranks the ether). The
+  /// response's landing cost (decode + merge + full sky rebuild) froze
+  /// the pan for a quarter second when it arrived mid-gesture on a
+  /// phone; the sync now waits for the sky to be still, and the
+  /// controller HOLDS the write if the hand travels again while the
+  /// answer flies.
   void _refreshAfterTravel() {
     final r = _camera.visibleRect;
     unawaited(
-      ref
-          .read(mapControllerProvider.notifier)
-          .refreshViewport(
+      ref.read(mapControllerProvider.notifier).refreshViewport(
             minX: r.minX,
             minY: r.minY,
             maxX: r.maxX,
             maxY: r.maxY,
+            isQuiet: () => _glide == null && !_handOnSky,
           ),
     );
   }
+
+  /// V3.84 — the quiet beat: 350 ms without a camera pulse. The last
+  /// glide pulse arms it; the next gesture cancels it. Landing here
+  /// means the sky is still — fetch now, and apply anything the ether
+  /// held back while the hand was travelling.
+  Timer? _skySyncDebounce;
+  void _scheduleSkySync() {
+    _skySyncDebounce?.cancel();
+    _skySyncDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      ref.read(mapControllerProvider.notifier).applyPendingSky();
+      _refreshAfterTravel();
+    });
+  }
+
+  /// The hand is on the sky (pan or pinch in flight) — the ether's
+  /// writes must wait (V3.84).
+  bool _handOnSky = false;
 
   /// Desktop hover: a named body whispers its name before the plaque.
   void _onFieldHover(PointerHoverEvent event) {
