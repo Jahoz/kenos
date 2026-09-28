@@ -26,13 +26,23 @@ import '../../../echo/data/trace_shield.dart';
 import '../../../echo/domain/echo.dart';
 import '../../../echo/domain/echo_excerpt.dart';
 import '../../../echo/domain/echo_media.dart';
-import '../../application/accretion.dart';
-import '../../application/kenos_system.dart';
 import '../../application/map_controller.dart';
 /// Reveal modal: glassmorphism, visual decryption, a 10-second reading
 /// window, then dissolution — and the bottle-in-the-sea echo: the reader
 /// may leave ONE trace for the stranger who launched the echo.
-Future<void> showRevealSheet(
+///
+/// V3.86 — THE FALL PLAYS ON A CLEAR SKY: the celestial event (the
+/// mote's fall into the gouffre, or the phoenix's rise) no longer fires
+/// from inside the sheet — it rides OUT with the pop verdict, and the
+/// CALLER feeds the accretion when this future resolves (the route's
+/// exit transition complete, the curtain fully lifted). Fed from inside,
+/// the first 600 ms of the 1.9 s spiral died behind the fading barrier
+/// — and behind the trace prompt that holds the sky hostage, the fall
+/// read as never playing at all ("on ne voit jamais l'animation vers
+/// le trou noir", the live report).
+enum RevealSkyEvent { fell, rose }
+
+Future<RevealSkyEvent?> showRevealSheet(
   BuildContext context, {
   required Echo echo,
   double? eyeDistanceAL,
@@ -272,8 +282,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
       }
     } finally {
       _slinging = false;
-      _playPendingFall();
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (mounted) _closeSheet();
     }
   }
 
@@ -367,18 +376,26 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     } catch (_) {
       // Silence is also an answer: close without guilt.
     }
-    _playPendingFall();
-    if (mounted) Navigator.of(context, rootNavigator: true).pop();
+    if (mounted) _closeSheet();
   }
 
   bool _piiAcknowledged = false;
   bool _careAcknowledged = false;
 
-  /// A celestial event (fall or phoenix) waiting for the curtain:
-  /// the modal's opaque barrier hides the sky — feeding the hole
-  /// while the sheet is open plays the whole fall behind the curtain,
-  /// unseen (the live prod report). It plays as the sheet lifts.
+  /// A celestial event (fall or phoenix) waiting to ride OUT with the
+  /// pop verdict (V3.86): the caller feeds the accretion once the
+  /// route's exit transition completes — the curtain fully lifted, the
+  /// fall entirely visible. Fed from inside the dying sheet, the first
+  /// 600 ms of the spiral died behind the fading barrier.
   ({bool rising, Color tint})? _pendingFall;
+
+  /// Closes the sheet, carrying the celestial event to the caller.
+  void _closeSheet() {
+    final pending = _pendingFall;
+    _pendingFall = null;
+    Navigator.of(context, rootNavigator: true)
+        .pop(pending == null ? null : (pending.rising ? RevealSkyEvent.rose : RevealSkyEvent.fell));
+  }
 
   /// ANONYMITY WARNING — non-blocking: the contract is anonymity, and
   /// choosing belongs to the one who writes. The shield only makes
@@ -463,28 +480,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
   }
 
   void _leave() {
-    _playPendingFall();
-    Navigator.of(context, rootNavigator: true).pop();
-  }
-
-  /// Releases the deferred celestial event (if any) so it plays in
-  /// the OPEN sky, the very frame the curtain lifts.
-  void _playPendingFall() {
-    final pending = _pendingFall;
-    if (pending == null) return;
-    _pendingFall = null;
-    final origin = KenosSystem.echoPosition(widget.echo, DateTime.now());
-    if (pending.rising) {
-      ref.read(accretionProvider.notifier).feedRising(
-            origin,
-            tint: pending.tint,
-          );
-    } else {
-      ref.read(accretionProvider.notifier).feed(
-            origin,
-            tint: pending.tint,
-          );
-    }
+    _closeSheet();
   }
 
   Future<void> _reportEcho() async {

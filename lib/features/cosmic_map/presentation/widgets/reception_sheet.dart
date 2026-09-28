@@ -12,21 +12,22 @@ import '../../../../core/haptics/kenos_haptics.dart';
 import '../../../../core/widgets/scramble_text.dart';
 import '../../../echo/domain/echo.dart';
 import '../../../echo/domain/reception.dart';
-import '../../application/accretion.dart';
-import '../../application/kenos_system.dart';
 import '../../application/reception_controller.dart';
 
 /// Bottle-in-the-sea signal, author side: tap your sealed echo to learn
 /// whether it was intercepted — how long it drifted, how far it traveled,
 /// and the stranger's optional one-line trace.
 ///
-/// The signal exists once: viewing it burns it.
-Future<void> showReceptionSheet(
+/// The signal exists once: viewing it burns it. Returns whether the
+/// traveller burned it (V3.86): the accretion fall for a burned signal
+/// is fed by the CALLER once this future resolves — the curtain fully
+/// lifted, the spiral entirely visible.
+Future<bool?> showReceptionSheet(
   BuildContext context, {
   required Echo echo,
   Reception? reception,
 }) {
-  return showGeneralDialog(
+  return showGeneralDialog<bool>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'KENOS_RECEPTION',
@@ -78,25 +79,20 @@ class _ReceptionPanelState extends ConsumerState<ReceptionPanel>
   Future<void> _close({bool burn = false}) async {
     if (_closing) return;
     _closing = true;
-    var fall = false;
     if (burn && widget.reception != null) {
-      // The signal burns — one look, then the void. The fall plays
-      // when the curtain lifts (this sheet's barrier is opaque: fed
-      // now, the whole spiral would die unseen behind it).
+      // The signal burns — one look, then the void. The fall itself is
+      // fed by the CALLER when this sheet's future resolves (V3.86):
+      // the curtain fully lifted, the whole spiral visible.
       KenosHaptics.pulse(KenosPulse.burn);
-      fall = true;
       await ref
           .read(receptionControllerProvider.notifier)
           .burn(widget.echo.id);
+      await _dissolve.forward(from: 0);
+      if (mounted) Navigator.of(context, rootNavigator: true).pop(true);
+      return;
     }
     await _dissolve.forward(from: 0);
-    if (fall) {
-      ref.read(accretionProvider.notifier).feed(
-            KenosSystem.echoPosition(widget.echo, DateTime.now()),
-            tint: widget.echo.theme.core,
-          );
-    }
-    if (mounted) Navigator.of(context, rootNavigator: true).pop();
+    if (mounted) Navigator.of(context, rootNavigator: true).pop(false);
   }
 
   @override

@@ -252,7 +252,36 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
         );
         unawaited(ref.read(audioControllerProvider).playBell(KenosBell.reveal));
         KenosHaptics.pulse(KenosPulse.reveal);
-        await showRevealSheet(context, echo: echo, eyeDistanceAL: widget.eyeDistanceAL);
+        // V3.86 — THE FALL PLAYS ON A CLEAR SKY: the sheet returns its
+        // celestial verdict; this future resolves only when the exit
+        // transition completes (the curtain FULLY lifted). Feeding the
+        // accretion here gives the whole 1.9 s spiral a clean sky —
+        // fed from inside the sheet, its first 600 ms died behind the
+        // fading barrier and the fall read as never playing.
+        final event = await showRevealSheet(
+          context,
+          echo: echo,
+          eyeDistanceAL: widget.eyeDistanceAL,
+        );
+        try {
+          if (event != null) {
+            final origin = KenosSystem.echoPosition(_echo, DateTime.now());
+            if (event == RevealSkyEvent.rose) {
+              _container.read(accretionProvider.notifier).feedRising(
+                    origin,
+                    tint: _echo.theme.core,
+                  );
+            } else {
+              _container.read(accretionProvider.notifier).feed(
+                    origin,
+                    tint: _echo.theme.core,
+                  );
+            }
+          }
+        } catch (_) {
+          // The container may be gone with the sky — the event dies
+          // with it, silently.
+        }
         if (!mounted) return;
         ref.read(mapControllerProvider.notifier).forget(targetId);
       }
@@ -366,14 +395,30 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   /// consults the signal. GestureDetector's tap only fires on a quick
   /// release in place — panning the void over a sealed star never
   /// opens anything.
-  void _onSealedTap() {
+  void _onSealedTap() async {
     if (_busy) return;
     KenosHaptics.pulse(KenosPulse.holdStart);
-    ref.read(audioControllerProvider).playBell(KenosBell.seal);
+    unawaited(ref.read(audioControllerProvider).playBell(KenosBell.seal));
     final reception = ref
         .read(receptionControllerProvider.notifier)
         .receptionFor(_echo.id);
-    showReceptionSheet(context, echo: _echo, reception: reception);
+    // V3.86 — the burned signal's fall is fed HERE, once the sheet's
+    // future resolves: the curtain fully lifted, the spiral visible.
+    final burned = await showReceptionSheet(
+      context,
+      echo: _echo,
+      reception: reception,
+    );
+    try {
+      if (burned == true) {
+        _container.read(accretionProvider.notifier).feed(
+              KenosSystem.echoPosition(_echo, DateTime.now()),
+              tint: _echo.theme.core,
+            );
+      }
+    } catch (_) {
+      // The sky may already be gone; the event dies with it.
+    }
   }
 
   void _onPointerMove(PointerMoveEvent event) {
