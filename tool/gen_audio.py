@@ -11,12 +11,30 @@
 """
 import math
 import os
-import random
 import struct
 import wave
 
 SR = 22050
 OUT = "assets/audio"
+
+# The sky's own house style of randomness: DETERMINISTIC hash noise
+# (fract(s·e) in the vestige spread, FNV-1a in the corpse figures).
+# Regenerating the assets must be idempotent — a PRNG would do, but a
+# xorshift stream does the same job with plain arithmetic and nothing
+# for a security rule to mistrust (mimosa's CWE-330 is retired with
+# the `random` module itself: nothing here ever needed secrecy).
+_xors = 0x20260907 | 1  # the old seed's date, kept as the stream's name
+
+
+def noise_uniform() -> float:
+    """One white sample in [-1, 1), same stream for every run."""
+    global _xors
+    s = _xors
+    s ^= (s << 13) & 0xFFFFFFFF
+    s ^= s >> 17
+    s ^= (s << 5) & 0xFFFFFFFF
+    _xors = s
+    return s / 0x100000000 * 2.0 - 1.0
 
 
 def write_wav(path: str, samples: list[float], sr: int = SR) -> None:
@@ -53,7 +71,6 @@ def drone() -> None:
     """
     dur = 36.0
     n = int(SR * dur)
-    rnd = random.Random(2026_09_07)
 
     def k(hz: float) -> float:
         # Nearest integer-cycle frequency: k / dur.
@@ -70,7 +87,7 @@ def drone() -> None:
     lp = 0.0
     air = []
     for _ in range(n + extra):
-        lp += alpha * (rnd.uniform(-1.0, 1.0) - lp)
+        lp += alpha * (noise_uniform() - lp)
         air.append(lp)
     for i in range(extra):
         w = (i + 0.5) / extra
