@@ -36,8 +36,13 @@ class AccretionMote {
   final bool rising;
 }
 
-/// One fall lasts this long (world spirals are not rushed).
-const Duration accretionFall = Duration(milliseconds: 1900);
+/// One fall lasts this long (world spirals are not rushed). V3.87 —
+/// 3.8 s: at reading depth the gouffre sits off-frame and only the
+/// DEPARTURE spiral is visible — at 1.9 s that was ~0.6 s of screen
+/// time, "pas le temps de voir quoi que ce soit" (the live report).
+/// Doubling the fall doubles the visible wound around the dead star;
+/// the plunge itself stays the gouffre's secret (the whisper says it).
+const Duration accretionFall = Duration(milliseconds: 3800);
 
 class AccretionController extends Notifier<List<AccretionMote>> {
   @override

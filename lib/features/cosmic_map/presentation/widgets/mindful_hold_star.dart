@@ -227,6 +227,14 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     // element to another echo while the reveal is open (no keys on a
     // culled, re-sorted list) — forgetting must hit what was read.
     final targetId = _echo.id;
+    // V3.87 — capture the container BEFORE any await: the reading holds
+    // the screen still for 10-20 s, the quiet-beat sync (V3.84) rebuilds
+    // the map beneath the sheet, and THIS element can be dead by the
+    // time the curtain lifts — a lazily-resolved container (or ref)
+    // then dies silently and the fall never plays at all ("pas le
+    // temps de voir quoi que ce soit", the live report). The container
+    // outlives the star; the fall must not.
+    final container = ProviderScope.containerOf(context, listen: false);
     KenosHaptics.pulse(
       KenosPulse.holdComplete,
       reduceMotion: platformDisablesAnimations(),
@@ -254,10 +262,10 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
         KenosHaptics.pulse(KenosPulse.reveal);
         // V3.86 — THE FALL PLAYS ON A CLEAR SKY: the sheet returns its
         // celestial verdict; this future resolves only when the exit
-        // transition completes (the curtain FULLY lifted). Feeding the
-        // accretion here gives the whole 1.9 s spiral a clean sky —
-        // fed from inside the sheet, its first 600 ms died behind the
-        // fading barrier and the fall read as never playing.
+        // transition completes (the curtain FULLY lifted). The feed
+        // rides the mount-captured container (V3.87): this element may
+        // have been rebuilt away under the sheet — the fall plays
+        // whatever became of the star.
         final event = await showRevealSheet(
           context,
           echo: echo,
@@ -267,23 +275,23 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
           if (event != null) {
             final origin = KenosSystem.echoPosition(_echo, DateTime.now());
             if (event == RevealSkyEvent.rose) {
-              _container.read(accretionProvider.notifier).feedRising(
+              container.read(accretionProvider.notifier).feedRising(
                     origin,
                     tint: _echo.theme.core,
                   );
             } else {
-              _container.read(accretionProvider.notifier).feed(
+              container.read(accretionProvider.notifier).feed(
                     origin,
                     tint: _echo.theme.core,
                   );
             }
           }
+          container
+              .read(mapControllerProvider.notifier)
+              .forget(targetId);
         } catch (_) {
-          // The container may be gone with the sky — the event dies
-          // with it, silently.
+          // The sky may already be gone; the event dies with it.
         }
-        if (!mounted) return;
-        ref.read(mapControllerProvider.notifier).forget(targetId);
       }
     } catch (e) {
       if (mounted) {
@@ -398,6 +406,9 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
   void _onSealedTap() async {
     if (_busy) return;
     KenosHaptics.pulse(KenosPulse.holdStart);
+    // V3.87 — capture before the await (the element may not survive
+    // the sheet): the burned signal's fall must not die with it.
+    final container = ProviderScope.containerOf(context, listen: false);
     unawaited(ref.read(audioControllerProvider).playBell(KenosBell.seal));
     final reception = ref
         .read(receptionControllerProvider.notifier)
@@ -411,7 +422,7 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     );
     try {
       if (burned == true) {
-        _container.read(accretionProvider.notifier).feed(
+        container.read(accretionProvider.notifier).feed(
               KenosSystem.echoPosition(_echo, DateTime.now()),
               tint: _echo.theme.core,
             );
