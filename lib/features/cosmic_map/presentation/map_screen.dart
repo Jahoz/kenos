@@ -3531,10 +3531,17 @@ class _GlimmerFieldPainter extends CustomPainter {
       // must read in BOTH pipelines: what is never read drifts to
       // the court's rim and dims there — a glimmer that stayed
       // young forever broke the one law of age-as-distance).
+      // V3.85 — THE FAR FIELD CARRIES HALF THE LIGHT: the old
+      // 0.30 floor stacked with the age paling crushed every court
+      // into one uniform murmur (measured: no pixel above 55 inside
+      // La Lune's court — the spread was there, unreadable). Half
+      // light keeps the approach honest (full glow still waits for
+      // the eye) while the elder rim and the young core separate
+      // into a legible depth gradient.
       final ageDays =
           now.difference(echo.createdAt).inMilliseconds / (30 * 24 * 3.6e6);
       final alpha = ParallaxMath.opacityFor(z) *
-          (0.30 + 0.70 * reception) *
+          (0.50 + 0.50 * reception) *
           0.85 *
           (1.0 - 0.65 * ageDays.clamp(0.0, 1.0));
       final paint = Paint()..color = AppColors.fade(echo.theme.core, alpha);

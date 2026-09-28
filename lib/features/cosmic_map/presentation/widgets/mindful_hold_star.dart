@@ -589,8 +589,12 @@ class _MindfulHoldStarState extends ConsumerState<MindfulHoldStar>
     // own rings fade GENTLY with distance (still anchors, never as
     // deep as the ether's fade) — a far sealed ring outshining the
     // readable ether inverted the product's whole hierarchy.
+    // V3.85 — THE FAR FIELD CARRIES HALF THE LIGHT: the ether's old
+    // 0.30 floor stacked with the age paling crushed the courts into
+    // one uniform murmur; half light keeps reading a PLACE (the hold
+    // still waits for the eye) while the age-depth gradient reads.
     final field = widget.reception.clamp(0.0, 1.0);
-    opacity *= _echo.isMine ? 0.45 + 0.55 * field : 0.30 + 0.70 * field;
+    opacity *= _echo.isMine ? 0.45 + 0.55 * field : 0.50 + 0.50 * field;
 
     // V3.78e — the emerge fade rides LAST (outermost): whatever the
     // depth, the age and the reception say, a pipeline crossing fades
