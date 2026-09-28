@@ -224,12 +224,62 @@ class KenosSystem {
   /// The orbit's period at a moment: quick when young and near,
   /// slower as the thought rides higher (Kepler's courtesy) — still
   /// minutes per orbit, never a carousel (V3.22's law holds).
+  ///
+  /// This is the INSTANTANEOUS tempo only — the orbital phase must
+  /// INTEGRATE it over time ([_orbitRevolutions]), never divide the
+  /// epoch by it (see V3.80 below).
   static Duration orbitPeriod(Echo echo, DateTime at) {
     final t = ageFraction(echo, at);
     final h = echo.id.hashCode & 0x7fffffff;
     final jitter = 0.82 + 0.36 * ((h >> 5) % 100) / 100;
     final seconds = (150 + 390 * t) * jitter;
     return Duration(milliseconds: (seconds * 1000).round());
+  }
+
+  /// V3.80 — THE PHASE IS AN INTEGRAL, NEVER A QUOTIENT.
+  ///
+  /// V3.75 made the period itself age (quick near, slow far) — but
+  /// the phase kept being computed as `epochMs ÷ periodMs`. With the
+  /// epoch in the numerator (~1.75e12 ms), every twitch of the
+  /// divisor whips the phase by 2π·epoch/P² radians: one millisecond
+  /// of period drift is ~78 spurious revolutions, and the aging law
+  /// drifts the period ~0.13 ms per real second. Every echo was
+  /// whipping around its ellipse ~10 times a second — at frame level
+  /// the position read as random, and the sky "apparaissait et
+  /// disparaissait" (the live report: culling, drift and alive-rank
+  /// all churned on chaos).
+  ///
+  /// The law now integrates the tempo exactly, in closed form. The
+  /// period grows linearly over the memory moon,
+  /// P(τ) = p0·(1 + k·τ/M), so the revolutions since birth are
+  ///
+  ///     R(τ) = (M / (p0·k)) · ln(1 + k·τ/M)      for τ ≤ M
+  ///     R(τ) = R(M) + (τ − M)/p1                 beyond (aged tempo,
+  ///                                             a steady ride forever)
+  ///
+  /// — deterministic from `created_at` (every device agrees), C∞ in
+  /// time, strictly increasing: the rotation is FLUID and PERMANENT.
+  /// The instantaneous tempo is exactly [orbitPeriod]'s law at every
+  /// age (Kepler's courtesy is kept — dR/dτ = 1/P). Age still speaks
+  /// through distance, size and light (the aging law above); it never
+  /// again speaks through a jump.
+  static double _orbitRevolutions(Echo echo, DateTime at) {
+    final h = echo.id.hashCode & 0x7fffffff;
+    final jitter = 0.82 + 0.36 * ((h >> 5) % 100) / 100;
+    final p0 = 150000.0 * jitter; // ms — the newborn tempo
+    final p1 = 540000.0 * jitter; // ms — the aged tempo at the moon
+    final k = p1 / p0 - 1.0; // linear growth across the moon
+    final moon = memoryMoon.inMilliseconds.toDouble();
+    // Clock-skew guard: a thought born "in the future" holds its
+    // birth station until real time reaches it.
+    final age = math.max(
+        0.0, at.difference(echo.createdAt).inMilliseconds.toDouble());
+    final revs = age <= moon
+        ? moon / (p0 * k) * math.log(1.0 + k * age / moon)
+        : moon / (p0 * k) * math.log(1.0 + k) + (age - moon) / p1;
+    // The identity's own station at birth (one revolution's worth of
+    // spread — the crowd never turns in unison).
+    return revs + (h % 9973) / 9973.0;
   }
 
   /// Planet index for an intent: the theme decides the gravity. The
@@ -277,10 +327,10 @@ class KenosSystem {
     final e = liaisonEccentricity(echo);
     final omega = 2 * math.pi * ((h >> 17) % 360) / 360;
     final a = aphelion / (1 + e); // aphelion-bounded semi-major axis
-    final period = orbitPeriod(echo, at);
-    final phase =
-        (at.millisecondsSinceEpoch + h % 9973) / period.inMilliseconds;
-    final theta = 2 * math.pi * phase;
+    // V3.80 — the angle is the INTEGRATED revolution count, never
+    // epoch ÷ instantaneous period (see [_orbitRevolutions]): the
+    // aging tempo bends the phase smoothly, it can never whip it.
+    final theta = 2 * math.pi * _orbitRevolutions(echo, at);
     final rr = a * (1 - e * e) / (1 + e * math.cos(theta));
     final x = rr * math.cos(theta + omega);
     final y = rr * math.sin(theta + omega);

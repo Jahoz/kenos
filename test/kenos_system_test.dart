@@ -126,6 +126,49 @@ void main() {
       );
     });
 
+    test('V3.80 — la rotation est fluide et permanente, à tout âge', () {
+      // THE PHASE LAW: the orbital angle INTEGRATES the aging tempo
+      // (see KenosSystem._orbitRevolutions). The old quotient law —
+      // epochMs ÷ agingPeriodMs — whips the phase by ~78 revolutions
+      // per millisecond of period drift: at frame level every echo
+      // read as random, and the sky "apparaissait et disparaissait".
+      // A smooth sky means: sampled at FRAME cadence (16 ms), the
+      // per-frame displacement stays a small fraction of the orbit —
+      // and at every age, a whole minute of sky moves it visibly.
+      final echo =
+          _echo('smooth-1', EchoColorTheme.indigo, createdAt: boundAt);
+      for (final (label, at) in [
+        ('nouveau-né', boundAt),
+        ('à mi-lune', boundAt.add(const Duration(days: 15))),
+        ('vieux', boundAt.add(const Duration(days: 31))),
+        ('outre-lune', boundAt.add(const Duration(days: 45))),
+      ]) {
+        Offset? prev;
+        var maxFrameStep = 0.0;
+        for (var i = 0; i < 120; i++) {
+          final t = at.add(const Duration(milliseconds: 16) * i);
+          final p = KenosSystem.echoPosition(echo, t);
+          if (prev != null) {
+            maxFrameStep = max(maxFrameStep, (p - prev).distance);
+          }
+          prev = p;
+        }
+        // The fastest lawful ride: a newborn's 0.03-wide orbit at its
+        // quickest tempo is ~2e-4 world units per frame. The bound is
+        // 25× that — generous, yet 100× below the old law's chaos
+        // (which hopped ~2 units a frame).
+        expect(maxFrameStep, lessThan(0.005),
+            reason: 'pas de saccade par frame ($label)');
+        // PERMANENT: a minute of sky carries the thought onward —
+        // the rotation never stalls, whatever the age.
+        final before = KenosSystem.echoPosition(echo, at);
+        final after = KenosSystem.echoPosition(
+            echo, at.add(const Duration(minutes: 1)));
+        expect((after - before).distance, greaterThan(1e-4),
+            reason: 'la pensée tourne toujours ($label)');
+      }
+    });
+
     test('V3.67 — même coque, tempos différents : la foule se dé-synchronise', () {
       // Two echoes born at the same bound moment no longer turn in
       // unison (per-echo period jitter + eccentricity) — the
