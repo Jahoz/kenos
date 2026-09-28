@@ -20,8 +20,13 @@
 set -euo pipefail
 
 REF="xmbdrzkvjxaaoqwluonx"
-TOKEN=$(security find-generic-password -s "Supabase CLI" -w \
-          | sed 's/^go-keyring-base64://' | base64 -d)
+# The keychain entry is go-keyring-encoded (base64 of the token). On
+# some machines `add-generic-password -U` silently never takes (the
+# read-back keeps a stale entry) — SUPABASE_TOKEN bypasses the
+# keychain entirely: plain sbp_ token from the environment, never
+# written to any file.
+TOKEN="${SUPABASE_TOKEN:-$(security find-generic-password -s "Supabase CLI" -w \
+          | sed 's/^go-keyring-base64://' | base64 -d)}"
 
 api() { # $1 = one SQL statement (or DO block), prints raw JSON answer
   local payload
