@@ -131,8 +131,8 @@ db-wipe-load: ## Clean reset: remove every seeded row (real data + KEK untouched
 prod-reset: ## LAUNCH RESET (cloud): wipe test wake, keep curated+vestiges, replant garden
 	bash scripts/prod_admin.sh file supabase/snippets/prod_reset.sql
 
-prod-sow: ## Sow the generated sky (cloud): 360 real sealed echoes, no dead stars
-	dart run tool/gen_load_payloads.dart 360 > /tmp/kenos_sky_payloads.csv
+prod-sow: ## Sow the generated sky (cloud): 300 real sealed echoes, crowd-balanced
+	dart run tool/gen_load_payloads.dart 300 > /tmp/kenos_sky_payloads.csv
 	bash scripts/prod_admin.sh stage /tmp/kenos_sky_payloads.csv
 	bash scripts/prod_admin.sh file supabase/snippets/prod_sow.sql
 

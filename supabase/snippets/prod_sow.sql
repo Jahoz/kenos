@@ -12,12 +12,21 @@
 --     future wipe predicate is 'sky-%@seed.kenos.local' — NOT the
 --     whole seed namespace: the curated hands share it.
 --   * Deterministic ids (md5('kenos-sky-…')) → idempotent re-sows.
---   * Ages spread over 14 days, density growing toward today; none
---     anywhere near the 30-day purge horizon.
---   * Sky: 88% uniform + two soft lived-in clusters; TEAL/INDIGO/
---     LUMEN only (ROSE stays destruction-only); z spread; NO media
---     doors and NO rebound momentum — generated stars are
---     confidences to read, not slings or doors pointing at nothing.
+--   * V3.83-sow — THE CROWD LAW: ages spread AREA-UNIFORM across the
+--     memory moon (none older than 27 days, a 3-day margin from the
+--     purge), so the courts fill to their rim — a first 14-day
+--     young-skewed sow packed every star into the inner half of its
+--     court and the sky read as three BLOBS, not crowds ("ils
+--     s'agglutinent un peu trop", the live report). The elder rim
+--     pales with the aging law by design: youth glows close, age
+--     recedes dim. The crowd decays honestly — half purges within a
+--     fortnight; re-sow to replenish.
+--   * 300 stars (V3.83: 360 → 300) at 42/33/25 TEAL/INDIGO/LUMEN —
+--     La Lune's court held 207 at 55% teal; ~126 reads as a rich
+--     halo, not a mass. TEAL/INDIGO/LUMEN only (ROSE stays
+--     destruction-only); z spread; NO media doors and NO rebound
+--     momentum — generated stars are confidences to read, not
+--     slings or doors pointing at nothing.
 --   * REFUSES to run without staged payloads: the prod sky must
 --     never ship dead stars (random-bundle fallback is local-only).
 --
@@ -35,7 +44,7 @@
 do $sow_sky$
 declare
     n_users    int := 48;
-    n_alive    int := 360;
+    n_alive    int := 300;
     n_payloads int := 0;
     i          int;
     k          int;
@@ -66,9 +75,9 @@ begin
     perform public.kenos_ether_kek();
     perform setseed(0.20260904);
 
-    -- The authors: joined over the same two weeks as their echoes.
+    -- The authors: joined over the same moon as their echoes.
     for i in 1..n_users loop
-        v := 14 * random();
+        v := 27 * random();
         insert into auth.users (
             id, instance_id, aud, role, email,
             email_confirmed_at,
@@ -88,8 +97,10 @@ begin
     end loop;
 
     for i in 1..n_alive loop
-        -- Age: young-skewed, none older than 14 days.
-        v := 14 * power(random(), 1.55);
+        -- V3.83 — THE CROWD LAW: age uniform in AREA over the court
+        -- (aphelion A = 0.03 + 0.12·age/30; A²-linear in the draw
+        -- spreads the crowd to the rim, none older than 27 d).
+        v := 27 * (sqrt(0.0009 + 0.0216 * random()) - 0.03) / 0.12;
 
         -- Sky: mostly uniform, two soft lived-in clusters.
         k := floor(random() * 25);
@@ -108,9 +119,13 @@ begin
         -- Few authors own most of the sky (power-law), like a real one.
         author := md5('kenos-sky-user-' || (1 + floor(power(random(), 0.45) * n_users)))::uuid;
 
-        if random() < 0.55 then
+        -- V3.83 — the crowd rebalanced: 42/33/25 (La Lune held 207 of
+        -- 360 at the old 55% — her court read as a mass, not a halo).
+        -- NB: two independent draws — the second threshold is
+        -- conditional (0.33/0.58 ≈ 0.57), not the target share.
+        if random() < 0.42 then
             theme := 'TEAL';
-        elsif random() < 0.67 then
+        elsif random() < 0.57 then
             theme := 'INDIGO';
         else
             theme := 'LUMEN';
