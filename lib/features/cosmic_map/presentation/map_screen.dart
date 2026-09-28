@@ -1135,6 +1135,21 @@ class _MapScreenState extends ConsumerState<MapScreen>
       },
     );
 
+    // V3.82 — THE HOLE FED UNSEEN: a fall fed while the gouffre sits
+    // outside the frame still happens (what dies here FALLS — the
+    // accretion constitution), but at deep reading zoom the whole
+    // spiral plays off-stage. The sky says it once, machine-voiced —
+    // the death is never rumor. Phoenix rises stay silent: they play
+    // where the thought was read, always on stage.
+    ref.listen(accretionProvider, (previous, next) {
+      if (next.length <= (previous?.length ?? 0)) return;
+      final mote = next.last;
+      if (mote.rising) return;
+      if (AccretionController.holeOffStage(_camera, _viewport) && mounted) {
+        showHud(context, 'LE GOUFFRE S\'EST NOURRI.');
+      }
+    });
+
     return Scaffold(
       backgroundColor: AppColors.voidBlack,
       // First gesture anywhere = audio unlock (iOS autoplay policy).
@@ -3479,8 +3494,16 @@ class _GlimmerFieldPainter extends CustomPainter {
       );
       // The same light as a holdable star carries, at glimmer
       // distance: depth-dimmed, field-dimmed, never breathing.
-      final alpha =
-          ParallaxMath.opacityFor(z) * (0.30 + 0.70 * reception) * 0.85;
+      // V3.81 — and aged, exactly like the widgets (the aging law
+      // must read in BOTH pipelines: what is never read drifts to
+      // the court's rim and dims there — a glimmer that stayed
+      // young forever broke the one law of age-as-distance).
+      final ageDays =
+          now.difference(echo.createdAt).inMilliseconds / (30 * 24 * 3.6e6);
+      final alpha = ParallaxMath.opacityFor(z) *
+          (0.30 + 0.70 * reception) *
+          0.85 *
+          (1.0 - 0.65 * ageDays.clamp(0.0, 1.0));
       final paint = Paint()..color = AppColors.fade(echo.theme.core, alpha);
       canvas.drawCircle(
         sp,
