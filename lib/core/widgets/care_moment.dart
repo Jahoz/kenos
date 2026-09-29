@@ -54,48 +54,63 @@ Future<bool> offerCareMoment(
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                reader
-                    ? voice.pick(
-                        'Ce que tu viens de recevoir peut peser lourd.\n\n'
-                        'Si ces mots résonnent, tu n\'es pas obligé·e de les '
-                        'porter seul·e — ces lignes écoutent :',
-                        'What you just received may weigh heavy.\n\nIf these '
-                            'words resonate, you don\'t have to carry them '
-                            'alone — these lines listen:',
-                      )
-                    : voice.pick(
-                        'Ce que tu écris semble porter une vraie douleur.\n\n'
-                        'Tu n\'es pas obligé·e de la porter seul·e — ces '
-                        'lignes écoutent :',
-                        'What you are writing seems to carry real pain.\n\n'
-                            'You don\'t have to carry it alone — these lines '
-                            'listen:',
+              // The words and their doors scroll on a short screen —
+              // the buttons never leave the traveller's reach (V3.90:
+              // bigger, readable type met an 84 px overflow at 600 px
+              // tall; the accord must never be cut mid-sentence).
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        reader
+                            ? voice.pick(
+                                'Ce que tu viens de recevoir peut peser lourd.\n\n'
+                                'Si ces mots résonnent, tu n\'es pas obligé·e de les '
+                                'porter seul·e — ces lignes écoutent :',
+                                'What you just received may weigh heavy.\n\nIf these '
+                                    'words resonate, you don\'t have to carry them '
+                                    'alone — these lines listen:',
+                              )
+                            : voice.pick(
+                                'Ce que tu écris semble porter une vraie douleur.\n\n'
+                                'Tu n\'es pas obligé·e de la porter seul·e — ces '
+                                'lignes écoutent :',
+                                'What you are writing seems to carry real pain.\n\n'
+                                    'You don\'t have to carry it alone — these lines '
+                                    'listen:',
+                              ),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: AppFonts.serifItalic,
+                          fontSize: 15,
+                          height: 1.75,
+                          color: AppColors.fade(AppColors.pureLight, 0.85),
+                        ),
                       ),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: AppFonts.serifItalic,
-                  fontSize: 14,
-                  height: 1.75,
-                  color: AppColors.fade(AppColors.pureLight, 0.75),
-                ),
-              ),
-              const SizedBox(height: 14),
-              // The doors, in the lexicon's own quiet order — each one
-              // names its purpose and its hours, nothing more.
-              for (final door in doors) ...[
-                Text(
-                  door,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: AppFonts.mono,
-                    fontSize: 9.5,
-                    letterSpacing: 1,
-                    height: 1.9,
-                    color: AppColors.fade(AppColors.teal, 0.7),
+                      const SizedBox(height: 14),
+                      // The doors, in the lexicon's own quiet order — each one
+                      // names its purpose and its hours, nothing more. V3.90:
+                      // a door must be readable on a narrow phone — the numbers
+                      // are the one thing a shaken hand must not squint at.
+                      for (final door in doors) ...[
+                        Text(
+                          door,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: AppFonts.mono,
+                            fontSize: 10.5,
+                            letterSpacing: 0.5,
+                            height: 1.9,
+                            color: AppColors.fade(AppColors.teal, 0.8),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-              ],
+              ),
               const SizedBox(height: 20),
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(true),

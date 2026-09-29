@@ -232,9 +232,9 @@ class _AwakeningPanelState extends ConsumerState<_AwakeningPanel>
                             ),
                             style: TextStyle(
                               fontFamily: AppFonts.mono,
-                              fontSize: 9,
-                              letterSpacing: 5,
-                              color: AppColors.fade(AppColors.teal, 0.85),
+                              fontSize: 10,
+                              letterSpacing: 4,
+                              color: AppColors.fade(AppColors.teal, 0.9),
                             ),
                           ),
                           const SizedBox(height: 18),
@@ -263,11 +263,15 @@ class _AwakeningPanelState extends ConsumerState<_AwakeningPanel>
                               'contract.',
                             ),
                             textAlign: TextAlign.center,
+                            // V3.90 — a pact must be READABLE: an accord in
+                            // 14.5 px italic at 80% was punishment on a narrow
+                            // phone (live report, S25). The terms now speak at
+                            // the confidences' own size, near-full light.
                             style: TextStyle(
                               fontFamily: AppFonts.serifItalic,
-                              fontSize: 14.5,
-                              height: 1.7,
-                              color: AppColors.fade(AppColors.pureLight, 0.8),
+                              fontSize: 16.5,
+                              height: 1.75,
+                              color: AppColors.fade(AppColors.pureLight, 0.92),
                             ),
                           ),
                         ],
