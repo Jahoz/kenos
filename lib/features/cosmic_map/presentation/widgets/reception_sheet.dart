@@ -5,10 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/audio/audio_controller.dart';
 import '../../../../core/audio/audio_providers.dart';
+import '../../../../core/care/care_guard.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_durations.dart';
 import '../../../../core/constants/app_fonts.dart';
 import '../../../../core/haptics/kenos_haptics.dart';
+import '../../../../core/voice/kenos_voice.dart';
+import '../../../../core/widgets/care_moment.dart';
 import '../../../../core/widgets/scramble_text.dart';
 import '../../../echo/domain/echo.dart';
 import '../../../echo/domain/reception.dart';
@@ -61,6 +64,13 @@ class _ReceptionPanelState extends ConsumerState<ReceptionPanel>
   );
 
   bool _closing = false;
+
+  /// V3.88 — the trace's care themes, read ONCE on the device (the
+  /// only place the line exists unsealed): the quiet door under the
+  /// trace knows whether to stand there.
+  late final Set<CareTheme> _replyThemes = widget.reception?.reply == null
+      ? const <CareTheme>{}
+      : CareGuard.themes(widget.reception!.reply!);
 
   @override
   void initState() {
@@ -182,6 +192,31 @@ class _ReceptionPanelState extends ConsumerState<ReceptionPanel>
                   color: AppColors.roseText,
                 ),
               ),
+              // V3.88 — the author's quiet door: a stranger's line can
+              // land on a wound. Offered passively, only when the
+              // words carried weight — never in the face of the trace.
+              if (_replyThemes.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 14),
+                  child: TextButton(
+                    onPressed: () => offerCareMoment(
+                      context,
+                      voice: KenosVoice.french,
+                      themes: _replyThemes,
+                      continueLabel: 'REVENIR AU VIDE',
+                      reader: true,
+                    ),
+                    child: Text(
+                      'SI CES MOTS PÈSENT — UN SOUTIEN EXISTE',
+                      style: TextStyle(
+                        fontFamily: AppFonts.mono,
+                        fontSize: 8,
+                        letterSpacing: 2,
+                        color: AppColors.fade(AppColors.teal, 0.55),
+                      ),
+                    ),
+                  ),
+                ),
             ] else if (reception != null) ...[
               Text(
                 'Aucune trace. Le silence est aussi une réponse.',

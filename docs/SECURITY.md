@@ -81,19 +81,35 @@ hand over the echo to be useful at all).
   different keys.
 - `launch_echo` / `consume_echo` pin `search_path = public, extensions`:
   pgcrypto lives in `extensions` on Supabase. Yes, this was a bug once.
-- Edge functions (`trace-shield`, `door-preview`) carry a best-effort,
-  per-worker courtesy cap keyed by the validated JWT `sub` (15/min):
-  over the cap the shield answers its pass verdict and the door
-  answers `{ url: null }` — third-party spend stays bounded and the
-  fail-open contract stays intact. All their outbound endpoints are
-  fixed constants; request data never shapes a request target.
-- The Trace Shield's contract extends to creation, where the ether is
-  structurally blind: the Mirror and a corpse's poem line run a
-  device-side PII guard (`PiiGuard`: French/international phone
-  numbers, emails) BEFORE sealing — the same anonymity threshold
-  (`warnAnonymityLoss`), warn-never-block, zero network. The server
-  cannot warn about content it cannot read; only the author's device
-  can, before the seal exists.
+- Edge functions (`trace-guard`, `door-preview`) carry a best-effort,
+  per-worker courtesy cap keyed on either a shared token (the pg_net
+  webhook's `x-kenos-token`) or the validated JWT `sub`: over the cap
+  or without the door key, the guard answers its pass verdict and the
+  door answers `{ url: null }` — third-party spend stays bounded and
+  the fail-open contract stays intact. All their outbound endpoints
+  are fixed constants; request data never shapes a request target.
+- The care contract extends to every surface where the ether is
+  structurally blind (V3.88): `CareGuard` (core, pure lexicon, zero
+  network) reads the plaintext the device holds before sealing — the
+  Mirror, a corpse's poem line, the trace — and after decryption on
+  the receiving side (revelation, reception), offering themed
+  national care lines through `offerCareMoment`. WARN, never block;
+  themes, never quotes; once per secret. The anonymity threshold
+  (`PiiGuard`: French/international phone numbers, emails) rides the
+  same moments. No care ever depends on a remote API or a quota.
+- The trace is the only clear content the ether stores, so it is the
+  only server-enforced surface (V3.88): `leave_trace` fires the
+  `kenos_trace_guard_notify` pg_net trigger → the `trace-guard` edge
+  function → Llama Guard 4 (`meta-llama/llama-guard-4-12b` on Groq,
+  free tier). Only the illegal floor burns (S3B1 minors, S3B2
+  non-consensual, S4 child safety) via `admin_burn_reception`
+  (service-role only): the word leaves the row, the reception
+  survives. Everything else passes — fail-open: missing key,
+  unreachable model, malformed verdict, the trace stays. The
+  webhook's URL and shared token live in `kenos_config` (operator
+  only, no client grants); until wired, the trigger is a no-op.
+  Burn events are intentionally uncounted in the product ledger —
+  they are rare security events, read in the function logs.
 - Legacy echoes (pre-migration, `key_seal = ''`) pass through as
   plaintext with `key: null` — the client treats a null key as
   "not sealed".
@@ -107,9 +123,10 @@ once the extension is available on the project.
 
 ## Testing the promises
 
-- `supabase/tests/rpc.sql` — 132 RPC invariants (atomicity, escrow
-  round-trip, sector floor bins, own-echo exclusion, purge incl. media
-  orphan sweep, rate limits). `make db-test`.
+- `supabase/tests/` — 325 SQL invariants across 13 files (atomicity,
+  escrow round-trip, sector floor bins, own-echo exclusion, purge
+  incl. media orphan sweep, rate limits, trace-guard gates + burn).
+  `make db-test`.
 - `supabase/tests/rls.sql` — 16 active break-in attempts (column
   opacity, no writes, RPC-only everywhere, anon denied).
 - `scripts/e2e_local.sh` — the full bottle-in-the-sea loop over real

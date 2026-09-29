@@ -9,6 +9,7 @@ import 'package:record/record.dart';
 
 import '../../../core/audio/audio_controller.dart';
 import '../../../core/audio/audio_providers.dart';
+import '../../../core/care/care_guard.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_fonts.dart';
@@ -16,6 +17,7 @@ import '../../../core/constants/app_layout.dart';
 import '../../../core/haptics/kenos_haptics.dart';
 import '../../../core/voice/kenos_voice.dart';
 import '../../../core/widgets/anonymity_warning.dart';
+import '../../../core/widgets/care_moment.dart';
 import '../../../core/widgets/hud.dart';
 import '../../../core/widgets/scramble_text.dart';
 import '../../cosmic_map/application/map_controller.dart';
@@ -50,6 +52,11 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
   /// The PII warning is asked once per secret (the decisions live in
   /// [SealEcho]; this is the draft's own memory).
   final PiiGate _pii = PiiGate();
+
+  /// The care moment is offered once per secret too (V3.88): an author
+  /// who chose to proceed is not offered the hand twice for the same
+  /// thought.
+  bool _careAcknowledged = false;
   final ImagePicker _picker = ImagePicker();
   final AudioRecorder _recorder = AudioRecorder();
   EchoMediaDraft? _media;
@@ -377,6 +384,25 @@ class _MirrorScreenState extends ConsumerState<MirrorScreen> {
       );
       if (!mounted || !proceed) return;
       _pii.acknowledge();
+    }
+
+    // The care moment (V3.88): the heaviest confidences are deposited
+    // HERE, not in the traces — and this device-side look, in clear,
+    // before the seal exists, is the only one there will ever be. The
+    // hand is offered, never imposed; the words are never quoted.
+    final themes = _careAcknowledged
+        ? const <CareTheme>{}
+        : CareGuard.themes(_input.text);
+    if (themes.isNotEmpty) {
+      final proceed = await offerCareMoment(
+        context,
+        voice: _voice,
+        themes: themes,
+        continueLabel: _voice.pick('SCELLER QUAND MÊME', 'SEAL ANYWAY'),
+        takeBackLabel: _voice.pick('REPRENDRE MA PENSÉE', 'TAKE MY THOUGHT BACK'),
+      );
+      if (!mounted || !proceed) return;
+      _careAcknowledged = true;
     }
 
     setState(() => _sealing = true);

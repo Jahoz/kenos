@@ -2,11 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/audio/audio_providers.dart';
+import '../../../../core/care/care_guard.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_fonts.dart';
 import '../../../../core/haptics/kenos_haptics.dart';
 import '../../../../core/voice/kenos_voice.dart';
 import '../../../../core/widgets/anonymity_warning.dart';
+import '../../../../core/widgets/care_moment.dart';
 import '../../../../core/widgets/hud.dart';
 import '../../cosmic_map/data/artifact_memory.dart';
 import '../../echo/data/echo_providers.dart';
@@ -184,6 +186,7 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
   final _input = TextEditingController();
   bool _sending = false;
   bool _piiAcknowledged = false;
+  bool _careAcknowledged = false;
   AssembledLine? _previous;
   bool _peeked = false;
 
@@ -317,6 +320,24 @@ class _ContributePanelState extends ConsumerState<_ContributePanel> {
       );
       if (!mounted || !proceed) return;
       _piiAcknowledged = true;
+    }
+
+    // The care moment (V3.88): the line seals on this device, and the
+    // sealed line is structurally invisible — this quiet look is the
+    // only hand there will ever be. A song is notes, beyond words.
+    final careThemes = _isSong || _careAcknowledged
+        ? const <CareTheme>{}
+        : CareGuard.themes(payload);
+    if (careThemes.isNotEmpty) {
+      final proceed = await offerCareMoment(
+        context,
+        voice: KenosVoice.french,
+        themes: careThemes,
+        continueLabel: 'DONNER QUAND MÊME',
+        takeBackLabel: 'REPRENDRE MA LIGNE',
+      );
+      if (!mounted || !proceed) return;
+      _careAcknowledged = true;
     }
 
     setState(() => _sending = true);

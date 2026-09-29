@@ -10,6 +10,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/audio/audio_controller.dart';
 import '../../../../core/audio/audio_providers.dart';
+import '../../../../core/care/care_guard.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_durations.dart';
 import '../../../../core/constants/app_fonts.dart';
@@ -17,15 +18,16 @@ import '../../../../core/haptics/kenos_haptics.dart';
 import '../../../../core/utils/motion_preferences.dart';
 import '../../../../core/voice/kenos_voice.dart';
 import '../../../../core/widgets/anonymity_warning.dart';
+import '../../../../core/widgets/care_moment.dart';
 import '../../../../core/widgets/ether_dissolve.dart';
 import '../../../../core/widgets/hud.dart';
 import '../../../../core/widgets/scramble_text.dart';
 import '../../../echo/data/echo_providers.dart';
 import '../../../echo/data/echo_repository.dart';
-import '../../../echo/data/trace_shield.dart';
 import '../../../echo/domain/echo.dart';
 import '../../../echo/domain/echo_excerpt.dart';
 import '../../../echo/domain/echo_media.dart';
+import '../../../echo/domain/pii_guard.dart';
 import '../../application/map_controller.dart';
 /// Reveal modal: glassmorphism, visual decryption, a 10-second reading
 /// window, then dissolution — and the bottle-in-the-sea echo: the reader
@@ -342,23 +344,30 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     if (text.isEmpty || text.length > _maxTrace) return;
     setState(() => _sending = true);
 
-    // The Trace Shield (V3.15): the line is the only clear content
-    // the ether ever sees — one quiet look before it drifts. PII =
-    // the writer is burning their own anonymity (warn, never block);
-    // selfharm = a real pain (a care moment, never censorship). Any
-    // failure of the shield lets the trace pass untouched.
-    final verdict = await TraceShield.read(text);
-    if (!mounted) return;
-    if (verdict.pii && !_piiAcknowledged) {
+    // The local guards (V3.88): the anonymity look and the care
+    // moment no longer depend on a distant API — a guest that failed
+    // open was a care that failed silent (offline, demo mode, quota,
+    // unconfigured key). Device-side, zero network, always there:
+    // the ether's own guard is the server-side webhook, not this.
+    if (!_piiAcknowledged && PiiGuard.carriesIdentity(text)) {
       setState(() => _sending = false);
       final proceed = await _warnAnonymity();
       if (!mounted || !proceed) return;
       _piiAcknowledged = true;
       setState(() => _sending = true);
     }
-    if (verdict.selfharm && !_careAcknowledged) {
+    final careThemes = _careAcknowledged
+        ? const <CareTheme>{}
+        : CareGuard.themes(text);
+    if (careThemes.isNotEmpty) {
       setState(() => _sending = false);
-      final proceed = await _offerCare();
+      final proceed = await offerCareMoment(
+        context,
+        voice: _voice,
+        themes: careThemes,
+        continueLabel: _voice.pick('LAISSER LA TRACE', 'LEAVE THE TRACE'),
+        takeBackLabel: _voice.pick('REPRENDRE MA LIGNE', 'TAKE MY LINE BACK'),
+      );
       if (!mounted || !proceed) return;
       _careAcknowledged = true;
       setState(() => _sending = true);
@@ -381,6 +390,13 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
 
   bool _piiAcknowledged = false;
   bool _careAcknowledged = false;
+
+  /// V3.88 — the received echo's care themes, read ONCE after the
+  /// decrypt (device-side, in clear — the only place the text ever
+  /// exists unsealed). Empty means no quiet door under the reading.
+  late final Set<CareTheme> _echoThemes = widget.echo.text == null
+      ? const <CareTheme>{}
+      : CareGuard.themes(widget.echo.text!);
 
   /// A celestial event (fall or phoenix) waiting to ride OUT with the
   /// pop verdict (V3.86): the caller feeds the accretion once the
@@ -414,69 +430,18 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         takeBackLabel: _voice.pick('REPRENDRE MA LIGNE', 'TAKE MY LINE BACK'),
       );
 
-  /// CARE MOMENT — non-blocking: the cry belongs to the one who wrote
-  /// it. The shield never censors; it makes sure the writer knows
-  /// they don't have to carry it alone.
-  Future<bool> _offerCare() async {
-    final proceed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => Dialog(
-        backgroundColor: AppColors.voidBlack,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(color: AppColors.fade(AppColors.pureLight, 0.18)),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-              Text(
-                _voice.pick('AVANT QUE ÇA DÉRIVE', 'BEFORE IT DRIFTS'),
-                style: TextStyle(
-                  fontFamily: AppFonts.mono,
-                  fontSize: 10,
-                  letterSpacing: 3,
-                  color: AppColors.fade(AppColors.teal, 0.85),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _voice.pick(
-                  'Ce que tu écris semble porter une vraie douleur.\n\n'
-                  'Tu n\'es pas obligé·e de la porter seul·e — le 3114 '
-                  '(national, 24h/24, gratuit) écoute, et le 15 en urgence.',
-                  'What you are writing seems to carry real pain.\n\nYou do '
-                  'not have to carry it alone — 3114 (France, 24/7, free) '
-                  'listens; call 15 in an emergency.',
-                ),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: AppFonts.serifItalic,
-                  fontSize: 14,
-                  height: 1.75,
-                  color: AppColors.fade(AppColors.pureLight, 0.75),
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: Text(_voice.pick('LAISSER LA TRACE', 'LEAVE THE TRACE')),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: Text(_voice.pick('REPRENDRE MA LIGNE', 'TAKE MY LINE BACK')),
-              ),
-              ],
-            ),
-          ),
-        ),
-      ),
+  /// The reader's quiet door (V3.88): what the stranger received may
+  /// weigh heavy — the care moment is offered passively, one small
+  /// line under the reading, never in its face. The dialog dresses
+  /// the reader variant: nothing of theirs is about to drift.
+  Future<void> _offerReaderCare() async {
+    await offerCareMoment(
+      context,
+      voice: _voice,
+      themes: _echoThemes,
+      continueLabel: _voice.pick('REVENIR AU VIDE', 'BACK TO THE VOID'),
+      reader: true,
     );
-    return proceed ?? false;
   }
 
   void _leave() {
@@ -863,6 +828,25 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
           ),
         ),
         const SizedBox(height: 14),
+        // V3.88 — the reader's quiet door: only when the received
+        // words carried a real weight. A suggestion at the edge of
+        // sight, never in the face of the reading.
+        if (_echoThemes.isNotEmpty)
+          TextButton(
+            onPressed: _offerReaderCare,
+            child: Text(
+              _voice.pick(
+                'SI CES MOTS PÈSENT — UN SOUTIEN EXISTE',
+                'IF THESE WORDS WEIGH — SUPPORT EXISTS',
+              ),
+              style: TextStyle(
+                fontFamily: AppFonts.mono,
+                fontSize: 8,
+                letterSpacing: 2,
+                color: AppColors.fade(AppColors.teal, 0.55),
+              ),
+            ),
+          ),
         TextButton(
           onPressed: _reporting ? null : _reportEcho,
           child: Text(

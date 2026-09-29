@@ -221,13 +221,32 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
   au site d'appel) ; le natif reste FR, tout le reste du produit
   reste FR. La loi tient : la voix habille les portes, JAMAIS les
   confidences — le contenu utilisateur n'est pas traduit.
-- **Bouclier de trace (V3.15)** : la trace est la SEULE contenu clair
-  vue par l'éther ; l'Edge Function `trace-shield` la lit via Mistral
-  moderation (clé en secret serveur, fail-open par contrat). PII →
-  avertissement non-bloquant (l'anonymat est le contrat, choisir
-  appartient à l'auteur) ; selfharm → moment de soin avec ressources
-  (3114/15), jamais une censure. Le contenu scellé reste
-  structurelement invisible, pour toujours.
+- **La garde douce (V3.88, remplace le bouclier V3.15)** : le soin
+  vit SUR L'APPAREIL, zéro réseau — `CareGuard` (core, lexique
+  FR/EN, accents pliés) lit ce que l'appareil lit déjà en clair,
+  avant le scellement : Miroir, ligne de poème, trace, et en portes
+  passives après déchiffrement (révélation = lecteur, réception =
+  auteur). Le moment de soin (`offerCareMoment`) nomme les PORTES
+  par thème (3114/15, 3919, SOS Viols, 119), ne cite JAMAIS les
+  mots de l'auteur, ne bloque JAMAIS — une offre, pas un jugement,
+  proposée une fois par secret. L'anonymat garde son regex device
+  (`PiiGuard`), partout. Aucune dépendance à un API : la care d'un
+  quota est une care qui échoue en silence — interdit.
+- **La garde de la trace (V3.88)** : la trace reste la SEULE
+  contenu clair vu par l'éther — et la seule surface où
+  l'application de la loi est possible sans trahir le scellé. Au
+  dépôt, un trigger pg_net (`kenos_trace_guard_notify`, configuré
+  via `kenos_config`) la remet à l'Edge Function `trace-guard`
+  sous la seconde : Llama Guard 4 (Groq, free tier, fail-open par
+  contrat) ne lit QUE le plancher illicite — mineurs (S3B1),
+  non-consenti (S3B2), enfance en danger (S4) — et pour ceux-là
+  seulement, `admin_burn_reception` (service-role only) efface le
+  `reply_text` avant que l'auteur ne le voie. Tout le reste —
+  douleur, violence vécue, désespoir — reste : la douleur n'est
+  pas un délit, et la censure n'est pas du soin. Le contenu scellé
+  reste structurellement invisible, pour toujours. Les pages
+  légales (mentions, données, modération, Pharos) vivent sur le
+  site : `site/mentions.html`.
 - **Extraits culturels (V3.10)** : la référence Spotify/YouTube voyage
   scellée sous la clé de l'écho (le serveur borne le scellé 32-512,
   ne voit jamais l'ID) ; l'URL lancée est TOUJOURS reconstruite

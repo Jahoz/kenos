@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mentions, données &amp; modération — KENOS</title>
+  <meta name="description" content="Mentions légales, données personnelles et politique de modération de KENOS — l'éther scellé, les ressources de soin, le signalement.">
+  <meta name="robots" content="index, follow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --void: #030508;
+      --light: #F4F4F6;
+      --teal: #14B8A6;
+      --hairline: rgba(255, 255, 255, 0.06);
+      --hairline-strong: rgba(255, 255, 255, 0.14);
+      --serif: 'Playfair Display', Georgia, serif;
+      --mono: 'Space Mono', monospace;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--void);
+      color: var(--light);
+      font-family: var(--mono);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+    ::selection { background: rgba(20, 184, 166, 0.25); }
+    main { max-width: 720px; margin: 0 auto; padding: 72px 24px 96px; position: relative; z-index: 1; }
+    .wordmark { font-family: var(--serif); font-size: 20px; color: var(--light); text-decoration: none; letter-spacing: .04em; }
+    .wordmark span { color: var(--teal); }
+    h1 {
+      font-family: var(--serif); font-weight: 400; font-size: 30px;
+      margin: 48px 0 8px; line-height: 1.3;
+    }
+    .lede { font-family: var(--serif); font-style: italic; color: rgba(244,244,246,.55); margin-bottom: 40px; }
+    h2 {
+      font-size: 11px; letter-spacing: .3em; text-transform: uppercase;
+      color: var(--teal); margin: 48px 0 14px; font-weight: 700;
+    }
+    p { margin-bottom: 14px; color: rgba(244,244,246,.78); }
+    ul { margin: 0 0 14px 20px; color: rgba(244,244,246,.78); }
+    li { margin-bottom: 8px; }
+    a { color: var(--teal); text-decoration: none; border-bottom: 1px solid var(--hairline-strong); }
+    .door {
+      border: 1px solid var(--hairline); border-radius: 10px;
+      padding: 20px 22px; margin: 18px 0; background: rgba(7, 9, 15, .5);
+    }
+    .door strong { color: var(--light); font-weight: 700; }
+    footer { border-top: 1px solid var(--hairline); padding: 32px 24px 48px; text-align: center; }
+    footer .meta { font-size: 8px; letter-spacing: .3em; text-transform: uppercase; color: rgba(244,244,246,.25); }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="wordmark" href="index.html">KEN<span>O</span>S</a>
+    <h1>Mentions, données &amp; modération</h1>
+    <p class="lede">le sanctuaire dit ses règles, noir sur blanc.</p>
+
+    <h2>Éditeur</h2>
+    <p>
+      KENOS est édité par <strong>Jahoz</strong> (Hugo Lallain), à titre
+      indépendant. Contact&nbsp;:
+      <a href="https://github.com/Jahoz" target="_blank" rel="noopener">github.com/Jahoz</a>
+      — et pour tout signalement ou demande de retrait, la voie dédiée
+      ci-dessous.
+    </p>
+
+    <h2>Hébergement</h2>
+    <ul>
+      <li>Site vitrine&nbsp;: Vercel, 440 N Wolfe Rd, Sunnyvale, CA 94085, États-Unis.</li>
+      <li>Application et données&nbsp;: Supabase (plateforme et stockage
+        européens hébergés par AWS, région eu-west).</li>
+    </ul>
+
+    <h2>Données personnelles</h2>
+    <p>
+      KENOS ne demande ni nom, ni email, ni numéro. Chaque pensée est
+      chiffrée <em>sur l'appareil</em> (AES-256-GCM) avant de partir&nbsp;:
+      le serveur ne peut pas lire ce qu'il porte. Aucun compte nominatif
+      n'existe — seulement un identifiant anonyme local à l'appareil.
+    </p>
+    <ul>
+      <li>Une pensée est lisible par <strong>une seule personne, une seule
+        fois</strong>, puis détruite&nbsp;; une pensée jamais lue disparaît
+        au bout de 30&nbsp;jours.</li>
+      <li>Les médias éventuels (image ≤&nbsp;1&nbsp;Mio, audio ≤&nbsp;512&nbsp;Kio)
+        sont chiffrés de la même façon et ne sont jamais adressables
+        publiquement.</li>
+      <li>Aucun cookie publicitaire, aucun traceur tiers. Les seuls
+        compteurs conservés sont anonymes (nombre de pensées lues, de
+        traces laissées — jamais de contenu).</li>
+    </ul>
+    <p>
+      Droit d'accès, de rectification, d'effacement&nbsp;: les pensées
+      étant illisibles pour l'éditeur lui-même, l'effacement est de fait —
+      «&nbsp;brûler&nbsp;» une pensée dans l'application la détruit sans
+      retour. Pour toute question&nbsp;: le contact éditeur ci-dessus.
+    </p>
+
+    <h2>Modération — la doctrine</h2>
+    <p>
+      Deux natures de contenu coexistent, avec deux régimes&nbsp;:
+    </p>
+    <div class="door">
+      <strong>Le scellé</strong> — pensées, lignes de poèmes, fragments&nbsp;:
+      chiffré sur l'appareil, illisible par le serveur, destiné à une
+      seule personne, une seule lecture, effacé à la consommation ou au
+      bout de 30&nbsp;jours. Le serveur ne peut pas modérer ce qu'il ne
+      peut pas lire&nbsp;; il borne ce qui peut l'être (taille, cadence,
+      20&nbsp;secondes entre deux dépôts, 5&nbsp;secondes entre deux
+      lectures).
+    </div>
+    <div class="door">
+      <strong>Le clair</strong> — la trace (une ligne de 140 caractères au
+      maximum, laissée par un lecteur à l'auteur, éphémère) et les
+      artefacts publics (poèmes refermés, lisibles 30&nbsp;jours).
+      La trace est automatiquement soumise à une garde&nbsp;: les contenus
+      sexuels impliquant des mineurs, non consentis ou dangereux pour
+      l'enfance sont détruits avant livraison. Les artefacts publics sont
+      signalables dans l'application et retirés après examen humain,
+      sans seuil ni automatisme.
+    </div>
+    <p>
+      Aucun contenu n'est promu, classé ou recommandé&nbsp;: ce que tu
+      vois dépend de où tu regardes, jamais de qui tu es.
+    </p>
+
+    <h2>Signaler</h2>
+    <ul>
+      <li><strong>Dans l'application</strong>&nbsp;: après la lecture d'une
+        pensée ou d'un artefact, «&nbsp;SIGNALER&nbsp;» transmet un
+        signalement sans contenu ni identité — motif et cible seulement.</li>
+      <li><strong>Hors application</strong>&nbsp;:
+        <a href="https://github.com/Jahoz" target="_blank" rel="noopener">github.com/Jahoz</a>
+        (voie contact de l'éditeur). Tout signalement est examiné par une
+        personne, sous 72&nbsp;heures au maximum.</li>
+      <li><strong>Plateforme nationale</strong>&nbsp;:
+        <a href="https://www.internet-signalement.gouv.fr" target="_blank" rel="noopener">Pharos</a>
+        reçoit les signalements illicites pour les autorités compétentes.</li>
+    </ul>
+
+    <h2>Le soin, jamais le jugement</h2>
+    <p>
+      KENOS reçoit des confidences parfois lourdes. L'application peut
+      proposer, à l'appareil même — sans réseau, sans que personne d'autre
+      ne sache —, les lignes d'écoute nationales&nbsp;:
+      <strong>3114</strong> (prévention du suicide, 24h/24, gratuit),
+      <strong>3919</strong> (violences conjugales et familiales),
+      <strong>0&nbsp;800&nbsp;05&nbsp;123&nbsp;4</strong> (SOS Viols),
+      <strong>119</strong> (enfance en danger, 24h/24),
+      et le <strong>15</strong>/112 en urgence. Ces propositions ne
+      dépendent d'aucune décision de modération et n'empêchent jamais
+      d'écrire&nbsp;: la main est tendue, jamais imposée.
+    </p>
+
+    <h2>Propriété intellectuelle</h2>
+    <p>
+      Le code de KENOS est publié sous licence libre (voir le dépôt).
+      Les «&nbsp;vestiges&nbsp;» et «&nbsp;artefacts&nbsp;» sont des
+      extraits du domaine public, crédités à leurs auteurs. Les pensées
+      appartiennent à ceux qui les lancent&nbsp;; personne ne peut les
+      relire, pas même leur auteur.
+    </p>
+  </main>
+
+  <footer>
+    <p class="meta">KENOS — mentions, données &amp; modération — mis à jour le 29 septembre 2026</p>
+  </footer>
+</body>
+</html>
