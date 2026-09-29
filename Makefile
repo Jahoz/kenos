@@ -132,10 +132,16 @@ db-wipe-load: ## Clean reset: remove every seeded row (real data + KEK untouched
 prod-reset: ## LAUNCH RESET (cloud): wipe test wake, keep curated+vestiges, replant garden
 	bash scripts/prod_admin.sh file supabase/snippets/prod_reset.sql
 
-prod-sow: ## Sow the generated sky (cloud): 300 real sealed echoes, crowd-balanced
-	dart run tool/gen_load_payloads.dart 300 > /tmp/kenos_sky_payloads.csv
-	bash scripts/prod_admin.sh stage /tmp/kenos_sky_payloads.csv
-	bash scripts/prod_admin.sh file supabase/snippets/prod_sow.sql
+prod-sow: ## RETIRED (Hugo, 2026-09-29): sky has enough echoes — vestiges are the food now
+	@# No more generated confidences: a re-sow replants texts already read
+	@# (single-read is per-ECHO, not per-text — "relire des échos détruits",
+	@# the live report). The sky is nourished by VESTIGES instead:
+	@# the Observatory's Semeur (SEMER, keys server-side) or the CLI path
+	@# prod-vestiges-sow → review → prod-vestiges-emit. Kept for reversibility.
+	@echo "RETIRED — the echo sow is retired by arbitration (2026-09-29)."
+	@echo "Nourish the sky with vestiges: Observatory → SEMER (guardian gate),"
+	@echo "or 'make prod-vestiges-sow' then review + 'make prod-vestiges-emit'."
+	@exit 1
 
 prod-desow: ## LAUNCH DESOW (cloud): the generated sky goes home — adoption legible
 	bash scripts/prod_admin.sh sql "delete from auth.users where email like 'sky-%@seed.kenos.local'"
