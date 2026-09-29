@@ -5,11 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/app/kenos_app.dart';
 import 'package:kenos/app/router.dart';
+import 'package:kenos/core/constants/app_meta.dart';
 import 'package:kenos/features/cosmic_map/application/motion_service.dart';
 import 'package:kenos/features/cosmic_map/application/sky_link.dart';
 import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/data/local_echo_repository.dart';
-import 'package:kenos/features/echo/data/local_echo_store.dart';
+
+import 'controllers_test.dart' show FakeLocalEchoStore;
 
 /// V3.49 — deep links to places in the void: build and parse the
 /// `/#/ciel/x/y` format, and honour it — the sky opens standing where
@@ -44,7 +46,9 @@ void main() {
       tester.view.physicalSize = const Size(800, 900);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-      final store = LocalEchoStore();
+      // V3.89 — a signed pact (fake store: under the frozen test
+      // clock, the real store's keychain write would never return).
+      final store = FakeLocalEchoStore()..pactVersion = kAubePactVersion;
       await tester.pumpWidget(
         ProviderScope(
           overrides: [

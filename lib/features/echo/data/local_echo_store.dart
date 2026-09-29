@@ -31,6 +31,7 @@ class LocalEchoStore {
   static const _kEyeGuide = 'kenos.eye_guide';
   static const _kStats = 'kenos.user_stats';
   static const _kScars = 'kenos.read_scars';
+  static const _kPact = 'kenos.aube_pact';
   static const _maxSealed = 50;
   static const _maxScars = 80;
 
@@ -68,6 +69,13 @@ class LocalEchoStore {
 
   Future<void> setOnboarded() => _write(_kOnboarded, '1');
 
+  /// The Aube's accord (V3.89): the traveller accepted the ether's
+  /// pact at this version. A bumped version asks the door's question
+  /// once more — acceptance is per-terms, not eternal.
+  Future<bool> hasPact(String version) async => await _read(_kPact) == version;
+
+  Future<void> recordPact(String version) => _write(_kPact, version);
+
   /// LA BRAISE (V3.60a) — the body's honest death: every local memory
   /// this device still holds goes dark at once. The extinguished body
   /// may then cross the Seuil again and be born a stranger. ROSE is
@@ -83,6 +91,7 @@ class LocalEchoStore {
       _kEyeGuide,
       _kStats,
       _kScars,
+      _kPact,
     ];
     for (final key in keys) {
       _mem.remove(key);

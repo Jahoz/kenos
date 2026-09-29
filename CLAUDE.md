@@ -247,6 +247,16 @@ Après avoir exécuté `supabase/migrations/0001_kenos_init.sql` dans le SQL Edi
   reste structurellement invisible, pour toujours. Les pages
   légales (mentions, données, modération, Pharos) vivent sur le
   site : `site/mentions.html`.
+- **Le pacte de l'Aube (V3.89)** : on ne rentre qu'accordé. Le SAS
+  d'entrée porte les termes de l'éther (anonymat, lecture unique,
+  clair gardé / douleur libre, lignes d'écoute, douceur) — texte
+  intégral, défilable, jamais tronqué, voix FR/EN (`KenosVoice`) ;
+  UNE acceptation délibérée (`J'ACCEPTE — JE RENTRE`), barrière non
+  fermable tant que le pacte attend. Mémorisé PAR VERSION
+  (`kAubePactVersion` dans `app_meta.dart` — bump = re-demander une
+  fois à tous) ; la Braise emporte le pacte (un corps re-né
+  re-signe) ; sans pacte en attente, l'Aube retrouve son comportement
+  d'avant (nouvelles seulement, toucher le vide).
 - **Extraits culturels (V3.10)** : la référence Spotify/YouTube voyage
   scellée sous la clé de l'écho (le serveur borne le scellé 32-512,
   ne voit jamais l'ID) ; l'URL lancée est TOUJOURS reconstruite

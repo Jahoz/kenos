@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/app/kenos_app.dart';
 import 'package:kenos/app/router.dart';
+import 'package:kenos/core/constants/app_meta.dart';
 import 'package:kenos/features/cosmic_map/application/motion_service.dart';
 import 'package:kenos/features/cosmic_map/presentation/map_screen.dart';
 import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/data/local_echo_repository.dart';
-import 'package:kenos/features/echo/data/local_echo_store.dart';
+
+import 'controllers_test.dart' show FakeLocalEchoStore;
 
 /// V3.50 — the threshold guards EVERY door: a fresh visitor arriving
 /// by a sky link (or the Mirror, or a raw /space) meets the three
@@ -18,7 +20,9 @@ void main() {
     tester.view.physicalSize = const Size(800, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final store = LocalEchoStore();
+    // V3.89 — a signed pact (fake store: under the frozen test clock,
+    // the real store's keychain-timeout write would never return).
+    final store = FakeLocalEchoStore()..pactVersion = kAubePactVersion;
     await tester.pumpWidget(
       ProviderScope(
         overrides: [

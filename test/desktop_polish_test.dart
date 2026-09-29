@@ -4,12 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/app/kenos_app.dart';
+import 'package:kenos/core/constants/app_meta.dart';
 import 'package:kenos/features/cosmic_map/application/motion_service.dart';
 import 'package:kenos/features/cosmic_map/presentation/widgets/sky_map_sheet.dart';
 import 'package:kenos/features/create_echo/presentation/mirror_screen.dart';
 import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/data/local_echo_repository.dart';
-import 'package:kenos/features/echo/data/local_echo_store.dart';
+
+import 'controllers_test.dart' show FakeLocalEchoStore;
 
 /// V3.44 — desktop and every support, civilised: ESC renounces the
 /// Mirror and closes the sky map sheet, the doors LIVE under the
@@ -81,7 +83,9 @@ void main() {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-      final store = LocalEchoStore();
+      // V3.89 — a signed pact (fake store: under the frozen test
+      // clock, the real store's keychain write would never return).
+      final store = FakeLocalEchoStore()..pactVersion = kAubePactVersion;
       await tester.pumpWidget(
         ProviderScope(
           overrides: [

@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/app/kenos_app.dart';
+import 'package:kenos/core/constants/app_meta.dart';
 import 'package:kenos/features/cosmic_map/application/kenos_system.dart';
 import 'package:kenos/features/cosmic_map/application/motion_service.dart';
 import 'package:kenos/features/cosmic_map/application/travel_camera.dart';
 import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/data/local_echo_repository.dart';
-import 'package:kenos/features/echo/data/local_echo_store.dart';
+
+import 'controllers_test.dart' show FakeLocalEchoStore;
 
 /// V3.38 — the hover label RIDES its body (desktop eye): it appears
 /// beside the world — never printed on it — and it follows the sky
@@ -25,7 +27,9 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final store = LocalEchoStore();
+    // V3.89 — a signed pact (fake store: under the frozen test clock,
+    // the real store's keychain-timeout write would never return).
+    final store = FakeLocalEchoStore()..pactVersion = kAubePactVersion;
     await tester.pumpWidget(
       ProviderScope(
         overrides: [

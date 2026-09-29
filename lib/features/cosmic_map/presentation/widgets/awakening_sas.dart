@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_fonts.dart';
+import '../../../../core/constants/app_meta.dart';
 import '../../../../core/haptics/kenos_haptics.dart';
 import '../../../../core/utils/motion_preferences.dart';
+import '../../../../core/voice/kenos_voice.dart';
 import '../../../../core/widgets/scramble_text.dart';
 import '../../../echo/data/echo_providers.dart';
 import '../../../echo/data/user_stats_store.dart';
@@ -18,14 +20,27 @@ import '../../../echo/data/user_stats_store.dart';
 /// then the map. Nothing is ever pushed afterwards — the ritual
 /// happens once, at the threshold, and stays silent when there is
 /// nothing to tell.
+///
+/// V3.89 — THE ACCORD: the first door also carries the pact. A
+/// traveller who has never accepted the terms of the ether meets
+/// them here, before entering — readably, once, in their own tongue
+/// (the voice dresses doors). The pact is a deliberate gesture: no
+/// tap-the-void shortcut while it waits, one button, and the barrier
+/// holds. Acceptance is remembered per version; the Braise's honest
+/// death carries it away, and a re-born body signs again.
 Future<void> maybeShowAwakening(BuildContext context, WidgetRef ref) async {
   final stats = await ref.read(userStatsProvider.future);
-  if (!stats.hasAwakeningToTell) return;
+  final store = ref.read(localEchoStoreProvider);
+  final news = stats.hasAwakeningToTell;
+  final pactPending = !(await store.hasPact(kAubePactVersion));
+  if (!news && !pactPending) return;
   if (!context.mounted) return;
 
   await showGeneralDialog(
     context: context,
-    barrierDismissible: true,
+    // News may be dismissed at a touch; the accord may not — nothing
+    // enters without accepting the terms of the place.
+    barrierDismissible: !pactPending,
     barrierLabel: 'KENOS_AUBE',
     barrierColor: AppColors.voidBlack,
     transitionDuration: const Duration(milliseconds: 700),
@@ -33,20 +48,39 @@ Future<void> maybeShowAwakening(BuildContext context, WidgetRef ref) async {
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return FadeTransition(
         opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        child: _AwakeningPanel(stats: stats),
+        child: _AwakeningPanel(stats: stats, news: news, pactPending: pactPending),
       );
     },
   );
 
   // The visit is recorded only when the sas has actually spoken:
   // what was unseen becomes seen, next time it stays silent about it.
-  unawaited(ref.read(localEchoStoreProvider).recordVisit());
+  if (news) {
+    unawaited(ref.read(localEchoStoreProvider).recordVisit());
+  }
+  // The accord closes only one way: the button. Reaching here with a
+  // pending pact means it was pressed.
+  if (pactPending) {
+    unawaited(ref.read(localEchoStoreProvider).recordPact(kAubePactVersion));
+  }
 }
 
 class _AwakeningPanel extends ConsumerStatefulWidget {
-  const _AwakeningPanel({required this.stats});
+  const _AwakeningPanel({
+    required this.stats,
+    required this.news,
+    required this.pactPending,
+  });
 
   final UserStats stats;
+
+  /// Whether the sas carries news from the absence (V3.89: it may
+  /// open for the accord alone, with nothing to tell).
+  final bool news;
+
+  /// Whether the ether's pact still waits — the accord replaces the
+  /// tap-the-void exit with one deliberate button.
+  final bool pactPending;
 
   @override
   ConsumerState<_AwakeningPanel> createState() => _AwakeningPanelState();
@@ -83,12 +117,16 @@ class _AwakeningPanelState extends ConsumerState<_AwakeningPanel>
 
   @override
   Widget build(BuildContext context) {
-    final lines = widget.stats.awakeningLines();
-    final waiting = widget.stats.receptionsSinceLastVisit;
+    final voice = ref.read(voiceProvider);
+    final lines = widget.news ? widget.stats.awakeningLines() : const <String>[];
+    final waiting =
+        widget.news ? widget.stats.receptionsSinceLastVisit : 0;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: _enter,
+      // The void answers a touch only once the pact is signed: the
+      // accord is a gesture, never a stray tap.
+      onTap: widget.pactPending ? null : _enter,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
@@ -177,16 +215,84 @@ class _AwakeningPanelState extends ConsumerState<_AwakeningPanel>
                     ),
                   ),
                 ],
-                const Spacer(flex: 3),
-                Text(
-                  'TOUCHE LE VIDE POUR ENTRER',
-                  style: TextStyle(
-                    fontFamily: AppFonts.mono,
-                    fontSize: 9,
-                    letterSpacing: 4,
-                    color: AppColors.fade(AppColors.pureLight, 0.35),
+                if (widget.pactPending) ...[
+                  const SizedBox(height: 30),
+                  // The terms may be longer than a small screen is tall:
+                  // they scroll, they never truncate — an accord must be
+                  // readable in full before it is signed.
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            voice.pick(
+                              'LE PACTE DE L\'ÉTHER',
+                              'THE PACT OF THE ETHER',
+                            ),
+                            style: TextStyle(
+                              fontFamily: AppFonts.mono,
+                              fontSize: 9,
+                              letterSpacing: 5,
+                              color: AppColors.fade(AppColors.teal, 0.85),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Text(
+                            voice.pick(
+                              'Ici, personne n\'a de nom. Ce que tu scelles part '
+                              'illisible — même pour nous.\n\n'
+                              'Une pensée, un seul inconnu, une seule lecture. '
+                              'Puis le vide.\n\n'
+                              'La seule ligne en clair est gardée : l\'illicite '
+                              'brûle, la douleur reste libre.\n\n'
+                              'Si un soir ça pèse, des lignes écoutent : 3114, '
+                              '3919, 0 800 05 123 4, 119 — et le 15 en urgence.\n\n'
+                              'Sois doux avec les inconnus. L\'anonymat est le '
+                              'contrat.',
+                              'Here, no one has a name. What you seal leaves '
+                              'unreadable — even to us.\n\n'
+                              'One thought, one stranger, one single read. Then '
+                              'the void.\n\n'
+                              'The only clear line is guarded: the illicit burns, '
+                              'pain stays free.\n\n'
+                              'If a night weighs too much, lines listen: 3114, '
+                              '3919, 0 800 05 123 4, 119 (France) — and 15 in an '
+                              'emergency.\n\n'
+                              'Be gentle with strangers. Anonymity is the '
+                              'contract.',
+                            ),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: AppFonts.serifItalic,
+                              fontSize: 14.5,
+                              height: 1.7,
+                              color: AppColors.fade(AppColors.pureLight, 0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                ],
+                const Spacer(flex: 3),
+                if (widget.pactPending)
+                  OutlinedButton(
+                    onPressed: _enter,
+                    child: Text(
+                      voice.pick('J\'ACCEPTE — JE RENTRE', 'I ACCEPT — I ENTER'),
+                    ),
+                  )
+                else
+                  Text(
+                    'TOUCHE LE VIDE POUR ENTRER',
+                    style: TextStyle(
+                      fontFamily: AppFonts.mono,
+                      fontSize: 9,
+                      letterSpacing: 4,
+                      color: AppColors.fade(AppColors.pureLight, 0.35),
+                    ),
+                  ),
                 const SizedBox(height: 26),
                   ],
                 ),

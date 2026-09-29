@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/core/constants/app_colors.dart';
+import 'package:kenos/core/constants/app_meta.dart';
+import 'package:kenos/core/voice/kenos_voice.dart';
+import 'package:kenos/features/cosmic_map/presentation/widgets/awakening_sas.dart';
 import 'package:kenos/features/cosmic_map/presentation/widgets/origin_node.dart';
+import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/data/user_stats_store.dart';
+
+import 'controllers_test.dart' show FakeLocalEchoStore;
 
 UserStats _stats({
   int sent = 0,
@@ -119,4 +125,107 @@ void main() {
       expect(AppColors.emberSoft.toARGB32(), isNot(AppColors.roseText.toARGB32()));
     });
   });
+
+  group('V3.89 — le pacte de l\'Aube : l\'accord avant de rentrer', () {
+    Future<void> pumpAube(
+      WidgetTester tester, {
+      required FakeLocalEchoStore store,
+      UserStats? stats,
+      KenosVoice voice = KenosVoice.french,
+    }) async {
+      final s = stats ?? UserStats.empty();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            localEchoStoreProvider.overrideWithValue(store),
+            userStatsProvider.overrideWith((ref) async => s),
+            voiceProvider.overrideWithValue(voice),
+          ],
+          child: MaterialApp(home: _AubeHost()),
+        ),
+      );
+      await tester.tap(find.text('OUVRE'));
+      await tester.pump(const Duration(milliseconds: 800));
+    }
+
+    testWidgets(
+      'première entrée : le pacte parle, la barrière tient, l\'accord signe',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 700);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        final store = FakeLocalEchoStore();
+        await pumpAube(tester, store: store);
+
+        // The terms are on the table, the accord button with them —
+        // and the old tap-the-void shortcut is gone.
+        expect(find.text('LE PACTE DE L\'ÉTHER'), findsOneWidget);
+        expect(find.text('J\'ACCEPTE — JE RENTRE'), findsOneWidget);
+        expect(find.text('TOUCHE LE VIDE POUR ENTRER'), findsNothing);
+
+        // The barrier holds: a touch outside closes nothing.
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pump();
+        expect(find.text('LE PACTE DE L\'ÉTHER'), findsOneWidget);
+
+        // One deliberate gesture signs and enters.
+        await tester.tap(find.text('J\'ACCEPTE — JE RENTRE'));
+        await tester.pump(const Duration(milliseconds: 800));
+        expect(find.text('LE PACTE DE L\'ÉTHER'), findsNothing);
+        expect(store.pactVersion, kAubePactVersion,
+            reason: 'l\'accord est mémorisé, à cette version des termes');
+      },
+    );
+
+    testWidgets('pacte signé, rien de nouveau : l\'Aube reste close', (
+      tester,
+    ) async {
+      final store = FakeLocalEchoStore()..pactVersion = kAubePactVersion;
+      await pumpAube(tester, store: store);
+      expect(find.text('LE PACTE DE L\'ÉTHER'), findsNothing);
+      expect(find.text('TOUCHE LE VIDE POUR ENTRER'), findsNothing,
+          reason: 'aucune nouvelle, aucun pacte en attente : pas de sas');
+    });
+
+    testWidgets('pacte signé, une nouvelle : le sas d\'avant, sans pacte', (
+      tester,
+    ) async {
+      final store = FakeLocalEchoStore()..pactVersion = kAubePactVersion;
+      await pumpAube(
+        tester,
+        store: store,
+        stats: _stats(sent: 3, receptions: 5, seen: 4, lastVisit: DateTime.now()),
+      );
+      expect(find.text('TOUCHE LE VIDE POUR ENTRER'), findsOneWidget);
+      expect(find.text('LE PACTE DE L\'ÉTHER'), findsNothing,
+          reason: 'l\'accord n\'agace jamais : une fois signé, il ne revient pas');
+    });
+
+    testWidgets('le premier parcours anglais signe dans sa langue', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 700);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final store = FakeLocalEchoStore();
+      await pumpAube(tester, store: store, voice: KenosVoice.english);
+      expect(find.text('THE PACT OF THE ETHER'), findsOneWidget);
+      expect(find.text('I ACCEPT — I ENTER'), findsOneWidget);
+      await tester.tap(find.text('I ACCEPT — I ENTER'));
+      await tester.pump(const Duration(milliseconds: 800));
+      expect(store.pactVersion, kAubePactVersion);
+    });
+  });
+}
+
+class _AubeHost extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return TextButton(
+      onPressed: () => maybeShowAwakening(context, ref),
+      child: const Text('OUVRE'),
+    );
+  }
 }

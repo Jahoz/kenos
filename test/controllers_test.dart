@@ -144,12 +144,19 @@ class FakeLocalEchoStore implements LocalEchoStore {
   final List<Echo> sealed = [];
   final List<ReadScar> scars = [];
   UserStats stats = UserStats.empty();
+  String? pactVersion;
 
   @override
   Future<bool> hasOnboarded() async => true;
 
   @override
   Future<void> setOnboarded() async {}
+
+  @override
+  Future<bool> hasPact(String version) async => pactVersion == version;
+
+  @override
+  Future<void> recordPact(String version) async => pactVersion = version;
 
   @override
   Future<String> localUserId() async => 'local-uuid';

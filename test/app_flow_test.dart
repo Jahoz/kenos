@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/app/kenos_app.dart';
+import 'package:kenos/core/constants/app_meta.dart';
 import 'package:kenos/features/cosmic_map/application/map_controller.dart';
 import 'package:kenos/features/cosmic_map/application/motion_service.dart';
 import 'package:kenos/features/cosmic_map/presentation/widgets/mindful_hold_star.dart';
 import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/data/local_echo_repository.dart';
+
+import 'controllers_test.dart' show FakeLocalEchoStore;
 
 /// Full user journey in demo mode (no backend):
 /// threshold → space → 3 s Mindful Hold → reveal → 10 s burn → dissolution.
@@ -21,6 +24,11 @@ void main() {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
+    // V3.89 — a signed pact: this journey crosses the Seuil, not the
+    // accord door (it has its own tests). The fake store is pure
+    // memory: under testWidgets' frozen clock, the real store's
+    // keychain-timeout write would never return before a pump.
+    final store = FakeLocalEchoStore()..pactVersion = kAubePactVersion;
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -32,6 +40,7 @@ void main() {
               latency: const Duration(milliseconds: 10),
             ),
           ),
+          localEchoStoreProvider.overrideWithValue(store),
           tiltProvider.overrideWith((ref) => Stream.value(Tilt.zero)),
         ],
         child: const KenosApp(),
