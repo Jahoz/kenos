@@ -77,13 +77,14 @@ deploy-site: ## Deploy the landing (kenos-site) + pin the production alias
 	@# built an EMPTY site that shadowed the real one for an hour).
 	cd site && DEPLOY=$$(vercel deploy --prod --yes 2>&1); \
 	  echo "$$DEPLOY" | tail -2; \
-	  URL=$$(echo "$$DEPLOY" | awk '/Production/ && /jahozs-projects/ {print $$2}' | head -1); \
+	  URL=$$(echo "$$DEPLOY" | grep -oE 'https://[a-z0-9.-]+jahozs-projects\.vercel\.app' | tail -1); \
+	  test -n "$$URL" || (echo "LANDING BROKEN — no deployment URL in output" && exit 1); \
 	  vercel alias set "$$URL" kenos-site.vercel.app; \
 	  sleep 3; \
-	  LOC=$$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "https://kenos-site.vercel.app/?v=$$(date +%s)"); \
-	  echo "$$LOC" | grep -q '^301 https://kenos-lemon\.vercel\.app' \
-	    && echo "landing verified: 301 → the app (one canonical origin)" \
-	    || (echo "LANDING BROKEN — expected 301 to the app, got: $$LOC" && exit 1)
+	  BODY=$$(curl -sS "https://kenos-site.vercel.app/?v=$$(date +%s)"); \
+	  echo "$$BODY" | grep -q 'La main tendue' \
+	    && echo "landing verified: 200, the sanctuary serves (its own origin)" \
+	    || (echo "LANDING BROKEN — expected the served landing, got: $$(echo "$$BODY" | head -c 200)" && exit 1)
 
 db-start: ## Start the local Supabase stack (ports 56321-56324)
 	supabase start
