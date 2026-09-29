@@ -47,7 +47,10 @@ const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export default {
-  fetch: withSupabase({ auth: "user" }, async (req, _ctx) => {
+  // auth "none": the caller is pg_net with the shared door token —
+  // no user JWT exists on that road. The only hand inside is
+  // ctx.supabaseAdmin (service rank), gated by the token above.
+  fetch: withSupabase({ auth: "none" }, async (req, _ctx) => {
     // The webhook's shared token. Not the service key (that never
     // lives in the database) — a door key whose only power, if
     // leaked, is burning incoming traces: an attacker could silence
