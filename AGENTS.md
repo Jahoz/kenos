@@ -37,3 +37,11 @@
   platform speaks English; native and everything else stay French.
   **User content is NEVER translated** — the voice dresses the doors,
   never the confidences. Code, comments, commits in **English**.
+
+<!-- portfolio-os:contrats:begin — bloc genere par sync-repomix-configs.sh, ne pas editer -->
+## Contrats du portefeuille (charges par toute session agent)
+
+- **Contrat projet** : `.repomix/instructions.md` — stack, UI, interdits, ports, frontiere design. Source de verite : les tables de `projects/portfolio-os/scripts/sync-repomix-configs.sh`.
+- **Contexte code en masse** (audit, reprise) : `pack_codebase` via le MCP repomix — jamais de pack commite.
+- Langue du code et des commentaires : francais.
+<!-- portfolio-os:contrats:end -->
