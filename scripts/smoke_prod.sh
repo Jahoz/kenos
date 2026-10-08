@@ -138,17 +138,16 @@ else
   ko "bundle cache-control is '$cache' — expected must-revalidate (stale-bundle risk)"
 fi
 
-# ── 1b. The landing origin folds into the app (ONE canonical URL) ───────
-# The two Vercel origins once each claimed to be canonical (self-canonical
-# tags, robots, sitemap on both). The app origin won (2026-09-27): the
-# landing 301s to it forever. A redirect that stops answering — or stops
-# pointing at the app — IS the regression this watches for.
-code=$(curl -sS -o /dev/null -D "$TMP/landing.h" -w '%{http_code}' "$LANDING_URL/") || code="curl-error"
-loc="$(tr -d '\r' < "$TMP/landing.h" | sed -n 's/^[Ll]ocation:[[:space:]]*//p' | tail -1)"
-if [ "$code" = "301" ] && [ "${loc%/}" = "${APP_URL%/}" ]; then
-  ok "landing → 301 $APP_URL (one canonical origin)"
+# ── 1b. The landing serves its page (the presentation IS the door) ─────
+# The landing was restored to serve content (2026-09-29 arbitration:
+# "the landing lives") — it presents the product, links to the app,
+# and must ANSWER. A 404, a redirect loop, or an empty body IS the
+# regression this watches for.
+code=$(curl -sS -o "$TMP/landing" -w '%{http_code}' "$LANDING_URL/") || code="curl-error"
+if [ "$code" = "200" ] && grep -q 'KENOS' "$TMP/landing" 2>/dev/null; then
+  ok "landing → 200, content present (the presentation lives)"
 else
-  ko "landing GET / → $code Location '$loc' — expected 301 to $APP_URL (see Makefile deploy-site gate)"
+  ko "landing GET / → $code — expected 200 with KENOS content (check vercel alias / deploy)"
 fi
 
 # ── 2. Every client RPC exists on the prod schema (never executed) ───────
