@@ -59,4 +59,21 @@ jobs:
       # lexicographic order), and that every table keeps RLS.
       - run: bash scripts/check-schema-drift.sh
       - run: supabase test db
-      - run: bash -n scripts/e2e_local.sh
+      # PWW-04 — la boucle e2e tourne pour de vrai. Avant, cette étape
+      # n'était qu'un « bash -n » (contrôle SYNTAXIQUE) : la régression
+      # V3.11a — constellations vides en prod, CI verte — a été attrapée
+      # par un œil humain, pas par elle. Le script s'exécute ICI, dans
+      # le job qui a déjà la stack debout (mêmes ports, aucune
+      # collision), après pgTAP : les tests pg_prove passent chacun en
+      # transaction annulée, la base est propre quand la boucle commence.
+      # Si la stack ne rend pas son URL, on SAUTE avec la raison
+      # affichée — jamais un bash -n à la place du vrai run.
+      - name: e2e (réel) — boucle bouteille-en-mer sur la stack debout
+        run: |
+          API_URL="$(supabase status -o json 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin).get("API_URL",""))' || true)"
+          if [ -z "$API_URL" ]; then
+            echo "::warning title=e2e sauté::e2e SKIPPÉ — la stack locale ne rend pas son URL (supabase status muet). Raison affichée ici ; jamais de bash -n en remplacement."
+            exit 0
+          fi
+          echo "e2e réel contre $API_URL"
+          bash scripts/e2e_local.sh
