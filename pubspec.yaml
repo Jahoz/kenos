@@ -42,6 +42,11 @@ dependencies:
   qr_flutter: ^4.1.0
   record: ^6.2.1
   sensors_plus: ^7.1.0
+  # PWW-04 — télémétrie de crash uniquement : le DSN vient de
+  # --dart-define=SENTRY_DSN (.env.cloud / secret GitHub SENTRY_DSN) ;
+  # absent, le SDK reste no-op. Épinglé en 9.x : la 10 exige Flutter
+  # >=3.44, le projet est sur 3.41.6.
+  sentry_flutter: ^9.30.1
   share_plus: ^13.3.0
   supabase_flutter: ^2.17.2
   url_launcher: ^6.3.0
