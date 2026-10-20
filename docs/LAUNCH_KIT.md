@@ -4,6 +4,8 @@
 > Objectif : deux moteurs ritualisés (Salons semés à la main, lundi de
 > l'artefact) + une vague d'annonces (Show HN, presse FR, boards gratuites).
 > Mesure : l'Observatoire (`make prod-watch`) — aucun analytics externe.
+> Crashs (PWW-04) : Sentry, crash et rien d'autre — DSN absent = no-op,
+> aucune donnée personnelle n'accompagne jamais un rapport.
 
 ---
 
@@ -29,16 +31,21 @@ lui-même est rare. Deux postures :
 - **Rester désert** : chaque écho lancé est un vrai signal,
   l'Observatoire mesure l'adoption pure. Cohérent avec l'esprit du
   sanctuaire — la rareté est une profondeur.
-- **Ressemer** (`make prod-sow`, 360 échos scellés réels, jamais
-  d'étoile morte) : le ciel respire pour l'arrivée d'une vague, puis
-  `prod-desow` quand l'adoption est lancée.
+- **Nourrir de vestiges** (`make prod-vestiges-sow` → review →
+  `prod-vestiges-emit`, ou le Semeur de l'Observatoire) : le ciel
+  respire par la culture — éclats vérifiés en deux passes, jamais de
+  texte relu. *(Mise à jour PWW-04 : `make prod-sow` — le semis
+  d'échos — est RETIRED depuis l'arbitrage du 2026-09-29 : re-semer
+  replantait des textes déjà lus, la lecture unique étant par ÉCHO et
+  non par texte. La cible reste le Semeur ; le vestige en est la
+  nourriture.)*
 
-**DÉCISION (Hugo, arbitrage du 2026-09-16 — « Go » sur la reco)** :
-semer **À J-0 DE LA VAGUE**. Le ciel reste désert jusqu'à la veille de
-l'afflux : `make prod-sow` juste avant Show HN / la presse (fraîcheur
-maximale au moment où les regards arrivent), `make prod-desow` quand
-l'adoption est lancée. L'outil existe pour exactement ce cycle — la
-seule chose qui reste à choisir est LA DATE de la vague.
+**DÉCISION (Hugo, arbitrage du 2026-09-16 — « Go » sur la reco ;
+revue 2026-09-29)** : nourrir **À J-0 DE LA VAGUE**. Le ciel reste
+calme jusqu'à la veille de l'afflux : semis de vestiges juste avant
+Show HN / la presse (fraîcheur maximale au moment où les regards
+arrivent), `make prod-desow` quand l'adoption est lancée. La seule
+chose qui reste à choisir est LA DATE de la vague (cible : 9/11).
 
 ---
 
