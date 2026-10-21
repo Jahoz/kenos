@@ -86,7 +86,7 @@ make db-garden                 # Jardiner : plante des anneaux ouverts (jamais d
 make db-curate                 # Curater : artefacts poésie domaine public + vestiges, crédités
 make db-sow-vestiges SOW_ARGS="--count 20"  # IA : semer des éclats vérifiés (2 passes) — clé gratuite Google AI Studio (https://aistudio.google.com/apikey)
 make prod-reset            # LAUNCH RESET (cloud) : efface le vécu de test, garde le généré (artefacts curatorisés + vestiges + KEK), le Jardiner replante 14 anneaux
-make prod-sow              # Sème le ciel cloud : 360 échos dérivants scellés RÉELS (refuse les payloads absents — jamais d'étoile morte en prod)
+make prod-sow              # RETIRED (Hugo, 2026-09-29) : refuse et explique — le ciel se nourrit de VESTIGES désormais (Observatoire SEMER, ou prod-vestiges-sow → review → prod-vestiges-emit)
 make e2e                   # Boucle réelle sur PostgREST local
 make deploy-web            # App PWA → kenos-lemon.vercel.app (build .env.cloud + Vercel CLI, gates intégrés)
 make deploy-site           # Landing → kenos-site.vercel.app (Vercel séparé, SANS lien git ; épingle l'alias — jamais de déploiement par push)

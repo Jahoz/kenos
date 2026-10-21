@@ -49,6 +49,12 @@ repomix-output.md
 supabase/.temp/
 supabase/.branches/
 
+# PWW-04 — la racine reste rangée : les captures et dumps de debug ne
+# vivent plus à la racine (matière kit archivée dans docs/assets/).
+# Portée racine uniquement : les PNG de docs/assets/ restent suivis.
+/*.png
+/sights_log*
+
 # Real ether credentials (publishable key is client-safe, still untracked)
 .env.cloud
 

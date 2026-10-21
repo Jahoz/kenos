@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/kenos_app.dart';
@@ -18,9 +19,37 @@ import 'features/echo/data/local_echo_store.dart';
 const String _kSupabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const String _kSupabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
+/// PWW-04 — télémétrie de crash (rien d'autre). Le DSN arrive par
+/// --dart-define=SENTRY_DSN (déploiement web : une ligne SENTRY_DSN=
+/// dans .env.cloud ; la valeur canonique vit dans le secret GitHub
+/// SENTRY_DSN). Vide ou absent — le cas de tout build local et de la
+/// CI — le SDK reste un no-op propre : pas de réseau, pas de collecte,
+/// le sanctuaire ne change pas d'un poil.
+const String _kSentryDsn = String.fromEnvironment('SENTRY_DSN');
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 0. Crash reporting : initialisé AVANT tout le reste pour que les
+  //    crashes des premiers gestes du boot remontent eux aussi.
+  //    appRunner embarque toute la séquence de démarrage dans la zone
+  //    de capture de Sentry ; sans DSN, init() rend la main et le
+  //    runner tourne identique.
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = _kSentryDsn.isNotEmpty ? _kSentryDsn : null;
+      // Le sanctuaire ne sait rien de qui : aucune donnée personnelle
+      // n'accompagne jamais un crash.
+      options.sendDefaultPii = false;
+      // Crash, rien d'autre : pas de tracing, pas de sessions.
+      options.tracesSampleRate = 0.0;
+      options.enableAutoSessionTracking = false;
+    },
+    appRunner: bootstrap,
+  );
+}
+
+Future<void> bootstrap() async {
   // The ether is portrait — for HELD PHONES. Tablets and desktops live
   // standing in the posture column (see AppLayout): they rotate
   // freely. The web cannot lock orientation at all, so PortraitGuard
