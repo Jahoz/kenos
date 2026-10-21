@@ -2337,6 +2337,34 @@ défaut, zoomScale 8 ≈ 3,05 / 1,0 ≈ 0,875, présence, murs
 d'aspect, bornes traversables ±0,5/1,5, anneau errant 0,27–0,93).
 Gates : analyze 0, 467 tests Dart.
 
+**V3.91 — la lecture d'abord, le destin ensuite (livrée 2026-10-21,
+chantier « reveal simplification » inscrit depuis la session V3.90).**
+Le panneau de lecture unique portait déjà le rail de destin
+(RELANCER/CENDRES) et son hint SOUS la confidence, et après la
+brûlure le rebond ne survit plus que comme un swipe invisible pendant
+l'offre de trace — un geste que personne ne découvre, et un choix
+demandé pendant qu'on lit encore. La loi coupe cela en deux :
+**la lecture ne porte plus que la confidence et son compte à rebours**
+(le rail et son hint quittent la phase reading ; la porte douce V3.88
+et SIGNALER restent — la garde est une loi, pas du mobilier), et
+**le destin devient un moment propre APRÈS la brûlure** : la
+dissolution ouvre la phase fate — « L'écho s'est dissous. / son
+destin t'appartient » — où le rail revient en pleine lumière :
+RELANCER — UN AUTRE LA LIRA (phénix, teal) ou REPOSER — LE LAISSER
+EN PAIX (lumière neutre : le rose appartenait au compte à rebours, et
+la destruction est faite ; ROSE reste réservé à la destruction par
+loi). REPOSER mène à l'offre de trace (« As-tu été touché ? »), qui
+perd son en-tête redondant ; REPARTIR SANS RIEN existe aux deux
+seuils. Le swipe vertical vit au moment du destin seul (panneau
+élastique ±, up = phénix, down = repos) : la lecture scrolle libre,
+le reposé n'a pas de fenêtre de regret — un destin décidé est décidé.
+La lecture unique, l'atomicité FOR UPDATE SKIP LOCKED et la chute
+V3.87 (l'événement céleste sort avec le rideau) ne bougent pas.
+Tests : le flux app traverse le destin (REPOSER → trace), la chute
+V3.86 attend le rideau à travers les DEUX seuils (destin puis trace),
+et un test né prouve la loi — pas de rail sous la lecture, rail
+présent au destin, RELANCER referme seul (phénix ou refus honnête).
+
 ## 4. Règles inchangées (rappel)
 
 
