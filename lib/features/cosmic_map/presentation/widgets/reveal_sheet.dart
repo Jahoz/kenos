@@ -65,7 +65,9 @@ Future<RevealSkyEvent?> showRevealSheet(
   );
 }
 
-enum _Phase { reading, trace, sent, rebounded, refused }
+/// V3.91 — the fate moment exists: reading is reading alone, and the
+/// echo's destiny is decided AFTER the burn, never under it.
+enum _Phase { reading, fate, trace, sent, rebounded, refused }
 
 class RevealPanel extends ConsumerStatefulWidget {
   const RevealPanel({super.key, required this.echo, this.eyeDistanceAL});
@@ -237,9 +239,9 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     }
   }
 
-  /// The Sling-Shot. The read echo is already dead — the reader now
-  /// decides its fate with one gesture:
-  ///   down = ashes (the rite; it simply ends sooner),
+  /// The Sling-Shot (V3.91): the read echo is dead — the reader now
+  /// decides its fate with one gesture, at the fate moment:
+  ///   down = reposer (the silence stands; the trace offer follows),
   ///   up   = the phoenix (re-sealed for one new receiver, momentum + 1).
   void _onSlingEnd(DragEndDetails details) {
     final dy = details.velocity.pixelsPerSecond.dy;
@@ -249,16 +251,14 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     if (total < -90 || dy < -650) {
       _rebound();
     } else if (total > 90 || dy > 650) {
-      _ashes();
+      _rest();
     }
   }
 
-  /// The sling lives while the echo's fate is still in the reader's
-  /// hands: during the reading window AND the trace offer (the ether's
-  /// rebound window is 10 minutes — the gesture must not vanish after
-  /// 10 seconds of reading).
-  bool get _slingable =>
-      _phase == _Phase.reading || _phase == _Phase.trace;
+  /// The sling lives at the fate moment alone: reading carries no
+  /// decision furniture (V3.91), and once the echo rests there is no
+  /// regret window — a fate decided is decided.
+  bool get _slingable => _phase == _Phase.fate;
 
   Future<void> _rebound() async {
     if (_slinging) return;
@@ -288,13 +288,11 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     }
   }
 
-  void _ashes() {
+  /// REPOSER: the burn already rang its bell — resting is simply the
+  /// silence that follows, and the trace offer.
+  void _rest() {
     if (_slinging || !_slingable) return;
-    KenosHaptics.pulse(KenosPulse.burn,
-        reduceMotion: platformDisablesAnimations());
-    // The rite of ashes: the burn simply does not wait.
-    _burn.stop();
-    _startDissolve();
+    setState(() => _phase = _Phase.trace);
   }
 
   /// V3.26 — the drift as the ether counts it, same voice as the
@@ -329,10 +327,11 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
       // The borrowed voice burns with the echo it travelled with.
       _silencePreview();
     }
-    // Particle dissolution, then the trace offer — nothing else remains.
+    // Particle dissolution, then the fate moment — the destiny is
+    // decided on the ashes, never under the reading.
     _dissolve.forward(from: 0).whenComplete(() {
       if (mounted) {
-        setState(() => _phase = _Phase.trace);
+        setState(() => _phase = _Phase.fate);
         _dissolve.value = 0;
       }
     });
@@ -550,6 +549,8 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
     switch (_phase) {
       case _Phase.reading:
         content = _buildReading();
+      case _Phase.fate:
+        content = _buildFate();
       case _Phase.trace:
         content = _buildTrace();
       case _Phase.sent:
@@ -560,8 +561,8 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
         content = _buildSlingFeedback(false);
     }
 
-    // The Sling-Shot lives on the panel while the echo's fate is in
-    // the reader's hands (reading + trace offer).
+    // The Sling-Shot lives at the fate moment alone (V3.91): reading
+    // scrolls free, resting scrolls free — only the decision drags.
     final panel = AnimatedBuilder(
       animation: _dissolve,
       builder: (context, child) {
@@ -810,23 +811,8 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
             ),
           ),
         ),
-        // The Sling-Shot rides ABOVE the fold: relaunching is a first
-        // class gesture, never buried under a scroll (V3.12c).
-        _SlingRail(onRebound: _rebound, onAshes: _ashes, voice: _voice),
-        const SizedBox(height: 10),
-        Text(
-          _voice.pick(
-            'GLISSE VERS LE HAUT POUR RELANCER — VERS LE BAS POUR LES CENDRES',
-            'SWIPE UP TO RELAUNCH — DOWN FOR THE ASHES',
-          ),
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: AppFonts.mono,
-            fontSize: 7.5,
-            letterSpacing: 1.5,
-            color: AppColors.fade(AppColors.pureLight, 0.28),
-          ),
-        ),
+        // V3.91 — reading carries no decision furniture: the text, the
+        // countdown, the quiet doors. The fate comes after the burn.
         const SizedBox(height: 14),
         // V3.88 — the reader's quiet door: only when the received
         // words carried a real weight. A suggestion at the edge of
@@ -853,6 +839,68 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
             _reporting
                 ? _voice.pick('TRANSMISSION…', 'TRANSMITTING…')
                 : _voice.pick('SIGNALER', 'REPORT'),
+            style: TextStyle(
+              fontFamily: AppFonts.mono,
+              fontSize: 8,
+              letterSpacing: 2,
+              color: AppColors.fade(AppColors.pureLight, 0.45),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  /// V3.91 — the fate moment: the reading is over, the echo has
+  /// burned, and its destiny is the reader's alone. Two clear hands
+  /// — the phoenix or the rest — plus the quiet exit; no invisible
+  /// swipe, no choice made while the words were still warm.
+  Widget _buildFate() {
+    return _panel(
+      children: [
+        const SizedBox(height: 20),
+        Text(
+          _voice.pick('L\'ÉCHO S\'EST DISSOUS.', 'THE ECHO HAS DISSOLVED.'),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: AppFonts.mono,
+            fontSize: 9,
+            letterSpacing: 4,
+            color: AppColors.fade(AppColors.pureLight, 0.4),
+          ),
+        ),
+        const SizedBox(height: 30),
+        Text(
+          _voice.pick('son destin t\'appartient', 'its fate is yours now'),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: AppFonts.serifItalic,
+            fontSize: 22,
+            color: AppColors.fade(AppColors.pureLight, 0.92),
+          ),
+        ),
+        const SizedBox(height: 30),
+        _SlingRail(onRebound: _rebound, onRest: _rest, voice: _voice),
+        const SizedBox(height: 10),
+        Text(
+          _voice.pick(
+            'GLISSE VERS LE HAUT POUR RELANCER — VERS LE BAS POUR REPOSER',
+            'SWIPE UP TO RELAUNCH — DOWN TO LET IT REST',
+          ),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: AppFonts.mono,
+            fontSize: 7.5,
+            letterSpacing: 1.5,
+            color: AppColors.fade(AppColors.pureLight, 0.28),
+          ),
+        ),
+        const SizedBox(height: 14),
+        TextButton(
+          onPressed: _leave,
+          child: Text(
+            _voice.pick('REPARTIR SANS RIEN', 'LEAVE WITH NOTHING'),
             style: TextStyle(
               fontFamily: AppFonts.mono,
               fontSize: 8,
@@ -900,18 +948,7 @@ class _RevealPanelState extends ConsumerState<RevealPanel>
   Widget _buildTrace() {
     return _panel(
       children: [
-        const SizedBox(height: 20),
-        Text(
-          _voice.pick('L\'ÉCHO S\'EST DISSOUS.', 'THE ECHO HAS DISSOLVED.'),
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: AppFonts.mono,
-            fontSize: 9,
-            letterSpacing: 4,
-            color: AppColors.fade(AppColors.pureLight, 0.4),
-          ),
-        ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 26),
         Text(
           _voice.pick('As-tu été touché ?', 'Were you touched?'),
           textAlign: TextAlign.center,
@@ -1100,17 +1137,19 @@ class _StableHash {
 
 
 /// The Sling-Shot made visible: two quiet buttons for what the swipe
-/// already does (up = the phoenix, down = the ashes). A gesture nobody
-/// knows about is an invisible feature; the rail speaks it.
+/// already does (up = the phoenix, down = the rest). A gesture nobody
+/// knows about is an invisible feature; the rail speaks it. The rest
+/// stays in plain light — the rose belonged to the countdown, and
+/// destruction is done.
 class _SlingRail extends StatelessWidget {
   const _SlingRail({
     required this.onRebound,
-    required this.onAshes,
+    required this.onRest,
     this.voice = KenosVoice.french,
   });
 
   final VoidCallback onRebound;
-  final VoidCallback onAshes;
+  final VoidCallback onRest;
   final KenosVoice voice;
 
   @override
@@ -1139,10 +1178,17 @@ class _SlingRail extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TextButton.icon(
-          onPressed: onAshes,
-          icon: const Icon(Icons.south, size: 12, color: AppColors.roseText),
+          onPressed: onRest,
+          icon: Icon(
+            Icons.south,
+            size: 12,
+            color: AppColors.fade(AppColors.pureLight, 0.6),
+          ),
           label: Text(
-            voice.pick('CENDRES — FINIR MAINTENANT', 'ASHES — END IT NOW'),
+            voice.pick(
+              'REPOSER — LE LAISSER EN PAIX',
+              'LAY IT TO REST — LET IT SLEEP',
+            ),
             style: const TextStyle(
               fontFamily: AppFonts.mono,
               fontSize: 8,
@@ -1150,7 +1196,7 @@ class _SlingRail extends StatelessWidget {
             ),
           ),
           style: TextButton.styleFrom(
-            foregroundColor: AppColors.fade(AppColors.roseText, 0.6),
+            foregroundColor: AppColors.fade(AppColors.pureLight, 0.6),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           ),
         ),

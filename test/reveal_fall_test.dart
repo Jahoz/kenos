@@ -48,10 +48,19 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 700)); // entered
 
-    // The reading window lapses, the panel dissolves, the trace prompt
-    // holds the sky — no mote may exist while the prompt is up.
+    // The reading window lapses, the panel dissolves, the fate moment
+    // holds the sky — no mote may exist while the destiny is open.
     await tester.pump(const Duration(seconds: 12));
     await tester.pump(const Duration(seconds: 2));
+    expect(container.read(accretionProvider), isEmpty,
+        reason: 'rien ne tombe tant que le destin est ouvert');
+
+    // V3.91 — the fate moment: the rail lives here now, never again
+    // under the reading. Resting opens the trace offer.
+    expect(find.text('RELANCER — UN AUTRE LA LIRA'), findsOneWidget);
+    await tester.tap(find.text('REPOSER — LE LAISSER EN PAIX'));
+    await tester.pump();
+    expect(find.text('As-tu été touché ?'), findsOneWidget);
     expect(container.read(accretionProvider), isEmpty,
         reason: 'rien ne tombe tant que la demande de trace est ouverte');
 
@@ -70,5 +79,54 @@ void main() {
     final verdict = await sheet;
     expect(verdict, RevealSkyEvent.fell,
         reason: 'la sortie porte la chute vers le gouffre');
+  });
+
+  testWidgets('V3.91 — le destin après la brûlure : la lecture ne porte plus le rail',
+      (tester) async {
+    late BuildContext sheetOpener;
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                sheetOpener = context;
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final sheet = showRevealSheet(sheetOpener, echo: _echo());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700)); // entered
+
+    // Reading is reading alone: the countdown speaks, the destiny
+    // stays out of the panel.
+    expect(find.text('DESTRUCTION IMMINENTE'), findsOneWidget);
+    expect(find.text('RELANCER — UN AUTRE LA LIRA'), findsNothing,
+        reason: 'le rail n\'a rien à faire sous la confidence');
+
+    // The window lapses, the fate moment takes the sky.
+    await tester.pump(const Duration(seconds: 12));
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('son destin t\'appartient'), findsOneWidget);
+    expect(find.text('RELANCER — UN AUTRE LA LIRA'), findsOneWidget);
+    expect(find.text('REPOSER — LE LAISSER EN PAIX'), findsOneWidget);
+
+    // RELANCER ends in the phoenix or the ether's refusal — either
+    // way the sheet closes on its own, verdict honest.
+    await tester.tap(find.text('RELANCER — UN AUTRE LA LIRA'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2)); // feedback window
+
+    final verdict = await sheet;
+    expect(
+      verdict == RevealSkyEvent.rose || verdict == null,
+      isTrue,
+      reason: 'phoenix si l\'éther accepte, rien sinon — jamais la chute',
+    );
   });
 }

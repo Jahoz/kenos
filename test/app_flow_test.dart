@@ -215,8 +215,9 @@ void main() {
       expect(find.text('DESTRUCTION IMMINENTE'), findsOneWidget);
     }
 
-    // 10 s reading window, then dissolve — then the trace offer
-    // (bottle in the sea) takes over from the dissolved secret.
+    // 10 s reading window, then dissolve — then the fate moment
+    // (V3.91) takes over from the dissolved secret: reading carried
+    // no choice, the destiny is decided on the ashes.
     var guard = 0;
     while (find
         .text('ÉCHO INTERCEPTÉ — LECTURE UNIQUE')
@@ -230,6 +231,12 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 500));
     }
+
+    // The fate moment: relaunch for another stranger, or rest.
+    expect(find.text('son destin t\'appartient'), findsOneWidget);
+    expect(find.text('RELANCER — UN AUTRE LA LIRA'), findsOneWidget);
+    await tester.tap(find.text('REPOSER — LE LAISSER EN PAIX'));
+    await tester.pump();
 
     // The trace offer: one line, no possible answer.
     expect(find.text('As-tu été touché ?'), findsOneWidget);
