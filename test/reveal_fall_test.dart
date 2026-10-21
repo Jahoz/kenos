@@ -128,8 +128,9 @@ void main() {
     // RELANCER ends in the phoenix or the ether's refusal — either
     // way the sheet closes on its own, verdict honest.
     await tester.tap(find.text('RELANCER — UN AUTRE LA LIRA'));
-    await tester.pump();
+    await tester.pump(); // the tap lands
     await tester.pump(const Duration(seconds: 2)); // feedback window
+    await tester.pump(const Duration(milliseconds: 700)); // curtain lifts
 
     final verdict = await sheet;
     expect(
