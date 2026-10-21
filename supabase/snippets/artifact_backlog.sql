@@ -123,8 +123,10 @@ insert into public.kenos_artifact_backlog (slot, slug, poet, title, kind, lines,
    "Burnt the fire of thine eyes?"]$$::jsonb,
  'Songs of Experience, 1794'),
 -- ── V3.33: slots 11-30, the corpus rides to spring 2027 (9 Mondays
--- were left; the announcement wave needs the ritual alive past it).
+-- were left — the announcement wave needs the ritual alive past it).
 -- Same law: real public-domain fragments, credited, 4-7 lines, FR+EN.
+-- NB: keep semicolons out of comments — filemulti splits on top-level
+-- ones, and this INSERT once died at the slot-10 comma.
 (11, 'rimbaud-dormeur', 'ARTHUR RIMBAUD', 'Le Dormeur du val', 'POEM',
  $$["C'est un trou de verdure où chante une rivière,",
    "Accrochant follement aux herbes des haillons",
