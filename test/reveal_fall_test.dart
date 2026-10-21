@@ -124,9 +124,10 @@ void main() {
 
     final verdict = await sheet;
     expect(
-      verdict == RevealSkyEvent.rose || verdict == null,
+      verdict == RevealSkyEvent.rose || verdict == RevealSkyEvent.fell,
       isTrue,
-      reason: 'phoenix si l\'éther accepte, rien sinon — jamais la chute',
+      reason: 'phénix si l\'éther accepte, la chute honnête sinon — '
+          'l\'echo a déjà brûlé, jamais le vide',
     );
   });
 }
