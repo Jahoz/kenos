@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kenos/features/cosmic_map/application/accretion.dart';
 import 'package:kenos/features/cosmic_map/presentation/widgets/reveal_sheet.dart';
+import 'package:kenos/features/echo/data/echo_providers.dart';
 import 'package:kenos/features/echo/domain/echo.dart';
 import 'package:kenos/features/echo/domain/echo_color_theme.dart';
 
@@ -86,6 +87,14 @@ void main() {
     late BuildContext sheetOpener;
     await tester.pumpWidget(
       ProviderScope(
+        // The demo ether (bootstrap overridden): the rebound travels
+        // the REAL repository path — demo parity is the law, and a
+        // bare scope would only test the ether's refusal.
+        overrides: [
+          bootstrapProvider.overrideWithValue(
+            const Bootstrap(supabaseConfigured: false, hasOnboarded: true),
+          ),
+        ],
         child: MaterialApp(
           home: Scaffold(
             body: Builder(
