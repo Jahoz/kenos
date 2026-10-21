@@ -133,6 +133,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 700)); // curtain lifts
 
     final verdict = await sheet;
+    // The controller born at the tap reads the secure store through a
+    // 2 s fail-open guard (LocalEchoStore._read .timeout) — pump past
+    // its expiry or the invariant sees one timer still armed.
+    await tester.pump(const Duration(seconds: 3));
     expect(
       verdict == RevealSkyEvent.rose || verdict == RevealSkyEvent.fell,
       isTrue,
