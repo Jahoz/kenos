@@ -61,3 +61,41 @@ Format ligne:
   smoke le voit maintenant chaque nuit.
 
 2026-10-13 | kenos | smoke-prod : 5e nuit verte consécutive (05:42Z, 29 s, 41 ✓ / 0 ✗) après 8 échecs corrigés par 97a1003 | série à 12 verts au 20/10 | stop : aucune — le cron veille
+
+## 2026-10-21 - kenos - La révélation lit, le backlog respire (PR #26 + #27, gabarit Sentry)
+
+- **PR #26 — V3.91 « reading reads, fate decides after »** : la
+  simplification du flux de lecture arbitrée par Hugo le 10/10.
+  Le panneau de lecture ne porte PLUS que le texte, son voile et son
+  compte à rebours ; le destin (RELANCER / REPOSER / signaler)
+  se décide APRÈS la dissolution. La suite reveal_fall a été
+  réalignée en 4 fix (le phénix voyage le vrai éther démo, le
+  rideau se pompe avant le verdict, la garde 2 s du store se
+  franchit, le refus laisse aussi une chute).
+- **PR #27 — le backlog corpus entier** : d04b89a, un `;` dans un
+  commentaire découpait le fichier à la moitié — le corpus charge
+  maintenant en entier via filemulti.
+- **1c55f62 — gabarit Sentry** : `#SENTRY_DSN=` commenté dans
+  env.cloud.example (télémétrie crash seulement, absent = no-op,
+  rien d'autre collecté — la loi tient).
+
+2026-10-21 | kenos | V3.91 reveal simplifié + backlog corpus entier + gabarit Sentry (PR #26, #27, 1c55f62) | 526 tests verts, analyze 0 | stop : none — la chasse au saut en arrière reste ouverte
+
+## 2026-10-25 - kenos - La télémétrie réparée : le HUD V3.92 compile, la chasse au saut en arrière continue
+
+- Le wip nocturne du 25/10 (HUD de diagnostic V3.92) était né cassé :
+  sept champs d'état déclarés dans _ParallaxStarLayerState alors que
+  _MapScreenState les référence — la suite entière ne compilait plus.
+  Réparé dans la journée : champs remontés au plus près de _camera,
+  les deux champs morts (_telemetryPrevAt, _telemetryWord) TRANCHÉS
+  (retirés — le HUD n'a pas besoin d'une mémoire, il lit les deltas
+  à chaque rebuild), analyze 0 + 526 tests verts.
+- **Le HUD reste** : tap 4 doigts sur la carte → la ligne HUD affiche
+  les deltas Z (zoom) / T (tilt) / C (centre caméra) depuis la
+  dernière lecture. Au prochain saut en arrière, le coupable se
+  nomme lui-même — la 5e correction sera chirurgicale.
+- **V3.92b au passage** : le hover de « SIGNALER CE POÈME » ne
+  claque plus pleine largeur (Align + wrap, le geste civique reste
+  discret). Déployé (kenos-efkgvmmql).
+
+2026-10-25 | kenos | HUD télémétrie V3.92 réparé (compile, 526 verts) + hover signaler discret | outillage de diagnostic, aucun test exigé | stop : la lettre du coupable (Z/T/C) lue par Hugo au prochain saut
