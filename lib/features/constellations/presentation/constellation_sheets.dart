@@ -1317,24 +1317,32 @@ class _ReadingPanelState extends ConsumerState<_ReadingPanel>
                   // may be flagged for the guardian. Muted by design —
                   // the report is a duty available, never a suggestion.
                   if (widget.reportable)
-                    TextButton(
-                      onPressed: _reporting ? null : _reportArtifact,
-                      style: TextButton.styleFrom(
-                        foregroundColor:
-                            AppColors.fade(AppColors.pureLight, 0.45),
-                        minimumSize: const Size.fromHeight(44),
-                      ),
-                      child: Text(
-                        _reporting
-                            ? _voice.pick('TRANSMISSION…', 'TRANSMITTING…')
-                            : _voice.pick(
-                                'SIGNALER CE POÈME',
-                                'REPORT THIS POEM',
-                              ),
-                        style: const TextStyle(
-                          fontFamily: AppFonts.mono,
-                          fontSize: 8.5,
-                          letterSpacing: 2,
+                    // V3.92b — the civic gesture stays QUIET: wrapping
+                    // to its own width (the stretch column + the old
+                    // fromHeight minimum made the hover splash full
+                    // width — louder than the report itself).
+                    Align(
+                      alignment: Alignment.center,
+                      child: TextButton(
+                        onPressed: _reporting ? null : _reportArtifact,
+                        style: TextButton.styleFrom(
+                          foregroundColor:
+                              AppColors.fade(AppColors.pureLight, 0.45),
+                          minimumSize: const Size(0, 44),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          _reporting
+                              ? _voice.pick('TRANSMISSION…', 'TRANSMITTING…')
+                              : _voice.pick(
+                                  'SIGNALER CE POÈME',
+                                  'REPORT THIS POEM',
+                                ),
+                          style: const TextStyle(
+                            fontFamily: AppFonts.mono,
+                            fontSize: 8.5,
+                            letterSpacing: 2,
+                          ),
                         ),
                       ),
                     ),
