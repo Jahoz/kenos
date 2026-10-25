@@ -133,7 +133,29 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // stale service worker (a false regression once cost a full
     // round). What the eye sees is what law it carries.
     parts.add(kSkyLawStamp);
+    // V3.92 — the diagnostic's verdict rides the HUD when armed.
+    if (_showTelemetry) parts.add(_telemetryVerdict());
     return parts.join(' · ');
+  }
+
+  /// V3.92 — names the input that moved since the last read. When
+  /// the sky "jumps backward", this says whether the ZOOM, the TILT
+  /// or the CENTER moved — read it the moment you see the jump.
+  String _telemetryVerdict() {
+    final tilt = ref.read(tiltProvider).valueOrNull;
+    final zoom = _camera.zoom;
+    final center = _camera.center;
+    final tiltX = tilt?.x ?? 0;
+    final tiltY = tilt?.y ?? 0;
+    final dz = (zoom - _telemetryPrevZoom).abs();
+    final dtx = (tiltX - _telemetryPrevTiltX).abs();
+    final dty = (tiltY - _telemetryPrevTiltY).abs();
+    final dc = (center - _telemetryPrevCenter).distance;
+    _telemetryPrevZoom = zoom;
+    _telemetryPrevTiltX = tiltX;
+    _telemetryPrevTiltY = tiltY;
+    _telemetryPrevCenter = center;
+    return 'TELEM Z${dz.toStringAsFixed(4)} T${dtx.toStringAsFixed(3)}/${dty.toStringAsFixed(3)} C${dc.toStringAsFixed(4)}';
   }
 
   /// V3.30 — the breath toward the ether. The client only knows what
@@ -201,6 +223,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   /// The Constellations: exquisite corpses drifting in the void (V3.8).
   List<ConstellationMeta> _constellations = const [];
+
+  /// V3.92 — the diagnostic HUD (four-finger tap toggles). When the
+  /// periodic backward jump fires, the readout names WHICH input
+  /// moved: zoom (Z), tilt (T), or camera center (C).
+  bool _showTelemetry = false;
+  double _telemetryPrevZoom = 0;
+  double _telemetryPrevTiltX = 0;
+  double _telemetryPrevTiltY = 0;
+  Offset _telemetryPrevCenter = Offset.zero;
 
   /// V3.7a — Le Voyage: the traveller's eye. Fixed zoom, the void
   /// follows the finger, drift accumulates in Années-Lumière.
@@ -862,6 +893,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void _onScaleStart(ScaleStartDetails details) {
     _glide?.cancel();
     _handOnSky = true; // V3.84 — the hand outranks the ether
+    // V3.92 — the diagnostic handshake: four fingers at once toggle
+    // the frame telemetry HUD. The periodic backward jump needs
+    // EYES: when it fires, the readout says which input moved (zoom,
+    // tilt, center) and by how much — the culprit names itself.
+    if (details.pointerCount >= 4) {
+      setState(() => _showTelemetry = !_showTelemetry);
+    }
     _lastPointerDown = details.focalPoint;
     _dragTotal = Offset.zero;
     _pinchFactor = 1.0;
