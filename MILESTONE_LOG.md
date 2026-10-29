@@ -99,3 +99,27 @@ Format ligne:
   discret). Déployé (kenos-efkgvmmql).
 
 2026-10-25 | kenos | HUD télémétrie V3.92 réparé (compile, 526 verts) + hover signaler discret | outillage de diagnostic, aucun test exigé | stop : la lettre du coupable (Z/T/C) lue par Hugo au prochain saut
+
+## 2026-10-29 - kenos - CCC-04 : le balayage dit son nom — le ciel est immobile, le boot démo était mort
+
+- **La contradiction** (PRÊT le 25/10 vs « animation persiste » 27-28/10)
+  balayée à la mesure, pas au ressenti : le ciel au repos est IMMOBILE —
+  déployé (81 s, 119 deltas, max 0,5 px) comme local démo (55 s, 83
+  deltas, max 0,6 px), zéro renversement de direction. Protocole et
+  chiffres : `docs/ANIMATION_SWEEP_CCC-04.md`.
+- **Non-lieu honnête sur le geste** : dans le navigateur outillé, aucun
+  pointeur (souris/molette/touch) n'atteint le canvas Flutter — pan et
+  pinch restent injugés ici. Le HUD V3.92 (4 doigts) reste l'outil prévu ;
+  la PR porte la liste à cocher Z/T/C pour qu'Hugo lise enfin la lettre
+  du coupable. Seul site code restant capable d'un saut périodique :
+  `TravelCamera.attach` re-clampe zoom+centre quand le viewport oscille
+  (barre d'URL mobile) — le HUD le dirait (Z et C ensemble).
+- **Trouvé à la place, corrigé** : le boot sans SENTRY_DSN crachait
+  « DSN is required. » avant le premier cadre (sentry 9.30 jette sur
+  DSN null — le « no-op absent » promis par PWW-04 n'a jamais existé).
+  Depuis le 20/10, la PWA démo locale et tout `make dev-local`
+  mouraient au boot ; seul le déployé vivait (DSN dans .env.cloud).
+  Garde posée dans `main()` (sans DSN → `bootstrap()` direct),
+  preuve épinglée par `boot_sentry_guard_test.dart`.
+
+2026-10-29 | kenos | balayage CCC-04 : repos immobile (déployé+local), saut non reproduit faute de geste traversant, question Z/T/C posée ; fix boot sans DSN + test | PR vague/CCC-04 | stop : la case cochée par Hugo (Z+C / T / rien) décide de la 5e correction
