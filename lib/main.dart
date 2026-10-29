@@ -23,8 +23,10 @@ const String _kSupabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 /// --dart-define=SENTRY_DSN (déploiement web : une ligne SENTRY_DSN=
 /// dans .env.cloud ; la valeur canonique vit dans le secret GitHub
 /// SENTRY_DSN). Vide ou absent — le cas de tout build local et de la
-/// CI — le SDK reste un no-op propre : pas de réseau, pas de collecte,
-/// le sanctuaire ne change pas d'un poil.
+/// CI — le SDK n'est PAS armé du tout (CCC-04 : sentry 9.30 jette
+/// « DSN is required. » sur un DSN null, l'init n'a jamais été un
+/// no-op — voir la garde dans [main]) : pas de réseau, pas de
+/// collecte, le sanctuaire ne change pas d'un poil.
 const String _kSentryDsn = String.fromEnvironment('SENTRY_DSN');
 
 Future<void> main() async {
@@ -33,11 +35,24 @@ Future<void> main() async {
   // 0. Crash reporting : initialisé AVANT tout le reste pour que les
   //    crashes des premiers gestes du boot remontent eux aussi.
   //    appRunner embarque toute la séquence de démarrage dans la zone
-  //    de capture de Sentry ; sans DSN, init() rend la main et le
-  //    runner tourne identique.
+  //    de capture de Sentry.
+  //
+  //    CCC-04 — SANS DSN, L'INIT N'EST PAS UN NO-OP : sentry 9.30
+  //    jette « DSN is required. » dès que le DSN est null (throw
+  //    inconditionnel, sentry-9.30.0/lib/src/sentry.dart) — le boot
+  //    entier mourait avant le premier cadre. Depuis PWW-04, tout
+  //    build sans --dart-define=SENTRY_DSN (la PWA démo locale, tout
+  //    `make dev-local`) était mort au boot ; seul le déployé vivait,
+  //    son .env.cloud portant un DSN. La garde tient ENFIN la promesse
+  //    de PWW-04 : absent de DSN, le sanctuaire ne s'arme pas du tout —
+  //    bootstrap direct, pas de réseau, pas de collecte, pas de crash.
+  if (_kSentryDsn.isEmpty) {
+    await bootstrap();
+    return;
+  }
   await SentryFlutter.init(
     (options) {
-      options.dsn = _kSentryDsn.isNotEmpty ? _kSentryDsn : null;
+      options.dsn = _kSentryDsn;
       // Le sanctuaire ne sait rien de qui : aucune donnée personnelle
       // n'accompagne jamais un crash.
       options.sendDefaultPii = false;
