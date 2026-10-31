@@ -6,6 +6,7 @@
 > Mesure : l'Observatoire (`make prod-watch`) — aucun analytics externe.
 > Crashs (PWW-04) : Sentry, crash et rien d'autre — DSN absent = no-op,
 > aucune donnée personnelle n'accompagne jamais un rapport.
+> Compte à rebours (posé le 31/10, J-9) : la ligne du temps J-9 → J-0, § 1bis.
 
 ---
 
@@ -46,6 +47,27 @@ calme jusqu'à la veille de l'afflux : semis de vestiges juste avant
 Show HN / la presse (fraîcheur maximale au moment où les regards
 arrivent), `make prod-desow` quand l'adoption est lancée. La seule
 chose qui reste à choisir est LA DATE de la vague (cible : 9/11).
+
+---
+
+## 1bis. La ligne du temps J-9 → J-0
+
+> Posée le 31/10 (J-9). La cible du § 1 est devenue LA date :
+> **lundi 09/11** — un lundi d'artefact (il naît seul à 06:45 UTC),
+> et la veille des fenêtres Show HN / presse (mardi/mercredi, §§ 4–5)
+> : le semis « juste avant l'afflux » tombe au matin de ce jour-là,
+> pile comme l'arbitrage du § 1 l'a posé. Trois gestes humains —
+> l'observation, la décision qu'elle déclenche, les gestes du jour J —
+> reliés ici d'une seule ligne. Chaque entrée renvoie à sa section ;
+> rien n'est répété.
+
+| Jour | Qui | Le geste | Où ça vit |
+|---|---|---|---|
+| **J-9 — sam. 31/10** | Hugo | **La lettre Z/T/C** : au prochain saut visible, poser 4 doigts sur la carte (le HUD V3.92 s'arme), lire `TELEM Z… T… C…` au moment du saut — et noter le contexte (PWA installée ou navigateur). | `docs/ANIMATION_SWEEP_CCC-04.md`, « la question à cocher » |
+| **J-8 — dim. 01/11** | Hugo décide, la session exécute | **La décision que la lettre déclenche** : (1) Z et C bougent ensemble → la 5e correction vit dans `TravelCamera.attach` (viewport) ; (2) T domine → parallaxe capteur ; (3) tous ~0 → les étoiles. La correction voyage en PR — ou statu quo, le repos étant prouvé immobile. | les trois cases de `docs/ANIMATION_SWEEP_CCC-04.md` |
+| **J-7 → J-2 — 02–07/11** | Hugo | **Les préparatifs doux** (sans date fixe, ils respirent dans la semaine) : la liste des 20–30 semeurs, les assets des boards préparés une seule fois, le backlog de poèmes grossi avant mi-novembre. Le veilleur nocturne tourne sans nous. | § 2 · § 6 · § 3 |
+| **J-1 — dim. 08/11** | la session | **La veille au calme** : au plus tard ici, la 5e correction (si la lettre en a décidé une) est mergée et déployée — après, le code dort jusqu'à l'après-vague. La nuit du 8 au 9, le smoke-prod doit se lever vert : sa dernière lecture avant l'afflux. | `scripts/smoke_prod.sh` · § 7 |
+| **J-0 — lun. 09/11** | Hugo, la session en appui | **Le jour J** : au matin, le ciel lu avant d'envoyer le monde (`make prod-watch`), puis le semis « nourrir à J-0 » — Semeur de l'Observatoire ou `prod-vestiges-sow` → relecture → `prod-vestiges-emit`, la relecture humaine est le geste. À 12:00, l'artefact du lundi ouvre la vague. Puis la diffusion dans ses fenêtres : Show HN, presse FR, salons aux arrivants, boards étalées. | § 7 · § 1 · § 3bis · § 3 · § 4 · § 5 · § 2 · § 6 |
 
 ---
 

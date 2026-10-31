@@ -123,3 +123,24 @@ Format ligne:
   preuve épinglée par `boot_sentry_guard_test.dart`.
 
 2026-10-29 | kenos | balayage CCC-04 : repos immobile (déployé+local), saut non reproduit faute de geste traversant, question Z/T/C posée ; fix boot sans DSN + test | PR vague/CCC-04 | stop : la case cochée par Hugo (Z+C / T / rien) décide de la 5e correction
+
+## 2026-10-31 - kenos - La ligne du temps J-9 → J-0 posée dans le kit (PFFF-05)
+
+- **Le constat** : à J-9 du lancement (09/11), les trois gestes humains
+  vivaient dispersés — la lettre Z/T/C dans
+  `docs/ANIMATION_SWEEP_CCC-04.md`, le semis J-0 au § 1 du kit, la
+  diffusion aux §§ 4–6. Rien ne disait « qui fait quoi quand » sur une
+  seule ligne du temps.
+- **La section 1bis** (`docs/LAUNCH_KIT.md`) : une entrée par jour qui
+  compte — J-9 la lettre (Hugo, au prochain saut visible), J-8 la
+  décision qu'elle déclenche (5e correction ou statu quo, les trois
+  issues dites : viewport / parallaxe capteur / étoiles), J-7→J-2 les
+  préparatifs doux, J-1 la veille au calme (fenêtre dernière de la
+  correction, smoke nocturne), J-0 le semis + prod-check + diffusion.
+  Chaque ligne : qui, quoi, le renvoi à sa section — zéro duplication.
+- **Le calendrier réconcilié en une phrase** : 09/11 est un LUNDI —
+  l'artefact du jour naît seul à 06:45 UTC (§ 3), et les fenêtres
+  Show HN / presse (mardi/mercredi, §§ 4–5) suivent le semis du matin
+  exactement comme le § 1 l'avait arbitré (« juste avant l'afflux »).
+
+2026-10-31 | kenos | ligne du temps J-9 → J-0 posée au § 1bis du kit (PFFF-05, vague FFF de portfolio-os) : lettre → décision → semis J-0, reliés sans duplication | docs/LAUNCH_KIT.md, MILESTONE_LOG | stop : PR vague/FFF-05 attend le go ; la lettre Z/T/C reste LE geste en attente (A-9)
